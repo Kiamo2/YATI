@@ -1,0 +1,748 @@
+﻿// MIT License
+//
+// Copyright (c) 2023 Roland Helmerichs
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+using System.Collections.Generic;
+using Godot;
+using Godot.Collections;
+using Array = Godot.Collections.Array;
+using FileAccess = Godot.FileAccess;
+using System;
+
+[Tool]
+public class TilesetCreator
+{
+    private const string WarningColor = "Yellow";
+
+    private TileSet _tileset;
+    private TileSetAtlasSource _currentAtlasSource;
+    private int _currentMaxX;
+    private int _currentMaxY;
+    private int _atlasSourceCounter;
+    private string _basePathMap;
+    private string _basePathTileset;
+    private int _terrainSetsCounter = -1;
+    private int _terrainCounter;
+    private int _tileCount;
+    private int _columns;
+    private Vector2I _tileSize;
+    private int _physicsLayerCounter = -1;
+    private int _navigationLayerCounter = -1;
+    private int _occlusionLayerCounter = -1;
+    private bool _append;
+    private Array _atlasSources;
+    private int _errorCount;
+    private int _warningCount;
+
+    private enum LayerType
+    {
+        Physics,
+        Navigation,
+        Occlusion
+    }
+
+    public int GetErrorCount()
+    {
+        return _errorCount;
+    }
+
+    public int GetWarningCount()
+    {
+        return _warningCount;
+    }
+    
+    public void SetBasePath(string sourceFile)
+    {
+        _basePathMap = sourceFile.GetBaseDir();
+        _basePathTileset = _basePathMap;
+    }
+    
+    public TileSet CreateFromDictionaryArray(Array<Dictionary> tileSets)
+    {
+        foreach (var tileSet in tileSets)
+        {
+            var tileSetDict = tileSet;
+            if (tileSet.ContainsKey("source"))
+            {
+                var checkedFile = (string)tileSet["source"];
+                
+                // Catch the AutoMap Rules tileset (is Tiled internal)
+                if (checkedFile.StartsWith(":/automap"))
+                    return _tileset; // This is no error just skip it
+                
+                if (!FileAccess.FileExists(checkedFile))
+                    checkedFile = _basePathMap.PathJoin(checkedFile);
+                _basePathTileset = checkedFile.GetBaseDir();
+
+                tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
+            }
+
+            // Possible error condition
+            if (tileSetDict == null)
+            {
+                _errorCount++;
+                return null;
+            }
+
+            CreateOrAppend(tileSetDict);
+            _append = true;
+        }
+
+        return _tileset;
+    }
+
+    public TileSet CreateFromFile(string sourceFile)
+    {
+        var tileSet = DictionaryBuilder.GetDictionary(sourceFile);
+        CreateOrAppend(tileSet);
+        return _tileset;
+    }
+
+    public Array GetRegisteredAtlasSources()
+    {
+        return _atlasSources;
+    }
+
+    private void CreateOrAppend(Dictionary tileSet)
+    {
+        // Catch the AutoMap Rules tileset (is Tiled internal)
+        if (tileSet.ContainsKey("name") && ((string)tileSet["name"] == "AutoMap Rules"))
+            return; // This is no error just skip it
+        
+        if (!_append)
+            _tileset = new TileSet();
+        _tileSize = new Vector2I((int)tileSet["tilewidth"], (int)tileSet["tileheight"]);
+        if (!_append)
+            _tileset.TileSize = _tileSize;
+        _tileCount = tileSet.ContainsKey("tilecount") ? (int)tileSet["tilecount"] : 0;
+        _columns = tileSet.ContainsKey("columns") ? (int)tileSet["columns"] : 0;
+        if (_append)
+            _terrainCounter = 0;
+
+        if (tileSet.ContainsKey("image"))
+        {
+            _currentAtlasSource = new TileSetAtlasSource();
+            _tileset.AddSource(_currentAtlasSource, _atlasSourceCounter);
+            _currentAtlasSource.TextureRegionSize = _tileSize;
+            if (tileSet.ContainsKey("margin"))
+                _currentAtlasSource.Margins = new Vector2I((int)tileSet["margin"], (int)tileSet["margin"]);
+            if (tileSet.ContainsKey("spacing"))
+                _currentAtlasSource.Separation = new Vector2I((int)tileSet["spacing"], (int)tileSet["spacing"]);
+
+            var texture = LoadImage((string)tileSet["image"]);
+            if (texture == null)
+                // Can't continue without texture
+                return;
+            
+            _currentAtlasSource.Texture = texture;
+ 
+            if ((_tileCount == 0) || (_columns == 0))
+            {
+                var imagewidth = tileSet.ContainsKey("imagewidth") ? (int)tileSet["imagewidth"] : 0;
+                var imageheight = tileSet.ContainsKey("imageheight") ? (int)tileSet["imageheight"] : 0;
+                if (imagewidth == 0)
+                {
+                    var img = _currentAtlasSource.Texture;
+                    imagewidth = img.GetWidth();
+                    imageheight = img.GetHeight();
+                }
+                _columns = imagewidth / _tileSize.X;
+                _tileCount = _columns * imageheight / _tileSize.X;
+            }
+            RegisterAtlasSource(_atlasSourceCounter, _tileCount, -1);
+            var atlasGridSize = _currentAtlasSource.GetAtlasGridSize();
+            _currentMaxX = atlasGridSize.X - 1;
+            _currentMaxY = atlasGridSize.Y - 1;
+            _atlasSourceCounter++;
+        }
+        
+        if (tileSet.ContainsKey("tiles"))
+            HandleTiles((Array<Dictionary>)tileSet["tiles"]);
+        if (tileSet.ContainsKey("wangsets"))
+            HandleWangsets((Array<Dictionary>)tileSet["wangsets"]);
+        if (tileSet.ContainsKey("properties"))
+            HandleTilesetProperties((Array<Dictionary>)tileSet["properties"]);
+    }
+
+    private Texture2D LoadImage(string path)
+    {
+        var origPath = path;
+        Texture2D ret = null;
+        // ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
+        if (!FileAccess.FileExists(path))
+            path = _basePathMap.GetBaseDir().PathJoin(origPath);
+        if (!FileAccess.FileExists(path))
+            path = _basePathTileset.PathJoin(origPath);
+        if (FileAccess.FileExists(path))
+        {
+            var exists = ResourceLoader.Exists(path, "Image");
+            if (exists)
+                ret = (Texture2D)ResourceLoader.Load(path, "Image");
+            else
+            {
+                var image = Image.LoadFromFile(path);
+                ret = ImageTexture.CreateFromImage(image);
+            }
+        }
+        else
+        {
+            GD.PrintErr($"ERROR: Image file '{origPath}' not found.");
+            _errorCount++;
+        }
+
+        return ret;
+    }
+
+    private void RegisterAtlasSource(int sourceId, int numTiles, int assignedTileId)
+    {
+        _atlasSources ??= new Array();
+        var atlasSourceItem = new Dictionary();
+        atlasSourceItem.Add("sourceId", sourceId);
+        atlasSourceItem.Add("numTiles", numTiles);
+        atlasSourceItem.Add("assignedId", assignedTileId);
+        _atlasSources.Add(atlasSourceItem);
+    }
+
+    private TileData CreateTileIfNotExistingAndGetTileData(int tileId)
+    {
+        if (tileId < _tileCount)
+        {
+            var row = tileId / _columns;
+            var col = tileId % _columns;
+            var tileCoords = new Vector2I(col, row);
+            if (col > _currentMaxX || row > _currentMaxY)
+            {
+                GD.PrintRich($"[color={WarningColor}] -- Tile {tileId} at {col},{row} outside texture range. -> Skipped[/color]");
+                _warningCount++;
+                return null;
+            }
+            var tileAtCoords = _currentAtlasSource.GetTileAtCoords(tileCoords);
+            if (tileAtCoords == new Vector2I(-1, -1))
+                _currentAtlasSource.CreateTile(tileCoords);
+            else if (tileAtCoords != tileCoords)
+            {
+                GD.PrintRich($"[color={WarningColor}]WARNING: tileAtCoords not equal tileCoords![/color]");
+                GD.PrintRich($"[color={WarningColor}]         tileCoords:   {col},{row}[/color]");
+                GD.PrintRich($"[color={WarningColor}]         tileAtCoords: {tileAtCoords.X},{tileAtCoords.X}[/color]");
+                GD.PrintRich($"[color={WarningColor}]-> Tile skipped[/color]");
+                _warningCount++;
+                return null;
+            }
+            return _currentAtlasSource.GetTileData(tileCoords, 0);
+        }
+        GD.PrintRich($"[color={WarningColor}] -- Tile {tileId} outside tile count range (0-{_tileCount-1}). -> Skipped[/color]");
+        _warningCount++;
+        return null;
+    }
+
+    private void HandleTiles(Array<Dictionary> tiles)
+    {
+        var lastAtlasSourceCount = _atlasSourceCounter;
+        foreach (var tile in tiles)
+        {
+            var tileId = (int)tile["id"];
+
+            if (tile.ContainsKey("image"))
+            {
+                // Tile with it's own image -> separate atlas source
+                _currentAtlasSource = new TileSetAtlasSource();
+                lastAtlasSourceCount = _atlasSourceCounter + tileId + 1;
+                _tileset.AddSource(_currentAtlasSource, lastAtlasSourceCount - 1);
+                RegisterAtlasSource(lastAtlasSourceCount-1, 1, tileId);
+                
+                var texturePath = (string)tile["image"];
+                _currentAtlasSource.Texture = LoadImage(texturePath);
+
+                // ToDo: The following code is a (C# version only) workaround against possible racing conditions
+                var i = 0;
+                while (_currentAtlasSource.Texture == null)
+                {
+                    _currentAtlasSource.Texture = LoadImage((string)tile["image"]);
+                    i++;
+                    if (i <= 10) continue;
+                    GD.PrintErr("Failed over 10 times to load");
+                    _errorCount++;
+                    break;
+                }
+                _currentAtlasSource.ResourceName = texturePath.GetFile().GetBaseName();
+                _currentAtlasSource.TextureRegionSize = new Vector2I(_currentAtlasSource.Texture.GetWidth(),
+                    _currentAtlasSource.Texture.GetHeight());                
+                
+                _currentAtlasSource.CreateTile(Vector2I.Zero);
+                var tileData = _currentAtlasSource.GetTileData(Vector2I.Zero, 0);
+                tileData.Probability = (float)tile.GetValueOrDefault("probability", 1.0f);
+                continue;
+            }
+            
+            var currentTile = CreateTileIfNotExistingAndGetTileData(tileId);
+            if (currentTile == null)
+                //Error occurred
+                continue;
+
+            if (tile.ContainsKey("probability"))
+                currentTile.Probability = (int)tile["probability"];
+            if (tile.ContainsKey("animation"))
+                HandleAnimation((Array<Dictionary>)tile["animation"], tileId);
+            if (tile.ContainsKey("objectgroup"))
+                HandleObjectgroup((Dictionary)tile["objectgroup"], currentTile);
+            if (tile.ContainsKey("properties"))
+                HandleTileProperties((Array<Dictionary>)tile["properties"], currentTile);
+        }
+
+        _atlasSourceCounter = lastAtlasSourceCount;
+    }
+
+    private void HandleAnimation(Array<Dictionary> frames, int tileId)
+    {
+        var frameCount = 0;
+        var separationX = 0;
+        var separationY = 0;
+        var animColumns = 0;
+        var tileCoords = new Vector2I(tileId % _columns, tileId / _columns);
+        foreach (var frame in frames)
+        {
+            frameCount++;
+            var frameTileId = (int)frame["tileid"];
+            if (frameCount == 2)
+            {
+                var diffX = (frameTileId - tileId) % _columns;
+                var diffY = (frameTileId - tileId) / _columns;
+                if ((diffX == 0) && diffY is > 0 and < 4)
+                {
+                    separationY = diffY - 1;
+                    animColumns = 1;
+                }
+                else if ((diffY == 0) && diffX is > 0 and < 4)
+                {
+                    separationX = diffX - 1;
+                    animColumns = 0;
+                }
+                else
+                {
+                    GD.PrintRich($"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
+                    _warningCount++;
+                    return;
+                }
+
+                if (frames.Count > 2)
+                {
+                    var nextFrameTileId = (int)frames[2]["tileid"];
+                    var compareDiffX = (nextFrameTileId - frameTileId) % _columns;
+                    var compareDiffY = (nextFrameTileId - frameTileId) / _columns;
+                    if ((compareDiffX != diffX) || (compareDiffY != diffY))
+                    {
+                        GD.PrintRich($"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
+                        _warningCount++;
+                        return;
+                    }
+                }
+            }
+
+            var separationVect = new Vector2I(separationX, separationY);
+            if (_currentAtlasSource.HasRoomForTile(tileCoords, Vector2I.One, animColumns, separationVect, frameCount, tileCoords))
+            {
+                _currentAtlasSource.SetTileAnimationSeparation(tileCoords, separationVect);
+                _currentAtlasSource.SetTileAnimationColumns(tileCoords, animColumns);
+                _currentAtlasSource.SetTileAnimationFramesCount(tileCoords,frameCount);
+                var durationInSecs = 1.0f;
+                if (frame.ContainsKey("duration"))
+                    durationInSecs = (float)frame["duration"] / 1000.0f;
+                _currentAtlasSource.SetTileAnimationFrameDuration(tileCoords,frameCount-1, durationInSecs);
+            }
+            else
+            {
+                GD.PrintRich($"[color={WarningColor}] -- TileId {tileId}: Not enough room for all animation frames, could only set {frameCount} frames.[/color]");
+                _warningCount++;
+                break;
+            }
+        }        
+    }
+
+    private void HandleObjectgroup(Dictionary objectGroup, TileData currentTile)
+    {
+        var polygonIndex = -1;
+        var objects = (Array<Dictionary>)objectGroup["objects"];
+        foreach (var obj in objects)
+        {
+            if (obj.ContainsKey("point") && (bool)obj["point"])
+            {
+                GD.PrintRich($"[color={WarningColor}] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
+                _warningCount++;
+                break;
+            }
+            if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
+            {
+                GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
+                _warningCount++;
+                break;
+            }
+                
+            var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]);
+            objectBaseCoords -= (Vector2)_tileset.TileSize / 2.0f;
+
+            Vector2[] polygon;
+            if (obj.ContainsKey("polygon"))
+            {
+                var polygonPoints = (Array<Dictionary>)obj["polygon"];
+                polygon = new Vector2[polygonPoints.Count];
+                var i = 0;
+                foreach (var pt in polygonPoints)
+                {
+                    var pCoord = new Vector2((float)pt["x"], (float)pt["y"]);
+                    polygon[i] = objectBaseCoords + pCoord;
+                    i++;
+                }
+            }
+            else
+            {
+                // Should be a simple rectangle
+                polygon = new Vector2[4];
+                polygon[0] = objectBaseCoords;
+                polygon[1].X = polygon[0].X;
+                polygon[1].Y = polygon[0].Y + (float)obj["height"];
+                polygon[2].X = polygon[0].X + (float)obj["width"];
+                polygon[2].Y = polygon[1].Y;
+                polygon[3].X = polygon[2].X;
+                polygon[3].Y = polygon[0].Y;
+            }
+
+            var nav = GetLayerNumberForSpecialProperty(obj, "navigation_layer");
+            if (nav >= 0)
+            {
+                var navP = new NavigationPolygon();
+                navP.AddOutline(polygon);
+                navP.MakePolygonsFromOutlines();
+                EnsureLayerExisting(LayerType.Navigation, nav);
+                currentTile.SetNavigationPolygon(nav, navP);
+            }
+
+            var occ = GetLayerNumberForSpecialProperty(obj, "occlusion_layer");
+            if (occ >= 0)
+            {
+                var occP = new OccluderPolygon2D();
+                occP.Polygon = polygon;
+                EnsureLayerExisting(LayerType.Occlusion, occ);
+                currentTile.SetOccluder(occ, occP);
+            }
+
+            var phys = GetLayerNumberForSpecialProperty(obj, "physics_layer");
+            // If no property is specified assume physics (i.e. default)
+            if (phys < 0 && nav < 0 && occ < 0)
+                phys = 0;
+            if (phys < 0) continue;
+            polygonIndex++;
+            EnsureLayerExisting(LayerType.Physics, phys);
+            currentTile.AddCollisionPolygon(phys);
+            currentTile.SetCollisionPolygonPoints(phys, polygonIndex, polygon);
+            if (!obj.ContainsKey("properties")) continue;
+            foreach (var property in (Array<Dictionary>)obj["properties"])
+            {
+                var name = (string)property.GetValueOrDefault("name", "");
+                var type = (string)property.GetValueOrDefault("type", "string");
+                var val = property.GetValueOrDefault("value", "");
+                if (name == "") continue;
+                switch (name.ToLower())
+                {
+                    case "one_way" when type == "bool":
+                        currentTile.SetCollisionPolygonOneWay(phys, polygonIndex, bool.Parse((string)val));
+                        break;
+                    case "one_way_margin" when type == "int":
+                        currentTile.SetCollisionPolygonOneWayMargin(phys, polygonIndex, int.Parse((string)val));
+                        break;
+                }
+            }
+        }
+    }
+
+    private static int GetLayerNumberForSpecialProperty(Dictionary dict, string propertyName)
+    {
+        if (!dict.ContainsKey("properties")) return -1;
+
+        foreach (var property in (Array<Dictionary>)dict["properties"])
+        {
+            var name = (string)property.GetValueOrDefault("name", "");
+            var type = (string)property.GetValueOrDefault("type", "string");
+            var val = property.GetValueOrDefault("value", "");
+            if (name == "") continue;
+            if (name.ToLower() == propertyName && type == "int")
+                return int.Parse((string)val);
+        }
+        return -1;
+    }
+
+    private Resource LoadResourceFromFile(string path)
+    {
+        var origPath = path;
+        Resource ret = null;
+        // ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
+        if (!FileAccess.FileExists(path))
+            path = _basePathTileset.GetBaseDir().PathJoin(origPath);
+        if (!FileAccess.FileExists(path))
+            path = _basePathTileset.PathJoin(origPath);
+        if (FileAccess.FileExists(path))
+            ret = ResourceLoader.Load(path);
+        else
+        {
+            GD.PrintErr($"ERROR: Resource file '{origPath}' not found.");
+            _errorCount++;
+        }
+
+        return ret;
+    }
+    
+    private static uint GetBitmaskIntegerFromString(string maskString, int max)
+    {
+        uint ret = 0;
+        var s1Arr = maskString.Split(',', StringSplitOptions.TrimEntries);
+        foreach (var s1 in s1Arr)
+        {
+            if (s1.Contains('-'))
+            {
+                var s2Arr = s1.Split('-', 2, StringSplitOptions.TrimEntries);
+                if (!int.TryParse(s2Arr[0], out var i1) || !int.TryParse(s2Arr[1], out var i2)) continue;
+                if (i1 > i2) continue;
+                for (var i = i1; i <= i2; i++)
+                    if (i <= max)
+                        ret += (uint)Math.Pow(2, i - 1);
+            }
+            else if (int.TryParse(s1, out var i)) 
+                if (i <= max) 
+                    ret += (uint)Math.Pow(2, i - 1);
+        }
+
+        return ret;
+    }
+
+    private void HandleTileProperties(Array<Dictionary> properties, TileData currentTile)
+    {
+        foreach (var property in properties)
+        {
+            var name = (string)property.GetValueOrDefault("name", "");
+            var type = (string)property.GetValueOrDefault("type", "string");
+            var val = (string)property.GetValueOrDefault("value", "");
+            if (name == "") continue;
+            if (name.ToLower() == "texture_origin_x" && type == "int")
+            {
+                var origin = currentTile.TextureOrigin;
+                origin.X = int.Parse(val);
+                currentTile.TextureOrigin = origin;
+            }
+            else if (name.ToLower() == "texture_origin_y" && type == "int")
+            {
+                var origin = currentTile.TextureOrigin;
+                origin.Y = int.Parse(val);
+                currentTile.TextureOrigin = origin;
+            }
+            else if (name.ToLower() == "modulate" && type == "string")
+                currentTile.Modulate = new Color(val);
+            else if (name.ToLower() == "material" && type == "file")
+                currentTile.Material = (Material)LoadResourceFromFile(val);
+            else if (name.ToLower() == "z_index" && type == "int")
+                currentTile.ZIndex = int.Parse(val);
+            else if (name.ToLower() == "y_sort_origin" && type == "int")
+                currentTile.YSortOrigin = int.Parse(val);
+            else if (name.ToLower().StartsWith("linear_velocity_x_") && type is "int" or "float")
+            {
+                if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
+                var linVelo = currentTile.GetConstantLinearVelocity(layerIndex);
+                linVelo.X = float.Parse(val);
+                currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
+            }
+            else if (name.ToLower().StartsWith("linear_velocity_y_") && type is "int" or "float")
+            {
+                if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
+                var linVelo = currentTile.GetConstantLinearVelocity(layerIndex);
+                linVelo.Y = float.Parse(val);
+                currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
+            }
+            else if (name.ToLower().StartsWith("angular_velocity_") && type is "int" or "float")
+            {
+                if (!int.TryParse(name.AsSpan(17), out var layerIndex)) continue;
+                currentTile.SetConstantAngularVelocity(layerIndex, float.Parse(val));
+            }
+            else
+            {
+                var customLayer = _tileset.GetCustomDataLayerByName(name);
+                if (customLayer < 0)
+                {
+                    _tileset.AddCustomDataLayer();
+                    customLayer = _tileset.GetCustomDataLayersCount() - 1;
+                    _tileset.SetCustomDataLayerName(customLayer, name);
+                    var customType = type switch
+                    {
+                        "bool" => Variant.Type.Bool,
+                        "int" => Variant.Type.Int,
+                        "string" => Variant.Type.String,
+                        "float" => Variant.Type.Float,
+                        "color" => Variant.Type.Color,
+                        _ => Variant.Type.String
+                    };
+                    _tileset.SetCustomDataLayerType(customLayer, customType);
+                }
+
+                currentTile.SetCustomData(name, val);
+            }
+        }
+    }
+
+    private void HandleTilesetProperties(Array<Dictionary> properties)
+    {
+        foreach (var property in properties)
+        {
+            var name = (string)property.GetValueOrDefault("name", "");
+            var type = (string)property.GetValueOrDefault("type", "string");
+            var val = (string)property.GetValueOrDefault("value", "");
+            if (name == "") continue;
+            int layerIndex;
+            if (name.ToLower().StartsWith("collision_layer_") && type == "string")
+            {
+                if (!int.TryParse(name.AsSpan(16), out layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Physics, layerIndex);
+                _tileset.SetPhysicsLayerCollisionLayer(layerIndex, GetBitmaskIntegerFromString(val, 32));
+            }
+            else if (name.ToLower().StartsWith("collision_mask_") && type == "string")
+            {
+                if (!int.TryParse(name.AsSpan(15), out layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Physics, layerIndex);
+                _tileset.SetPhysicsLayerCollisionMask(layerIndex, GetBitmaskIntegerFromString(val, 32));
+            }
+            else if (name.ToLower().StartsWith("navigation_layers_") && type == "string")
+            {
+                if (!int.TryParse(name.AsSpan(18), out layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Navigation, layerIndex);
+                _tileset.SetNavigationLayerLayers(layerIndex, GetBitmaskIntegerFromString(val, 32));
+            }
+            else if (name.ToLower().StartsWith("occlusion_light_mask_") && type == "string")
+            {
+                if (!int.TryParse(name.AsSpan(21), out layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Occlusion, layerIndex);
+                _tileset.SetOcclusionLayerLightMask(layerIndex, (int)GetBitmaskIntegerFromString(val, 20));
+            }
+            else if (name.ToLower().StartsWith("occlusion_sdf_collision_") && type == "bool")
+            {
+                if (!int.TryParse(name.AsSpan(24), out layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Occlusion, layerIndex);
+                _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
+            }
+            else
+                _tileset.SetMeta(name, val);
+        }
+    }
+
+    private void EnsureLayerExisting(LayerType tp, int layer)
+    {
+        switch (tp)
+        {
+            case LayerType.Physics:
+            {
+                while (_physicsLayerCounter < layer)
+                {
+                    _tileset.AddPhysicsLayer();
+                    _physicsLayerCounter++;
+                }
+
+                break;
+            }
+            case LayerType.Navigation:
+            {
+                while (_navigationLayerCounter < layer)
+                {
+                    _tileset.AddNavigationLayer();
+                    _navigationLayerCounter++;
+                }
+
+                break;
+            }
+            case LayerType.Occlusion:
+            {
+                while (_occlusionLayerCounter < layer)
+                {
+                    _tileset.AddOcclusionLayer();
+                    _occlusionLayerCounter++;
+                }
+
+                break;
+            }
+        }
+    }
+
+    private void HandleWangsets(Array<Dictionary> wangsets)
+    {
+        _tileset.AddTerrainSet();
+        _terrainSetsCounter++;
+        foreach (var wangset in wangsets)
+        {
+            var currentTerrainSet = _terrainSetsCounter;
+            _tileset.AddTerrain(currentTerrainSet);
+            var currentTerrain = _terrainCounter;
+            if (wangset.ContainsKey("name"))
+                _tileset.SetTerrainName(currentTerrainSet, _terrainCounter, (string)wangset["name"]);
+
+            var terrainMode = TileSet.TerrainMode.Corners;
+            if (wangset.ContainsKey("type"))
+                terrainMode = (string)wangset["type"] switch
+                {
+                    "corner" => TileSet.TerrainMode.Corners,
+                    "edge" => TileSet.TerrainMode.Sides,
+                    "mixed" => TileSet.TerrainMode.CornersAndSides,
+                    _ => terrainMode
+                };
+            
+            _tileset.SetTerrainSetMode(currentTerrainSet, terrainMode);
+
+            if (wangset.ContainsKey("colors"))
+                _tileset.SetTerrainColor(currentTerrainSet, _terrainCounter,
+                    new Color((Color)((Dictionary)((Array)wangset["colors"])[0])["color"]));
+
+            if (wangset.ContainsKey("wangtiles"))
+                foreach (var wangtile in (Array<Dictionary>)wangset["wangtiles"])
+                {
+                    var tileId = (int)wangtile["tileid"];
+                    var currentTile = CreateTileIfNotExistingAndGetTileData(tileId);
+                    if (currentTile == null)
+                        // Error occurred
+                        break;
+                    currentTile.TerrainSet = currentTerrainSet;
+                    currentTile.Terrain = currentTerrain;
+                    var i = 0;
+                    foreach (var wi in (Array<int>)wangtile["wangid"])
+                    {
+                        var peeringBit = i switch
+                        {
+                            1 => TileSet.CellNeighbor.TopRightCorner,
+                            2 => TileSet.CellNeighbor.RightSide,
+                            3 => TileSet.CellNeighbor.BottomRightCorner,
+                            4 => TileSet.CellNeighbor.BottomSide,
+                            5 => TileSet.CellNeighbor.BottomLeftCorner,
+                            6 => TileSet.CellNeighbor.LeftSide,
+                            7 => TileSet.CellNeighbor.TopLeftCorner,
+                            _ => TileSet.CellNeighbor.TopSide
+                        };
+                        if (wi > 0)
+                            currentTile.SetTerrainPeeringBit(peeringBit, currentTerrain);
+                        i++;
+                    }
+                }
+
+            _terrainCounter++;
+        }
+    }
+}
