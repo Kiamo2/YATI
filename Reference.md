@@ -88,43 +88,44 @@ Property value is the assigned layer number.
 **Names:** The Tiled element name entry is mapped to the Godot element name.  
 If the Tiled name entry is empty a default Godot element name is created to avoid cryptic looking names.
 
-| Tiled Element            | Class      | Property ('int') | Godot Element                             |
-|--------------------------|------------|------------------|-------------------------------------------|
-| Tile layer               |            |                  | TileMap                                   |
-| Object layer             |            |                  | Node2D                                    |
-| Group layer              |            |                  | (Parent) Node2D                           |
-| Image layer              |            |                  | TextureRect                               |
+| Tiled Element              | Class      | Property ('int') | Godot Element                             |
+|----------------------------|------------|------------------|-------------------------------------------|
+| Tile layer                 |            |                  | TileMap                                   |
+| Object layer               |            |                  | Node2D                                    |
+| Group layer                |            |                  | (Parent) Node2D                           |
+| Image layer                |            |                  | TextureRect                               |
 ||
-| Tileset                  |            |                  | Atlas + Terrain Set                       |
-| Terrain Set ("wangset")  |            |                  | Terrain                                   |
+| Tileset (tileset image)    |            |                  | Atlas + Terrain Set                       |
+| Tileset (image collection) |            |                  | One atlas per image                       |
+| Terrain Set ("wangset")    |            |                  | Terrain                                   |
 ||
-| Tile Collision polygon   |            | physics_layer    | Physics layer polygon                     |
-|                          |            | navigation_layer | Navigation layer polygon                 |
-|                          |            | occlusion_layer  | Occlusion layer polygon                   |
-| Tile Collision rectangle |            | physics_layer    | Physics layer polygon                     |
-|                          |            | navigation_layer | Navigation layer polygon                  |
-|                          |            | occlusion_layer  | Occlusion layer polygon                   |
-| Tile collision ellipse   |            |                  | n/a                                       |
-| Tile animation           |            |                  | Tile animation (limited)                  |
+| Tile Collision polygon     |            | physics_layer    | Physics layer polygon                     |
+|                            |            | navigation_layer | Navigation layer polygon                  |
+|                            |            | occlusion_layer  | Occlusion layer polygon                   |
+| Tile Collision rectangle   |            | physics_layer    | Physics layer polygon                     |
+|                            |            | navigation_layer | Navigation layer polygon                  |
+|                            |            | occlusion_layer  | Occlusion layer polygon                   |
+| Tile collision ellipse     |            |                  | n/a                                       |
+| Tile animation             |            |                  | Tile animation (limited)                  |
 ||
-| Tile object              |            |                  | Sprite2D                                  |
-| Polygon object           | (body)     |                  | StaticBody2D + CollisionPolygon2D         |
-|                          | area       |                  | Area2D + CollisionPolygon2D               |
-|                          | navigation |                  | NavigationRegion2D                        |
-|                          | occluder   |                  | LightOccluder2D + OcclusionPolygon2D      |
-|                          | polygon    |                  | Polygon2D                                 |
-| Rectangle object         | (body)     |                  | StaticBody2D + Rectangle CollisionShape2D |
-|                          | area       |                  | Area2D + Rectangle CollisionShape2D       |
-|                          | navigation |                  | NavigationRegion2D                        |
-|                          | occluder   |                  | LightOccluder2D + OcclusionPolygon2D      |
-| Ellipse object           | (body)     |                  | StaticBody2D + Capsule CollisionShape2D   |
-|                          | area       |                  | Area2D + Capsule CollisionShape2D         |
-| Polyline object          | (body)     |                  | StaticBody2D + Segment CollisionShape2D   |
-|                          | area       |                  | Area2D + Segment CollisionShape2D         |
-|                          | line       |                  | Line2D                                    |
-|                          | path       |                  | Path2D                                    |
-| Point object             |            |                  | Marker2D                                  |
-| Text object              |            |                  | Label                                     |
+| Tile object                |            |                  | Sprite2D                                  |
+| Polygon object             | (body)     |                  | StaticBody2D + CollisionPolygon2D         |
+|                            | area       |                  | Area2D + CollisionPolygon2D               |
+|                            | navigation |                  | NavigationRegion2D                        |
+|                            | occluder   |                  | LightOccluder2D + OcclusionPolygon2D      |
+|                            | polygon    |                  | Polygon2D                                 |
+| Rectangle object           | (body)     |                  | StaticBody2D + Rectangle CollisionShape2D |
+|                            | area       |                  | Area2D + Rectangle CollisionShape2D       |
+|                            | navigation |                  | NavigationRegion2D                        |
+|                            | occluder   |                  | LightOccluder2D + OcclusionPolygon2D      |
+| Ellipse object             | (body)     |                  | StaticBody2D + Capsule CollisionShape2D   |
+|                            | area       |                  | Area2D + Capsule CollisionShape2D         |
+| Polyline object            | (body)     |                  | StaticBody2D + Segment CollisionShape2D   |
+|                            | area       |                  | Area2D + Segment CollisionShape2D         |
+|                            | line       |                  | Line2D                                    |
+|                            | path       |                  | Path2D                                    |
+| Point object               |            |                  | Marker2D                                  |
+| Text object                |            |                  | Label                                     |
 
 ## Custom properties reference
 

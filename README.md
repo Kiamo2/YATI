@@ -36,6 +36,7 @@ Otherwise - if you have more than one Tiled map - Godot may freeze (+crash) duri
 - visibility, opacity, tint, offsets, probability
 - parallaxes
 - tile collisions
+- tile animations
 - templates
 - custom properties  
 ...
