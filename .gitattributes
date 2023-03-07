@@ -1,1 +1,3 @@
 Dictionary*.cs linguist-detectable=false
+Importer.cs linguist-detectable=false
+PostProcessing.cs linguist-detectable=false
