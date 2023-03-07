@@ -1,3 +1,4 @@
-CSharp/addons/YATI/Dictionary*.cs linguist-detectable=false
+CSharp/addons/YATI/DictionaryBuilder.cs linguist-detectable=false
+CSharp/addons/YATI/DictionaryFromXml.cs linguist-detectable=false
 CSharp/addons/YATI/Importer.cs linguist-detectable=false
 CSharp/addons/YATI/PostProcessing.cs linguist-detectable=false
