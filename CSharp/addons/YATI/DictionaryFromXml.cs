@@ -230,7 +230,7 @@ public class DictionaryFromXml
                     {
                         var arr = new Array();
                         foreach (var s in ((string)data).Split(',',StringSplitOptions.TrimEntries))
-                            arr.Add(int.Parse(s));
+                            arr.Add(uint.Parse(s));
                         data = arr;
                     }
                     ((Dictionary)_currentArray[^1]).Add("data", data);

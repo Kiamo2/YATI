@@ -51,6 +51,7 @@ public class TilesetCreator
     private Array _atlasSources;
     private int _errorCount;
     private int _warningCount;
+    private Vector2I _mapTileSize;
 
     private enum LayerType
     {
@@ -73,6 +74,11 @@ public class TilesetCreator
     {
         _basePathMap = sourceFile.GetBaseDir();
         _basePathTileset = _basePathMap;
+    }
+
+    public void SetMapTileSize(Vector2I mapTileSize)
+    {
+        _mapTileSize = mapTileSize;
     }
     
     public TileSet CreateFromDictionaryArray(Array<Dictionary> tileSets)
@@ -131,7 +137,7 @@ public class TilesetCreator
             _tileset = new TileSet();
         _tileSize = new Vector2I((int)tileSet["tilewidth"], (int)tileSet["tileheight"]);
         if (!_append)
-            _tileset.TileSize = _tileSize;
+            _tileset.TileSize = _mapTileSize;
         _tileCount = tileSet.ContainsKey("tilecount") ? (int)tileSet["tilecount"] : 0;
         _columns = tileSet.ContainsKey("columns") ? (int)tileSet["columns"] : 0;
         if (_append)
@@ -297,6 +303,17 @@ public class TilesetCreator
                 //Error occurred
                 continue;
 
+            if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+            {
+                var diffX = _tileSize.X - _mapTileSize.X;
+                if (diffX % 2 > 0)
+                    diffX -= 1;
+                var diffY = _tileSize.Y - _mapTileSize.Y;
+                if (diffY % 2 > 0)
+                    diffY += 1;
+                currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+            }
+
             if (tile.ContainsKey("probability"))
                 currentTile.Probability = (int)tile["probability"];
             if (tile.ContainsKey("animation"))
@@ -394,9 +411,10 @@ public class TilesetCreator
                 _warningCount++;
                 break;
             }
-                
+            
             var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]);
-            objectBaseCoords -= (Vector2)_tileset.TileSize / 2.0f;
+            objectBaseCoords -= currentTile.TextureOrigin;
+            objectBaseCoords -= (Vector2)_tileSize / 2.0f;
 
             Vector2[] polygon;
             if (obj.ContainsKey("polygon"))
@@ -720,6 +738,18 @@ public class TilesetCreator
                     if (currentTile == null)
                         // Error occurred
                         break;
+
+                    if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+                    {
+                        var diffX = _tileSize.X - _mapTileSize.X;
+                        if (diffX % 2 > 0)
+                            diffX -= 1;
+                        var diffY = _tileSize.Y - _mapTileSize.Y;
+                        if (diffY % 2 > 0)
+                            diffY += 1;
+                        currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                    }
+
                     currentTile.TerrainSet = currentTerrainSet;
                     currentTile.Terrain = currentTerrain;
                     var i = 0;

@@ -133,6 +133,7 @@ public class TilemapCreator
                 _firstGids.Add((int)tileSet["firstgid"]);
             var tilesetCreator = new TilesetCreator();
             tilesetCreator.SetBasePath(sourceFile);
+            tilesetCreator.SetMapTileSize(new Vector2I(_mapTileWidth, _mapTileHeight));
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
@@ -473,6 +474,90 @@ public class TilemapCreator
         return ret;
     }
 
+    private void CreatePolygonsOnAlternativeTiles(TileData sourceData, TileData targetData, int altId)
+    {
+        var flippedH = (altId & 1) > 0;
+        var flippedV = (altId & 2) > 0;
+        var flippedD = (altId & 4) > 0;
+        var origin = sourceData.TextureOrigin;
+        var physicsLayersCount = _tileset.GetPhysicsLayersCount();
+        for (var layerId = 0; layerId < physicsLayersCount; layerId++)
+        {
+            var collisionPolygonsCount = sourceData.GetCollisionPolygonsCount(layerId);
+            for (var polygonId = 0; polygonId < collisionPolygonsCount; polygonId++)
+            {
+                var pts = sourceData.GetCollisionPolygonPoints(layerId, polygonId);
+                var ptsNew = new Vector2[pts.Length];
+                var i = 0;
+                foreach (var pt in pts)
+                {
+                    ptsNew[i] = pt + origin;
+                    if (flippedD)
+                        (ptsNew[i].X, ptsNew[i].Y) = (ptsNew[i].Y, ptsNew[i].X);
+                    if (flippedH)
+                        ptsNew[i].X = -ptsNew[i].X;
+                    if (flippedV)
+                        ptsNew[i].Y = -ptsNew[i].Y;
+                    ptsNew[i] -= targetData.TextureOrigin;
+                    i++;
+                }
+                targetData.AddCollisionPolygon(layerId);
+                targetData.SetCollisionPolygonPoints(layerId, polygonId, ptsNew);
+            }
+        }
+
+        var navigationLayersCount = _tileset.GetNavigationLayersCount();
+        for (var layerId = 0; layerId < navigationLayersCount; layerId++)
+        {
+            var navP = sourceData.GetNavigationPolygon(layerId);
+            if (navP == null) continue;
+            var pts = navP.GetOutline(0);
+            var ptsNew = new Vector2[pts.Length];
+            var i = 0;
+            foreach (var pt in pts)
+            {
+                ptsNew[i] = pt + origin;
+                if (flippedD)
+                    (ptsNew[i].X, ptsNew[i].Y) = (ptsNew[i].Y, ptsNew[i].X);
+                if (flippedH)
+                    ptsNew[i].X = -ptsNew[i].X;
+                if (flippedV)
+                    ptsNew[i].Y = -ptsNew[i].Y;
+                ptsNew[i] -= targetData.TextureOrigin;
+                i++;
+            }
+            var navigationPolygon = new NavigationPolygon();
+            navigationPolygon.AddOutline(ptsNew);
+            navigationPolygon.MakePolygonsFromOutlines();
+            targetData.SetNavigationPolygon(layerId, navigationPolygon);
+        }
+
+        var occlusionLayersCount = _tileset.GetOcclusionLayersCount();
+        for (var layerId = 0; layerId < occlusionLayersCount; layerId++)
+        {
+            var occ = sourceData.GetOccluder(layerId);
+            if (occ == null) continue;
+            var pts = occ.Polygon;
+            var ptsNew = new Vector2[pts.Length];
+            var i = 0;
+            foreach (var pt in pts)
+            {
+                ptsNew[i] = pt + origin;
+                if (flippedD)
+                    (ptsNew[i].X, ptsNew[i].Y) = (ptsNew[i].Y, ptsNew[i].X);
+                if (flippedH)
+                    ptsNew[i].X = -ptsNew[i].X;
+                if (flippedV)
+                    ptsNew[i].Y = -ptsNew[i].Y;
+                ptsNew[i] -= targetData.TextureOrigin;
+                i++;
+            }
+            var occluderPolygon = new OccluderPolygon2D();
+            occluderPolygon.Polygon = ptsNew;
+            targetData.SetOccluder(layerId, occluderPolygon);
+        }
+    }
+    
     private void CreateMapFromData(Array<uint> layerData, int offsetX, int offsetY, int mapWidth)
     {
         var cellCounter = -1;
@@ -505,7 +590,22 @@ public class TilemapCreator
             var effectiveGid = gid - _firstGids[GetFirstGidIndex(gid)];
             var atlasCoords = new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
             if (!atlasSource.HasTile(atlasCoords))
+            {
                 atlasSource.CreateTile(atlasCoords);
+                var currentTile = atlasSource.GetTileData(atlasCoords, 0);
+                var tileSize = atlasSource.TextureRegionSize;
+                if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                {
+                    var diffX = tileSize.X - _mapTileWidth;
+                    if (diffX % 2 > 0)
+                        diffX -= 1;
+                    var diffY = tileSize.Y - _mapTileHeight;
+                    if (diffY % 2 > 0)
+                        diffY += 1;
+                    currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                }
+            }
+
             var altId = 0;
             if (flippedH || flippedV || flippedD)
             {
@@ -517,6 +617,20 @@ public class TilemapCreator
                     tileData.FlipH = flippedH;
                     tileData.FlipV = flippedV;
                     tileData.Transpose = flippedD;
+                    var tileSize = atlasSource.TextureRegionSize;
+                    if (flippedD)
+                        tileSize = new Vector2I(tileSize.Y, tileSize.X);
+                    if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                    {
+                        var diffX = tileSize.X - _mapTileWidth;
+                        if (diffX % 2 != 0) 
+                            diffX -= 1;
+                        var diffY = tileSize.Y - _mapTileHeight;
+                        if (diffY % 2 != 0)
+                            diffY += 1;
+                        tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                    }
+                    CreatePolygonsOnAlternativeTiles(atlasSource.GetTileData(atlasCoords, 0), tileData, altId);
                 }
             }
             _tilemap.SetCell(_tmLayerCounter, cellCoords, sourceId, atlasCoords, altId);

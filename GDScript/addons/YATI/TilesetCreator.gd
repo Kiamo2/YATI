@@ -44,6 +44,7 @@ var _append = false
 var _atlas_sources = null
 var _error_count = 0
 var _warning_count = 0
+var _map_tile_size: Vector2i
 
 enum layer_type {
 	PHYSICS,
@@ -63,6 +64,10 @@ func get_warning_count():
 func set_base_path(source_file: String):
 	_base_path_map = source_file.get_base_dir()
 	_base_path_tileset = _base_path_map
+
+
+func set_map_tile_size(map_tile_size: Vector2i):
+	_map_tile_size = map_tile_size
 
 
 func create_from_dictionary_array(tileSets: Array):
@@ -112,7 +117,7 @@ func create_or_append(tile_set: Dictionary):
 		_tileset = TileSet.new()
 	_tile_size = Vector2i(tile_set["tilewidth"], tile_set["tileheight"])
 	if not _append:
-		_tileset.tile_size = _tile_size
+		_tileset.tile_size = _map_tile_size
 	_tile_count = tile_set.get("tilecount", 0)
 	_columns = tile_set.get("columns", 0)
 	if _append:
@@ -241,6 +246,15 @@ func handle_tiles(tiles: Array):
 			#Error occurred
 			continue
 
+		if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+			var diff_x = _tile_size.x - _map_tile_size.x
+			if diff_x % 2 != 0:
+				diff_x -= 1
+			var diff_y = _tile_size.y - _map_tile_size.y
+			if diff_y % 2 != 0:
+				diff_y += 1
+			current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+				
 		if tile.has("probability"):
 			current_tile.probability = tile["probability"]
 		if tile.has("animation"):
@@ -314,7 +328,8 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 			break
 
 		var object_base_coords = Vector2(obj["x"], obj["y"])
-		object_base_coords -= _tileset.tile_size / 2.0
+		object_base_coords -= Vector2(current_tile.texture_origin)
+		object_base_coords -= _tile_size / 2.0
 
 		var polygon
 		if obj.has("polygon"):
@@ -548,6 +563,16 @@ func handle_wangsets(wangsets):
 				var current_tile = create_tile_if_not_existing_and_get_tiledata(tile_id)
 				if current_tile == null:
 					break
+
+				if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+					var diff_x = _tile_size.x - _map_tile_size.x
+					if diff_x % 2 != 0:
+						diff_x -= 1
+					var diff_y = _tile_size.y - _map_tile_size.y
+					if diff_y % 2 != 0:
+						diff_y += 1
+					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+
 				current_tile.terrain_set = current_terrain_set
 				current_tile.terrain = current_terrain
 				var i = 0

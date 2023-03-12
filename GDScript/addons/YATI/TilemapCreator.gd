@@ -117,6 +117,7 @@ func create(source_file: String):
 			_first_gids.append(int(tileSet["firstgid"]))
 		var tileset_creator = preload("TilesetCreator.gd").new()
 		tileset_creator.set_base_path(source_file)
+		tileset_creator.set_map_tile_size(Vector2i(_map_tile_width, _map_tile_height))
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
@@ -378,6 +379,79 @@ func handle_data(data, map_size):
 	return ret
 
 
+func create_polygons_on_alternative_tiles(source_data: TileData, target_data: TileData, alt_id: int):
+	var flipped_h = (alt_id & 1) > 0
+	var flipped_v = (alt_id & 2) > 0
+	var flipped_d = (alt_id & 4) > 0
+	var origin = Vector2(source_data.texture_origin)
+	var physics_layers_count = _tileset.get_physics_layers_count()
+	for layer_id in range(physics_layers_count):
+		var collision_polygons_count = source_data.get_collision_polygons_count(layer_id)
+		for polygon_id in range(collision_polygons_count):
+			var pts = source_data.get_collision_polygon_points(layer_id, polygon_id)
+			var pts_new: PackedVector2Array
+			var i = 0
+			for pt in pts:
+				pts_new.append(pt+origin)
+				if flipped_d:
+					var tmp = pts_new[i].x
+					pts_new[i].x = pts_new[i].y
+					pts_new[i].y = tmp
+				if flipped_h:
+					pts_new[i].x = -pts_new[i].x
+				if flipped_v:
+					pts_new[i].y = -pts_new[i].y
+				pts_new[i] -= Vector2(target_data.texture_origin)
+				i += 1
+			target_data.add_collision_polygon(layer_id)
+			target_data.set_collision_polygon_points(layer_id, polygon_id, pts_new)
+	var navigation_layers_count = _tileset.get_navigation_layers_count()
+	for layer_id in range(navigation_layers_count):
+		var nav_p = source_data.get_navigation_polygon(layer_id)
+		if nav_p == null: continue
+		var pts = nav_p.get_outline(0)
+		var pts_new: PackedVector2Array
+		var i = 0
+		for pt in pts:
+			pts_new.append(pt+origin)
+			if flipped_d:
+				var tmp = pts_new[i].x
+				pts_new[i].x = pts_new[i].y
+				pts_new[i].y = tmp
+			if flipped_h:
+				pts_new[i].x = -pts_new[i].x
+			if flipped_v:
+				pts_new[i].y = -pts_new[i].y
+			pts_new[i] -= Vector2(target_data.texture_origin)
+			i += 1
+		var navigation_polygon = NavigationPolygon.new()
+		navigation_polygon.add_outline(pts_new)
+		navigation_polygon.make_polygons_from_outlines()
+		target_data.set_navigation_polygon(layer_id, navigation_polygon)
+	var occlusion_layers_count = _tileset.get_occlusion_layers_count()
+	for layer_id in range(occlusion_layers_count):
+		var occ = source_data.get_occluder(layer_id)
+		if occ == null: continue
+		var pts = occ.polygon
+		var pts_new: PackedVector2Array
+		var i = 0
+		for pt in pts:
+			pts_new.append(pt+origin)
+			if flipped_d:
+				var tmp = pts_new[i].x
+				pts_new[i].x = pts_new[i].y
+				pts_new[i].y = tmp
+			if flipped_h:
+				pts_new[i].x = -pts_new[i].x
+			if flipped_v:
+				pts_new[i].y = -pts_new[i].y
+			pts_new[i] -= Vector2(target_data.texture_origin)
+			i += 1
+		var occluder_polygon = OccluderPolygon2D.new()
+		occluder_polygon.polygon = pts_new
+		target_data.set_occluder(layer_id, occluder_polygon)
+		
+
 func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_width: int):
 	var cell_counter: int = -1
 	for cell in layer_data:
@@ -408,6 +482,17 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		var atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 		if not atlas_source.has_tile(atlas_coords):
 			atlas_source.create_tile(atlas_coords)
+			var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
+			var tile_size = atlas_source.texture_region_size
+			if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+				var diff_x = tile_size.x - _map_tile_width
+				if diff_x % 2 != 0:
+					diff_x -= 1
+				var diff_y = tile_size.y - _map_tile_height
+				if diff_y % 2 != 0:
+					diff_y += 1
+				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+
 		var alt_id = 0
 		if flipped_h or flipped_v or flipped_d:
 			alt_id = (1 if flipped_h else 0) + (2 if flipped_v else 0) + (4 if flipped_d else 0)
@@ -417,6 +502,19 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 				tile_data.flip_h = flipped_h
 				tile_data.flip_v = flipped_v
 				tile_data.transpose = flipped_d
+				var tile_size = atlas_source.texture_region_size
+				if flipped_d:
+					tile_size = Vector2i(tile_size.y, tile_size.x)
+				if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+					var diff_x = tile_size.x - _map_tile_width
+					if diff_x % 2 != 0:
+						diff_x -= 1
+					var diff_y = tile_size.y - _map_tile_height
+					if diff_y % 2 != 0:
+						diff_y += 1
+					tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+				create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
+		
 		_tilemap.set_cell(_tm_layer_counter, cell_coords, source_id, atlas_coords, alt_id)
 
 
