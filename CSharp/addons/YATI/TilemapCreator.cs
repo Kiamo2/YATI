@@ -666,6 +666,8 @@ public class TilemapCreator
         var objVisible = (bool)obj.GetValueOrDefault("visible", true);
         var objName = (string)obj.GetValueOrDefault("name", "");
         var classString = (string)obj.GetValueOrDefault("class", "");
+        if (classString == "")
+            classString = (string)obj.GetValueOrDefault("type", "");
         var objClass = GetObjectClass(classString);
 
         if (obj.ContainsKey("template"))

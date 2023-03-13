@@ -543,6 +543,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	var obj_visible = obj.get("visible", true)
 	var obj_name = obj.get("name", "")
 	var class_string = obj.get("class", "")
+	if class_string == "":
+		class_string = obj.get("type", "")
 	var obj_class = get_object_class(class_string)
 	
 	if obj.has("template"):
