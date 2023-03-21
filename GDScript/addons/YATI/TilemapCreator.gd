@@ -993,7 +993,7 @@ func load_resource_from_file(path: String):
 	else:
 		printerr("ERROR: Resource file '" + orig_path + "' not found.")
 		_error_count += 1
-		return ret
+	return ret
 	
 	
 func get_bitmask_integer_from_string(mask_string: String, max: int):
