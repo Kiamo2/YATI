@@ -13,7 +13,7 @@ Latest version: 1.1.1 (compatible with Tiled 1.10)
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v1.1.1/v1.1.1-gdscript.zip) or the [CSharp version](../../releases/download/v1.1.1/v1.1.1-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v1.1.2/v1.1.2-gdscript.zip) or the [CSharp version](../../releases/download/v1.1.2/v1.1.2-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
 - **C# version:** Run your project once for building the plugin, otherwise enabling will fail
