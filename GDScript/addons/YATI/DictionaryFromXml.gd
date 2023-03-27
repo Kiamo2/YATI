@@ -30,6 +30,7 @@ var _current_dictionary = _result
 var _current_array = []
 var _csv_encoded = true
 var _is_map: bool
+var _in_tileset: bool = false
 
 func create(source_file_name: String):
 	var err = _xml.open(source_file_name)
@@ -85,7 +86,7 @@ func simple_element(element_name: String, attribs: Dictionary) -> int:
 	elif element_name == "ellipse":
 		_current_dictionary["ellipse"] = true
 		return OK
-	elif (element_name == "objectgroup" and not _is_map) or (element_name == "text"):
+	elif (element_name == "objectgroup" and (not _is_map or _in_tileset)) or (element_name == "text") or (element_name == "tileoffset") or (element_name == "grid"):
 		# Create a single dictionary, not an array.
 		_current_dictionary[dict_key] = {}
 		_current_dictionary = _current_dictionary[dict_key]
@@ -153,6 +154,8 @@ func nested_element(element_name: String, attribs: Dictionary):
 		if attribs.has("compression"):
 			_current_dictionary["compression"] = attribs["compression"]
 		return OK
+	elif element_name == "tileset":
+		_in_tileset = true
 	var dictionary_bookmark_1 = _current_dictionary
 	var array_bookmark_1 = _current_array
 	err = simple_element(element_name, attribs)
@@ -188,6 +191,8 @@ func nested_element(element_name: String, attribs: Dictionary):
 
 	_current_dictionary = dictionary_bookmark_1
 	_current_array = array_bookmark_1
+	if base_element == "tileset":
+		_in_tileset = false
 	return err
 	
 func insert_attributes(target_dictionary: Dictionary, attribs: Dictionary):

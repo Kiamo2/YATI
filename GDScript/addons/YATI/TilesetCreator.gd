@@ -24,6 +24,7 @@
 extends RefCounted
 
 const WARNING_COLOR = "yellow"
+const CUSTOM_DATA_INTERNAL = "__internal__"
 
 var _tileset = null
 var _current_atlas_source = null
@@ -45,6 +46,10 @@ var _atlas_sources = null
 var _error_count = 0
 var _warning_count = 0
 var _map_tile_size: Vector2i
+var _object_groups = null
+var _object_groups_counter: int = 0
+var _map_orientation
+var _tileset_orientation
 
 enum layer_type {
 	PHYSICS,
@@ -66,8 +71,9 @@ func set_base_path(source_file: String):
 	_base_path_tileset = _base_path_map
 
 
-func set_map_tile_size(map_tile_size: Vector2i):
+func set_map_parameters(map_tile_size: Vector2i, map_orientation: String):
 	_map_tile_size = map_tile_size
+	_map_orientation = map_orientation
 
 
 func create_from_dictionary_array(tileSets: Array):
@@ -108,6 +114,10 @@ func get_registered_atlas_sources():
 	return _atlas_sources
 
 
+func get_registered_object_groups():
+	return _object_groups
+	
+
 func create_or_append(tile_set: Dictionary):
 	# Catch the AutoMap Rules tileset (is Tiled internal)
 	if tile_set.has("name") and tile_set["name"] == "AutoMap Rules":
@@ -115,11 +125,21 @@ func create_or_append(tile_set: Dictionary):
 
 	if not _append:
 		_tileset = TileSet.new()
+		_tileset.add_custom_data_layer()
+		_tileset.set_custom_data_layer_name(0, CUSTOM_DATA_INTERNAL)
+		_tileset.set_custom_data_layer_type(0, TYPE_INT)
+
 	_tile_size = Vector2i(tile_set["tilewidth"], tile_set["tileheight"])
 	if not _append:
 		_tileset.tile_size = _map_tile_size
 	_tile_count = tile_set.get("tilecount", 0)
 	_columns = tile_set.get("columns", 0)
+	_tileset_orientation = _map_orientation
+	if tile_set.has("grid"):
+		var grid = tile_set["grid"]
+		if grid.has("orientation"):
+			_tileset_orientation = grid["orientation"]
+
 	if _append:
 		_terrain_counter = 0
 
@@ -131,6 +151,13 @@ func create_or_append(tile_set: Dictionary):
 			_current_atlas_source.margins = Vector2i(tile_set["margin"], tile_set["margin"])
 		if tile_set.has("spacing"):
 			_current_atlas_source.separation = Vector2i(tile_set["spacing"], tile_set["spacing"])
+
+		var tile_offset
+		if tile_set.has("tileoffset"):
+			var to = tile_set["tileoffset"]
+			tile_offset = Vector2i(to["x"], to["y"])
+		else:
+			tile_offset = Vector2i.ZERO
 
 		var texture = load_image(tile_set["image"])
 		if not texture:
@@ -149,7 +176,7 @@ func create_or_append(tile_set: Dictionary):
 			_columns = image_width / _tile_size.x
 			_tile_count = _columns * image_height / _tile_size.x
 	
-		register_atlas_source(_atlas_source_counter, _tile_count, -1)
+		register_atlas_source(_atlas_source_counter, _tile_count, -1, tile_offset)
 		var atlas_grid_size = _current_atlas_source.get_atlas_grid_size()
 		_current_max_x = atlas_grid_size.x - 1
 		_current_max_y = atlas_grid_size.y - 1
@@ -184,15 +211,22 @@ func load_image(path: String):
 	return ret
 
 
-func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int):
+func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int, tile_offset: Vector2i):
 	if _atlas_sources == null:
 		_atlas_sources = []
 	var atlas_source_item = {}
 	atlas_source_item["sourceId"] = source_id
 	atlas_source_item["numTiles"] = num_tiles
 	atlas_source_item["assignedId"] = assigned_tile_id
+	atlas_source_item["tileOffset"] = tile_offset
 	_atlas_sources.push_back(atlas_source_item)
 	
+
+func register_object_group(tile_id: int, object_group: Dictionary):
+	if _object_groups == null:
+		_object_groups = {}
+	_object_groups[tile_id] = object_group
+
 
 func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 	if tile_id < _tile_count:
@@ -224,12 +258,13 @@ func handle_tiles(tiles: Array):
 	for tile in tiles:
 		var tile_id = tile["id"]
 
+		var current_tile
 		if tile.has("image"):
 			# Tile with its own image -> separate atlas source
 			_current_atlas_source = TileSetAtlasSource.new()
 			last_atlas_source_count = _atlas_source_counter + tile_id + 1
 			_tileset.add_source(_current_atlas_source, last_atlas_source_count-1)
-			register_atlas_source(last_atlas_source_count-1, 1, tile_id)
+			register_atlas_source(last_atlas_source_count-1, 1, tile_id, Vector2i.ZERO)
 
 			var texture_path = tile["image"]
 			_current_atlas_source.texture = load_image(texture_path)
@@ -237,23 +272,23 @@ func handle_tiles(tiles: Array):
 			_current_atlas_source.texture_region_size = Vector2i(_current_atlas_source.texture.get_width(), _current_atlas_source.texture.get_height())
 
 			_current_atlas_source.create_tile(Vector2(0, 0))
-			var tile_data = _current_atlas_source.get_tile_data(Vector2(0, 0), 0)
-			tile_data.probability = tile.get("probability", 1.0)
-			continue
+			current_tile = _current_atlas_source.get_tile_data(Vector2(0, 0), 0)
+			current_tile.probability = tile.get("probability", 1.0)
+		else:
+			current_tile = create_tile_if_not_existing_and_get_tiledata(tile_id)
+			if current_tile == null:
+				#Error occurred
+				continue
 
-		var current_tile = create_tile_if_not_existing_and_get_tiledata(tile_id)
-		if current_tile == null:
-			#Error occurred
-			continue
-
-		if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
-			var diff_x = _tile_size.x - _map_tile_size.x
-			if diff_x % 2 != 0:
-				diff_x -= 1
-			var diff_y = _tile_size.y - _map_tile_size.y
-			if diff_y % 2 != 0:
-				diff_y += 1
-			current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+		if _tileset_orientation == "orthogonal":
+			if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+				var diff_x = _tile_size.x - _map_tile_size.x
+				if diff_x % 2 != 0:
+					diff_x -= 1
+				var diff_y = _tile_size.y - _map_tile_size.y
+				if diff_y % 2 != 0:
+					diff_y += 1
+				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
 				
 		if tile.has("probability"):
 			current_tile.probability = tile["probability"]
@@ -315,39 +350,59 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 
 
 func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
+
+	# v1.2:
+	_object_groups_counter += 1
+	register_object_group(_object_groups_counter, object_group)
+	current_tile.set_custom_data(CUSTOM_DATA_INTERNAL, _object_groups_counter)
+	
 	var polygon_index = -1
 	var objects = object_group["objects"] as Array
 	for obj in objects:
 		if obj.has("point") and obj["point"]:
-			print_rich("[color="+WARNING_COLOR+"] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
-			_warning_count += 1
+			# print_rich("[color="+WARNING_COLOR+"] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
+			# _warning_count += 1
 			break
 		if obj.has("ellipse") and obj["ellipse"]:
-			print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
-			_warning_count += 1
+			# print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
+			# _warning_count += 1
 			break
 
 		var object_base_coords = Vector2(obj["x"], obj["y"])
 		object_base_coords -= Vector2(current_tile.texture_origin)
 		object_base_coords -= _tile_size / 2.0
+		object_base_coords = transpose_coords(object_base_coords.x, object_base_coords.y)
+		if _tileset_orientation == "isometric":
+			object_base_coords.y += _tile_size.y / 2.0
+
+		var rot = obj.get("rotation", 0.0)
+		var sin_a = sin(rot * PI / 180.0)
+		var cos_a = cos(rot * PI / 180.0)
 
 		var polygon
 		if obj.has("polygon"):
 			var polygon_points = obj["polygon"] as Array
 			polygon = []
 			for pt in polygon_points:
-				var p_coord = Vector2(pt["x"], pt["y"])
-				polygon.append(object_base_coords + p_coord)
+				var p_coord = transpose_coords(pt["x"], pt["y"])
+				var p_coord_rot = Vector2(p_coord.x * cos_a - p_coord.y * sin_a, p_coord.x * sin_a + p_coord.y * cos_a)
+				polygon.append(object_base_coords + p_coord_rot)
 		else:
 			# Should be a simple rectangle
 			polygon = [Vector2(), Vector2(), Vector2(), Vector2()]
-			polygon[0] = object_base_coords
+			polygon[0] = Vector2.ZERO
 			polygon[1].y = polygon[0].y + obj["height"]
 			polygon[1].x = polygon[0].x
 			polygon[2].y = polygon[1].y
 			polygon[2].x = polygon[0].x + obj["width"]
 			polygon[3].y = polygon[0].y
 			polygon[3].x = polygon[2].x
+			var i = 0
+			for pt in polygon:
+				var pt_trans = transpose_coords(pt.x, pt.y)
+				var pt_rot = Vector2(pt_trans.x * cos_a - pt_trans.y * sin_a, pt_trans.x * sin_a + pt_trans.y * cos_a)
+				polygon[i] = object_base_coords + pt_rot
+				i += 1
 
 		var nav = get_layer_number_for_special_property(obj, "navigation_layer")
 		if nav >= 0:
@@ -383,6 +438,15 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 				current_tile.set_collision_polygon_one_way(phys, polygon_index, val.to_lower() == "true")
 			elif name.to_lower() == "one_way_margin" and type == "int":
 				current_tile.set_collision_polygon_one_way_margin(phys, polygon_index, int(val))
+
+
+func transpose_coords(x: float, y: float):
+	if _tileset_orientation == "isometric":
+		var trans_x = (x - y) * _map_tile_size.x / _map_tile_size.y / 2.0
+		var trans_y = (x + y) * 0.5
+		return Vector2(trans_x, trans_y)
+
+	return Vector2(x, y)
 
 
 func get_layer_number_for_special_property(dict: Dictionary, property_name: String):
@@ -450,18 +514,28 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 			current_tile.z_index = int(val)
 		elif name.to_lower() == "y_sort_origin" and  type == "int":
 			current_tile.y_sort_origin = int(val)
+		elif name.to_lower() == "linear_velocity_x" and (type == "int" or type == "float"):
+			var lin_velo = current_tile.get_constant_linear_velocity(0)
+			lin_velo.x = float(val)
+			current_tile.set_constant_linear_velocity(0, lin_velo)
 		elif name.to_lower().begins_with("linear_velocity_x_") and (type == "int" or type == "float"):
 			if not name.substr(18).is_valid_int(): continue
 			var layer_index = int(name.substr(18))
 			var lin_velo = current_tile.get_constant_linear_velocity(layer_index)
 			lin_velo.x = float(val)
 			current_tile.set_constant_linear_velocity(layer_index, lin_velo)
+		elif name.to_lower() == "linear_velocity_y" and (type == "int" or type == "float"):
+			var lin_velo = current_tile.get_constant_linear_velocity(0)
+			lin_velo.y = float(val)
+			current_tile.set_constant_linear_velocity(0, lin_velo)
 		elif name.to_lower().begins_with("linear_velocity_y_") and (type == "int" or type == "float"):
 			if not name.substr(18).is_valid_int(): continue
 			var layer_index = int(name.substr(18))
 			var lin_velo = current_tile.get_constant_linear_velocity(layer_index)
 			lin_velo.y = float(val)
 			current_tile.set_constant_linear_velocity(layer_index, lin_velo)
+		elif name.to_lower() == "angular_velocity" and (type == "int" or type == "float"):
+			current_tile.set_constant_angular_velocity(0, float(val))
 		elif name.to_lower().begins_with("angular_velocity_") and (type == "int" or type == "float"):
 			if not name.substr(17).is_valid_int(): continue
 			var layer_index = int(name.substr(17))
@@ -490,26 +564,41 @@ func handle_tileset_properties(properties: Array):
 		var val = property.get("value", "")
 		if name == "": continue
 		var layer_index
-		if name.to_lower().begins_with("collision_layer_") and type == "string":
+		if name.to_lower() == "collision_layer" and type == "string":
+			ensure_layer_existing(layer_type.PHYSICS, 0)
+			_tileset.set_physics_layer_collision_layer(0, get_bitmask_integer_from_string(val, 32))
+		elif name.to_lower().begins_with("collision_layer_") and type == "string":
 			if not name.substr(16).is_valid_int(): continue
 			layer_index = int(name.substr(16))
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			_tileset.set_physics_layer_collision_layer(layer_index, get_bitmask_integer_from_string(val, 32))
+		elif name.to_lower() == "collision_mask" and type == "string":
+			ensure_layer_existing(layer_type.PHYSICS, 0)
+			_tileset.set_physics_layer_collision_mask(0, get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower().begins_with("collision_mask_") and type == "string":
 			if not name.substr(15).is_valid_int(): continue
 			layer_index = int(name.substr(15))
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			_tileset.set_physics_layer_collision_mask(layer_index, get_bitmask_integer_from_string(val, 32))
+		elif name.to_lower() == "navigation_layers" and type == "string":
+			ensure_layer_existing(layer_type.NAVIGATION, 0)
+			_tileset.set_navigation_layer_layers(0, get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower().begins_with("navigation_layers_") and type == "string":
 			if not name.substr(18).is_valid_int(): continue
 			layer_index = int(name.substr(18))
 			ensure_layer_existing(layer_type.NAVIGATION, layer_index)
 			_tileset.set_navigation_layer_layers(layer_index, get_bitmask_integer_from_string(val, 32))
+		elif name.to_lower() == "occlusion_light_mask" and type == "string":
+			ensure_layer_existing(layer_type.OCCLUSION, 0)
+			_tileset.set_occlusion_layer_light_mask(0, get_bitmask_integer_from_string(val, 20))
 		elif name.to_lower().begins_with("occlusion_light_mask_") and type == "string":
 			if not name.substr(21).is_valid_int(): continue
 			layer_index = int(name.substr(21))
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_light_mask(layer_index, get_bitmask_integer_from_string(val, 20))
+		elif name.to_lower() == "occlusion_sdf_collision_" and type == "bool":
+			ensure_layer_existing(layer_type.OCCLUSION, 0)
+			_tileset.set_occlusion_layer_sdf_collision(0, val.to_lower() == "true")
 		elif name.to_lower().begins_with("occlusion_sdf_collision_") and type == "bool":
 			if not name.substr(24).is_valid_int(): continue
 			layer_index = int(name.substr(24))
@@ -564,14 +653,15 @@ func handle_wangsets(wangsets):
 				if current_tile == null:
 					break
 
-				if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
-					var diff_x = _tile_size.x - _map_tile_size.x
-					if diff_x % 2 != 0:
-						diff_x -= 1
-					var diff_y = _tile_size.y - _map_tile_size.y
-					if diff_y % 2 != 0:
-						diff_y += 1
-					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+				if _tileset_orientation == "orthogonal":
+					if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+						var diff_x = _tile_size.x - _map_tile_size.x
+						if diff_x % 2 != 0:
+							diff_x -= 1
+						var diff_y = _tile_size.y - _map_tile_size.y
+						if diff_y % 2 != 0:
+							diff_y += 1
+						current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
 
 				current_tile.terrain_set = current_terrain_set
 				current_tile.terrain = current_terrain

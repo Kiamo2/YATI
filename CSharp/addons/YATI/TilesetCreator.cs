@@ -31,6 +31,7 @@ using System;
 public class TilesetCreator
 {
     private const string WarningColor = "Yellow";
+    private const string CustomDataInternal = "__internal__";
 
     private TileSet _tileset;
     private TileSetAtlasSource _currentAtlasSource;
@@ -52,6 +53,10 @@ public class TilesetCreator
     private int _errorCount;
     private int _warningCount;
     private Vector2I _mapTileSize;
+    private Dictionary _objectGroups;
+    private int _objectGroupsCounter;
+    private string _mapOrientation;
+    private string _tilesetOrientation;
 
     private enum LayerType
     {
@@ -69,16 +74,17 @@ public class TilesetCreator
     {
         return _warningCount;
     }
-    
+
     public void SetBasePath(string sourceFile)
     {
         _basePathMap = sourceFile.GetBaseDir();
         _basePathTileset = _basePathMap;
     }
 
-    public void SetMapTileSize(Vector2I mapTileSize)
+    public void SetMapParameters(Vector2I mapTileSize, string mapOrientation)
     {
         _mapTileSize = mapTileSize;
+        _mapOrientation = mapOrientation;
     }
     
     public TileSet CreateFromDictionaryArray(Array<Dictionary> tileSets)
@@ -99,6 +105,8 @@ public class TilesetCreator
                 _basePathTileset = checkedFile.GetBaseDir();
 
                 tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
+
+                //File.WriteAllText("test".PathJoin(checkedFile.GetFile().GetBaseName() + "_parse.json"), tileSetDict.ToString());
             }
 
             // Possible error condition
@@ -127,19 +135,38 @@ public class TilesetCreator
         return _atlasSources;
     }
 
+    public Dictionary GetRegisteredObjectGroups()
+    {
+        return _objectGroups;
+    }
+
     private void CreateOrAppend(Dictionary tileSet)
     {
         // Catch the AutoMap Rules tileset (is Tiled internal)
         if (tileSet.ContainsKey("name") && ((string)tileSet["name"] == "AutoMap Rules"))
             return; // This is no error just skip it
-        
+
         if (!_append)
+        {
             _tileset = new TileSet();
+            _tileset.AddCustomDataLayer();
+            _tileset.SetCustomDataLayerName(0, CustomDataInternal);
+            _tileset.SetCustomDataLayerType(0, Variant.Type.Int);
+        }
+
         _tileSize = new Vector2I((int)tileSet["tilewidth"], (int)tileSet["tileheight"]);
         if (!_append)
             _tileset.TileSize = _mapTileSize;
         _tileCount = tileSet.ContainsKey("tilecount") ? (int)tileSet["tilecount"] : 0;
         _columns = tileSet.ContainsKey("columns") ? (int)tileSet["columns"] : 0;
+        _tilesetOrientation = _mapOrientation;
+        if (tileSet.ContainsKey("grid"))
+        {
+            var grid = (Dictionary)tileSet["grid"];
+            if (grid.ContainsKey("orientation"))
+                _tilesetOrientation = (string)grid["orientation"];
+        }
+
         if (_append)
             _terrainCounter = 0;
 
@@ -152,7 +179,15 @@ public class TilesetCreator
                 _currentAtlasSource.Margins = new Vector2I((int)tileSet["margin"], (int)tileSet["margin"]);
             if (tileSet.ContainsKey("spacing"))
                 _currentAtlasSource.Separation = new Vector2I((int)tileSet["spacing"], (int)tileSet["spacing"]);
-
+            Vector2I tileOffset;
+            if (tileSet.ContainsKey("tileoffset"))
+            {
+                var to = (Dictionary)tileSet["tileoffset"];
+                tileOffset = new Vector2I((int)to["x"], (int)to["y"]);
+            }
+            else
+                tileOffset = Vector2I.Zero;
+            
             var texture = LoadImage((string)tileSet["image"]);
             if (texture == null)
                 // Can't continue without texture
@@ -173,7 +208,7 @@ public class TilesetCreator
                 _columns = imagewidth / _tileSize.X;
                 _tileCount = _columns * imageheight / _tileSize.X;
             }
-            RegisterAtlasSource(_atlasSourceCounter, _tileCount, -1);
+            RegisterAtlasSource(_atlasSourceCounter, _tileCount, -1, tileOffset);
             var atlasGridSize = _currentAtlasSource.GetAtlasGridSize();
             _currentMaxX = atlasGridSize.X - 1;
             _currentMaxY = atlasGridSize.Y - 1;
@@ -217,14 +252,21 @@ public class TilesetCreator
         return ret;
     }
 
-    private void RegisterAtlasSource(int sourceId, int numTiles, int assignedTileId)
+    private void RegisterAtlasSource(int sourceId, int numTiles, int assignedTileId, Vector2I tileOffset)
     {
         _atlasSources ??= new Array();
         var atlasSourceItem = new Dictionary();
         atlasSourceItem.Add("sourceId", sourceId);
         atlasSourceItem.Add("numTiles", numTiles);
         atlasSourceItem.Add("assignedId", assignedTileId);
+        atlasSourceItem.Add("tileOffset", tileOffset);
         _atlasSources.Add(atlasSourceItem);
+    }
+
+    private void RegisterObjectGroup(int tileId, Dictionary objectGroup)
+    {
+        _objectGroups ??= new Dictionary();
+        _objectGroups.Add(tileId, objectGroup);
     }
 
     private TileData CreateTileIfNotExistingAndGetTileData(int tileId)
@@ -266,13 +308,14 @@ public class TilesetCreator
         {
             var tileId = (int)tile["id"];
 
+            TileData currentTile;
             if (tile.ContainsKey("image"))
             {
                 // Tile with it's own image -> separate atlas source
                 _currentAtlasSource = new TileSetAtlasSource();
                 lastAtlasSourceCount = _atlasSourceCounter + tileId + 1;
                 _tileset.AddSource(_currentAtlasSource, lastAtlasSourceCount - 1);
-                RegisterAtlasSource(lastAtlasSourceCount-1, 1, tileId);
+                RegisterAtlasSource(lastAtlasSourceCount-1, 1, tileId, Vector2I.Zero);
                 
                 var texturePath = (string)tile["image"];
                 _currentAtlasSource.Texture = LoadImage(texturePath);
@@ -293,27 +336,29 @@ public class TilesetCreator
                     _currentAtlasSource.Texture.GetHeight());                
                 
                 _currentAtlasSource.CreateTile(Vector2I.Zero);
-                var tileData = _currentAtlasSource.GetTileData(Vector2I.Zero, 0);
-                tileData.Probability = (float)tile.GetValueOrDefault("probability", 1.0f);
-                continue;
+                currentTile = _currentAtlasSource.GetTileData(Vector2I.Zero, 0);
+                currentTile.Probability = (float)tile.GetValueOrDefault("probability", 1.0f);
             }
-            
-            var currentTile = CreateTileIfNotExistingAndGetTileData(tileId);
-            if (currentTile == null)
-                //Error occurred
-                continue;
-
-            if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+            else
             {
-                var diffX = _tileSize.X - _mapTileSize.X;
-                if (diffX % 2 > 0)
-                    diffX -= 1;
-                var diffY = _tileSize.Y - _mapTileSize.Y;
-                if (diffY % 2 > 0)
-                    diffY += 1;
-                currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                currentTile = CreateTileIfNotExistingAndGetTileData(tileId);
+                if (currentTile == null)
+                    //Error occurred
+                    continue;
             }
 
+            if (_tilesetOrientation == "orthogonal")
+                if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+                {
+                    var diffX = _tileSize.X - _mapTileSize.X;
+                    if (diffX % 2 > 0)
+                        diffX -= 1;
+                    var diffY = _tileSize.Y - _mapTileSize.Y;
+                    if (diffY % 2 > 0)
+                        diffY += 1;
+                    currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                }
+            
             if (tile.ContainsKey("probability"))
                 currentTile.Probability = (int)tile["probability"];
             if (tile.ContainsKey("animation"))
@@ -395,26 +440,38 @@ public class TilesetCreator
 
     private void HandleObjectgroup(Dictionary objectGroup, TileData currentTile)
     {
+        // v1.2
+        _objectGroupsCounter++;
+        RegisterObjectGroup(_objectGroupsCounter, objectGroup);
+        currentTile.SetCustomData(CustomDataInternal, _objectGroupsCounter);
+        
         var polygonIndex = -1;
         var objects = (Array<Dictionary>)objectGroup["objects"];
         foreach (var obj in objects)
         {
             if (obj.ContainsKey("point") && (bool)obj["point"])
             {
-                GD.PrintRich($"[color={WarningColor}] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
-                _warningCount++;
+                //GD.PrintRich($"[color={WarningColor}] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
+                //_warningCount++;
                 break;
             }
             if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
             {
-                GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
-                _warningCount++;
+                //GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
+                //_warningCount++;
                 break;
             }
             
             var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]);
             objectBaseCoords -= currentTile.TextureOrigin;
             objectBaseCoords -= (Vector2)_tileSize / 2.0f;
+            objectBaseCoords = TransposeCoords(objectBaseCoords.X, objectBaseCoords.Y);
+            if (_tilesetOrientation == "isometric")
+                objectBaseCoords.Y += _tileSize.Y / 2.0f;
+            
+            var rot = (float)obj.GetValueOrDefault("rotation", 0.0f);
+            var sinA = (float)Math.Sin(rot * Math.PI / 180.0f);
+            var cosA = (float)Math.Cos(rot * Math.PI / 180.0f);
 
             Vector2[] polygon;
             if (obj.ContainsKey("polygon"))
@@ -424,8 +481,9 @@ public class TilesetCreator
                 var i = 0;
                 foreach (var pt in polygonPoints)
                 {
-                    var pCoord = new Vector2((float)pt["x"], (float)pt["y"]);
-                    polygon[i] = objectBaseCoords + pCoord;
+                    var pCoord = TransposeCoords((float)pt["x"], (float)pt["y"]);
+                    var pCoordRot = new Vector2(pCoord.X * cosA - pCoord.Y * sinA, pCoord.X * sinA + pCoord.Y * cosA);
+                    polygon[i] = objectBaseCoords + pCoordRot;
                     i++;
                 }
             }
@@ -433,13 +491,21 @@ public class TilesetCreator
             {
                 // Should be a simple rectangle
                 polygon = new Vector2[4];
-                polygon[0] = objectBaseCoords;
+                polygon[0] = Vector2.Zero;
                 polygon[1].X = polygon[0].X;
                 polygon[1].Y = polygon[0].Y + (float)obj["height"];
                 polygon[2].X = polygon[0].X + (float)obj["width"];
                 polygon[2].Y = polygon[1].Y;
                 polygon[3].X = polygon[2].X;
                 polygon[3].Y = polygon[0].Y;
+                var i = 0;
+                foreach (var pt in polygon)
+                {
+                    var ptTrans = TransposeCoords(pt.X, pt.Y);
+                    var ptRot = new Vector2(ptTrans.X * cosA - ptTrans.Y * sinA, ptTrans.X * sinA + ptTrans.Y * cosA);
+                    polygon[i] = objectBaseCoords + ptRot;
+                    i++;
+                }
             }
 
             var nav = GetLayerNumberForSpecialProperty(obj, "navigation_layer");
@@ -488,6 +554,18 @@ public class TilesetCreator
                 }
             }
         }
+    }
+
+    private Vector2 TransposeCoords(float x, float y)
+    {
+        if (_tilesetOrientation == "isometric")
+        {
+            var transX = (x - y) * _mapTileSize.X / _mapTileSize.Y / 2.0f;
+            var transY = (x + y) * 0.5f;
+            return new Vector2(transX, transY);
+        }
+
+        return new Vector2(x, y);
     }
 
     private static int GetLayerNumberForSpecialProperty(Dictionary dict, string propertyName)
@@ -577,12 +655,24 @@ public class TilesetCreator
                 currentTile.ZIndex = int.Parse(val);
             else if (name.ToLower() == "y_sort_origin" && type == "int")
                 currentTile.YSortOrigin = int.Parse(val);
+            else if (name.ToLower() == "linear_velocity_x" && type is "int" or "float")
+            {
+                var linVelo = currentTile.GetConstantLinearVelocity(0);
+                linVelo.X = float.Parse(val);
+                currentTile.SetConstantLinearVelocity(0, linVelo);
+            }
             else if (name.ToLower().StartsWith("linear_velocity_x_") && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
                 var linVelo = currentTile.GetConstantLinearVelocity(layerIndex);
                 linVelo.X = float.Parse(val);
                 currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
+            }
+            else if (name.ToLower() == "linear_velocity_y" && type is "int" or "float")
+            {
+                var linVelo = currentTile.GetConstantLinearVelocity(0);
+                linVelo.Y = float.Parse(val);
+                currentTile.SetConstantLinearVelocity(0, linVelo);
             }
             else if (name.ToLower().StartsWith("linear_velocity_y_") && type is "int" or "float")
             {
@@ -591,6 +681,8 @@ public class TilesetCreator
                 linVelo.Y = float.Parse(val);
                 currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
             }
+            else if (name.ToLower() == "angular_velocity" && type is "int" or "float")
+                currentTile.SetConstantAngularVelocity(0, float.Parse(val));
             else if (name.ToLower().StartsWith("angular_velocity_") && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(17), out var layerIndex)) continue;
@@ -630,11 +722,21 @@ public class TilesetCreator
             var val = (string)property.GetValueOrDefault("value", "");
             if (name == "") continue;
             int layerIndex;
-            if (name.ToLower().StartsWith("collision_layer_") && type == "string")
+            if (name.ToLower() == "collision_layer" && type == "string")
+            {
+                EnsureLayerExisting(LayerType.Physics, 0);
+                _tileset.SetPhysicsLayerCollisionLayer(0, GetBitmaskIntegerFromString(val, 32));
+            }
+            else if (name.ToLower().StartsWith("collision_layer_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(16), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 _tileset.SetPhysicsLayerCollisionLayer(layerIndex, GetBitmaskIntegerFromString(val, 32));
+            }
+            else if (name.ToLower() == "collision_mask" && type == "string")
+            {
+                EnsureLayerExisting(LayerType.Physics, 0);
+                _tileset.SetPhysicsLayerCollisionMask(0, GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower().StartsWith("collision_mask_") && type == "string")
             {
@@ -642,17 +744,32 @@ public class TilesetCreator
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 _tileset.SetPhysicsLayerCollisionMask(layerIndex, GetBitmaskIntegerFromString(val, 32));
             }
+            else if (name.ToLower() == "navigation_layers" && type == "string")
+            {
+                EnsureLayerExisting(LayerType.Navigation, 0);
+                _tileset.SetNavigationLayerLayers(0, GetBitmaskIntegerFromString(val, 32));
+            }
             else if (name.ToLower().StartsWith("navigation_layers_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(18), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Navigation, layerIndex);
                 _tileset.SetNavigationLayerLayers(layerIndex, GetBitmaskIntegerFromString(val, 32));
             }
+            else if (name.ToLower() == "occlusion_light_mask" && type == "string")
+            {
+                EnsureLayerExisting(LayerType.Occlusion, 0);
+                _tileset.SetOcclusionLayerLightMask(0, (int)GetBitmaskIntegerFromString(val, 20));
+            }
             else if (name.ToLower().StartsWith("occlusion_light_mask_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(21), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerLightMask(layerIndex, (int)GetBitmaskIntegerFromString(val, 20));
+            }
+            else if (name.ToLower() == "occlusion_sdf_collision" && type == "bool")
+            {
+                EnsureLayerExisting(LayerType.Occlusion, 0);
+                _tileset.SetOcclusionLayerSdfCollision(0, bool.Parse(val));
             }
             else if (name.ToLower().StartsWith("occlusion_sdf_collision_") && type == "bool")
             {
@@ -739,16 +856,17 @@ public class TilesetCreator
                         // Error occurred
                         break;
 
-                    if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
-                    {
-                        var diffX = _tileSize.X - _mapTileSize.X;
-                        if (diffX % 2 > 0)
-                            diffX -= 1;
-                        var diffY = _tileSize.Y - _mapTileSize.Y;
-                        if (diffY % 2 > 0)
-                            diffY += 1;
-                        currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
-                    }
+                    if (_tilesetOrientation == "orthogonal")
+                        if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+                        {
+                            var diffX = _tileSize.X - _mapTileSize.X;
+                            if (diffX % 2 > 0)
+                                diffX -= 1;
+                            var diffY = _tileSize.Y - _mapTileSize.Y;
+                            if (diffY % 2 > 0)
+                                diffY += 1;
+                            currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                        }
 
                     currentTile.TerrainSet = currentTerrainSet;
                     currentTile.Terrain = currentTerrain;

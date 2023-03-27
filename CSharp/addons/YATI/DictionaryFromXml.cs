@@ -38,6 +38,7 @@ public class DictionaryFromXml
     private readonly CultureInfo _ci = (CultureInfo)CultureInfo.CurrentCulture.Clone();
     private bool _csvEncoded = true;
     private bool _isMap;
+    private bool _inTileset;
     
     public Dictionary Create(string sourceFileName)
     {
@@ -79,12 +80,12 @@ public class DictionaryFromXml
         {
             case "image":
                 _currentDictionary.Add("image", attributes["source"]);
-                if (attributes.ContainsKey("width"))
-                    _currentDictionary.Add("imagewidth", int.Parse(attributes["width"]));
-                if (attributes.ContainsKey("height"))
-                    _currentDictionary.Add("imageheight", int.Parse(attributes["height"]));
-                if (attributes.ContainsKey("trans"))
-                    _currentDictionary.Add("transparentcolor", attributes["trans"]);
+                if (attributes.TryGetValue("width", out var value))
+                    _currentDictionary.Add("imagewidth", int.Parse(value));
+                if (attributes.TryGetValue("height", out value))
+                    _currentDictionary.Add("imageheight", int.Parse(value));
+                if (attributes.TryGetValue("trans", out value))
+                    _currentDictionary.Add("transparentcolor", value);
                 return Error.Ok;
             case "wangcolor":
                 elementName = "color";
@@ -98,7 +99,7 @@ public class DictionaryFromXml
         }
 
         var dictKey = elementName;
-        if ((elementName == "objectgroup" && !_isMap) || (elementName == "text"))
+        if ((elementName == "objectgroup" && (!_isMap || _inTileset)) || elementName is "text" or "tileoffset" or "grid")
         {
             // Create a single dictionary, not an array.
             _currentDictionary[dictKey] = new Dictionary();
@@ -207,6 +208,9 @@ public class DictionaryFromXml
                     _currentDictionary.Add("compression", attributes["compression"]);
                     
                 return Error.Ok;
+            case "tileset":
+                _inTileset = true;
+                break;
         }
 
         var dictionaryBookmark1 = _currentDictionary;
@@ -247,6 +251,8 @@ public class DictionaryFromXml
 
         _currentDictionary = dictionaryBookmark1;
         _currentArray = arrayBookmark1;
+        if (baseElement == "tileset")
+            _inTileset = false;
         return err;
     }
 

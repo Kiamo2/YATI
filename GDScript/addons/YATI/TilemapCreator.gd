@@ -29,6 +29,8 @@ const FLIPPED_DIAGONALLY_FLAG = 0x20000000
 
 const BACKGROUND_COLOR_RECT_NAME = "Background Color"
 const WARNING_COLOR = "Yellow"
+const CUSTOM_DATA_INTERNAL = "__internal__"
+
 
 var _map_orientation: String
 var _map_width: int = 0
@@ -58,6 +60,7 @@ var _tm_layer_counter: int = 0
 var _first_gids = []
 var _atlas_sources = null
 var _use_default_filter = false
+var _object_groups
 
 var _iso_rot: float = 0.0
 var _iso_skew: float = 0.0
@@ -67,13 +70,17 @@ var _error_count = 0
 var _warning_count = 0
 
 enum object_class {
+	EMPTY,
 	BODY,
+	CBODY,
+	RBODY,
 	AREA,
 	NAVIGATION,
 	OCCLUDER,
 	LINE,
 	PATH,
 	POLYGON,
+	INSTANCE,
 	UNKNOWN
 }
 
@@ -117,11 +124,12 @@ func create(source_file: String):
 			_first_gids.append(int(tileSet["firstgid"]))
 		var tileset_creator = preload("TilesetCreator.gd").new()
 		tileset_creator.set_base_path(source_file)
-		tileset_creator.set_map_tile_size(Vector2i(_map_tile_width, _map_tile_height))
+		tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height), _map_orientation)
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
 		_atlas_sources = tileset_creator.get_registered_atlas_sources()
+		_object_groups = tileset_creator.get_registered_object_groups()
 	if _tileset == null:
 		# If tileset still null create an empty one
 		_tileset = TileSet.new()
@@ -167,6 +175,10 @@ func create(source_file: String):
 	if _parallax_background.get_child_count() == 0:
 		_base_node.remove_child(_parallax_background)
 
+	# Remove internal helper custom data
+	if _tileset.get_custom_data_layers_count() > 0:
+		_tileset.remove_custom_data_layer(0)
+
 	if _base_node.get_child_count() > 1: return _base_node
 
 	var ret = _base_node.get_child(0)
@@ -183,6 +195,10 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 	_compression = layer.get("compression", "")
 	var layer_type = layer.get("type", "tilelayer")
 	var tint_color = layer.get("tintcolor", "#ffffff")
+
+	# v1.2: Skip layer
+	if get_property(layer, "no_import", "bool") == "true":
+		return
 
 	if layer_type != "tilelayer" and not _map_layers_to_tilemaps:
 		_tilemap = null
@@ -482,16 +498,17 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		var atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 		if not atlas_source.has_tile(atlas_coords):
 			atlas_source.create_tile(atlas_coords)
-			var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
-			var tile_size = atlas_source.texture_region_size
-			if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
-				var diff_x = tile_size.x - _map_tile_width
-				if diff_x % 2 != 0:
-					diff_x -= 1
-				var diff_y = tile_size.y - _map_tile_height
-				if diff_y % 2 != 0:
-					diff_y += 1
-				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+			if _map_orientation == "orthogonal":
+				var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
+				var tile_size = atlas_source.texture_region_size
+				if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+					var diff_x = tile_size.x - _map_tile_width
+					if diff_x % 2 != 0:
+						diff_x -= 1
+					var diff_y = tile_size.y - _map_tile_height
+					if diff_y % 2 != 0:
+						diff_y += 1
+					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
 
 		var alt_id = 0
 		if flipped_h or flipped_v or flipped_d:
@@ -502,17 +519,18 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 				tile_data.flip_h = flipped_h
 				tile_data.flip_v = flipped_v
 				tile_data.transpose = flipped_d
-				var tile_size = atlas_source.texture_region_size
-				if flipped_d:
-					tile_size = Vector2i(tile_size.y, tile_size.x)
-				if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
-					var diff_x = tile_size.x - _map_tile_width
-					if diff_x % 2 != 0:
-						diff_x -= 1
-					var diff_y = tile_size.y - _map_tile_height
-					if diff_y % 2 != 0:
-						diff_y += 1
-					tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+				if _map_orientation == "orthogonal":
+					var tile_size = atlas_source.texture_region_size
+					if flipped_d:
+						tile_size = Vector2i(tile_size.y, tile_size.x)
+					if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+						var diff_x = tile_size.x - _map_tile_width
+						if diff_x % 2 != 0:
+							diff_x -= 1
+						var diff_y = tile_size.y - _map_tile_height
+						if diff_y % 2 != 0:
+							diff_y += 1
+						tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2)
 				create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
 		
 		_tilemap.set_cell(_tm_layer_counter, cell_coords, source_id, atlas_coords, alt_id)
@@ -521,15 +539,18 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 func get_object_class(classname: String):
 	var cn = classname.to_lower()
 	var obj_class = {
-		"": object_class.BODY,
+		"": object_class.EMPTY,
 		"collision": object_class.BODY,
 		"staticbody": object_class.BODY,
+		"characterbody": object_class.CBODY,
+		"rigidbody": object_class.RBODY,
 		"area": object_class.AREA,
 		"navigation": object_class.NAVIGATION,
 		"occluder": object_class.OCCLUDER,
 		"line": object_class.LINE,
 		"path": object_class.PATH,
-		"polygon": object_class.POLYGON
+		"polygon": object_class.POLYGON,
+		"instance": object_class.INSTANCE
 	}.get(cn, object_class.UNKNOWN)
 	return obj_class
 
@@ -556,11 +577,33 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			var tilesets = template_dict["tilesets"]
 			var tileset_creator = preload("TilesetCreator.gd").new()
 			tileset_creator.set_base_path(template_path)
+			tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height), _map_orientation)
 			template_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 
 		if template_dict.has("objects"):
 			for template_obj in template_dict["objects"]:
 				handle_object(template_obj, layer_node, template_tileset, Vector2(obj_x, obj_y))
+
+	# v1.2: New class 'instance'
+	if obj_class == object_class.INSTANCE and not obj.has("template") and not obj.has("text"):
+		var res_path = get_property(obj, "res_path", "file")
+		if res_path == "":
+			printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
+			_error_count += 1
+		else:
+			var scene = load_resource_from_file(res_path)
+			# Error check
+			if scene == null: return
+			var instance = scene.instantiate()
+			layer_node.add_child(instance)
+			instance.owner = _base_node
+			instance.name = obj_name if obj_name != "" else res_path.get_file().get_basename()
+			instance.position = transpose_coords(obj_x, obj_y)
+			instance.rotation_degrees = obj_rot
+			instance.visible = obj_visible
+			if obj.has("properties"):
+				handle_properties(instance, obj["properties"])
+		return
 
 	if obj.has("gid"):
 		# gid refers to a tile in a tile set and object is created as sprite
@@ -570,6 +613,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		var gid: int = int_id & 0x0FFFFFFF
 
 		var source_id = get_matching_source_id(gid)
+		var tile_offset = get_tile_offset(gid)
 		var first_gid_id = get_first_gid_index(gid)
 		if first_gid_id > source_id:
 			source_id = first_gid_id
@@ -583,9 +627,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		obj_sprite.name = obj_name if obj_name != "" \
 							else gid_source.resource_name if gid_source.resource_name != "" \
 							else gid_source.texture.resource_path.get_file().get_basename() + "_tile"
-		obj_sprite.position = transpose_coords(obj_x, obj_y)
+		obj_sprite.position = transpose_coords(obj_x, obj_y) + Vector2(tile_offset)
 		obj_sprite.texture = gid_source.texture
-
+		obj_sprite.rotation_degrees = obj_rot
+		obj_sprite.visible = obj_visible
+		var td
 		if get_num_tiles_for_source_id(source_id) > 1:
 			# Object is tile from partitioned tileset 
 			var atlas_width: int = gid_source.get_atlas_grid_size().x
@@ -597,6 +643,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			var atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 			if not gid_source.has_tile(atlas_coords):
 				gid_source.create_tile(atlas_coords)
+			td = gid_source.get_tile_data(atlas_coords, 0)
 			obj_sprite.region_enabled = true
 			var region_size = Vector2(gid_source.texture_region_size)
 			var pos: Vector2 = atlas_coords * region_size
@@ -627,11 +674,33 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				var scale_x: float = float(obj_width) / gid_width
 				var scale_y: float = float(obj_height) / gid_height
 				obj_sprite.scale = Vector2(scale_x, scale_y)
+			td = gid_source.get_tile_data(Vector2i.ZERO, 0)
+
+		var idx = td.get_custom_data(CUSTOM_DATA_INTERNAL)
+		if idx > 0:
+			var parent = {
+				object_class.AREA: Area2D.new(),
+				object_class.CBODY: CharacterBody2D.new(),
+				object_class.RBODY: RigidBody2D.new(),
+				object_class.BODY: StaticBody2D.new(),
+			}.get(obj_class, null)
+			if parent != null:
+				layer_node.remove_child(obj_sprite)
+				layer_node.add_child(parent)
+				parent.owner = _base_node
+				parent.name = obj_sprite.name
+				parent.position = obj_sprite.position
+				parent.rotation_degrees = obj_sprite.rotation_degrees
+				obj_sprite.position = Vector2.ZERO
+				obj_sprite.rotation_degrees = 0.0
+				parent.add_child(obj_sprite)
+				add_collision_shapes(parent, get_object_group(idx), obj_width, obj_height, flippedH, flippedV, obj_sprite.scale)
+			if obj.has("properties"):
+				handle_properties(parent, obj["properties"])
+		
 			
 		obj_sprite.flip_h = flippedH
 		obj_sprite.flip_v = flippedV
-		obj_sprite.rotation_degrees = obj_rot
-		obj_sprite.visible = obj_visible
 
 		if obj.has("properties"):
 			handle_properties(obj_sprite, obj["properties"])
@@ -672,11 +741,16 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			handle_properties(obj_text, obj["properties"])
 
 	elif not obj.has("template"):
+
 		if obj_class == object_class.UNKNOWN:
 			print_rich("[color=" + WARNING_COLOR +"] -- Unknown class '" + class_string + "'. -> Assuming Default[/color]")
 			_warning_count += 1
-			obj_class = object_class.BODY	
+			obj_class = object_class.BODY
+		if obj_class == object_class.EMPTY:
+			obj_class = object_class.BODY
+
 		var object_base_coords = transpose_coords(obj_x, obj_y)
+
 		if obj.has("point"):
 			var marker = Marker2D.new()
 			layer_node.add_child(marker)
@@ -903,6 +977,131 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 						handle_properties(polygon, obj["properties"])	
 
 
+func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, tile_width: float, tile_height: float, flippedH: bool, flippedV: bool, scale: Vector2):
+	var objects = object_group["objects"]
+	for obj in objects:
+		var obj_name = obj.get("name", "")
+		if obj.has("point") and obj["point"]:
+			print_rich("[color="+WARNING_COLOR+"] -- 'Point' has currently no corresponding collision element in Godot 4. -> Skipped[/color]")
+			_warning_count += 1
+			break
+
+		var object_base_coords = transpose_coords(obj["x"], obj["y"], true) * scale
+
+		if obj.has("polygon"):
+			var polygon_points = obj["polygon"] as Array
+			var rot = obj.get("rotation", 0.0)			
+			var polygon = []
+			for pt in polygon_points:
+				var p_coord = Vector2(pt["x"], pt["y"]) * scale
+				p_coord = transpose_coords(p_coord.x, p_coord.y, true)
+				if flippedH:
+					p_coord.x = -p_coord.x
+				if flippedV:
+					p_coord.y = -p_coord.y
+				polygon.append(p_coord)
+
+			var collision_polygon = CollisionPolygon2D.new()
+			parent.add_child(collision_polygon)
+			collision_polygon.owner = _base_node
+			collision_polygon.polygon = polygon
+			var pos_x = object_base_coords.x
+			var pos_y = object_base_coords.y - tile_height
+			if _map_orientation == "isometric":
+				pos_y += tile_height / 2.0
+			if flippedH:
+				pos_x = tile_width - pos_x
+				if _map_orientation == "isometric":
+					pos_x -= tile_width
+				rot = -rot
+			if flippedV:
+				pos_y = -tile_height - pos_y
+				rot = -rot
+			collision_polygon.rotation_degrees = rot
+			collision_polygon.position = Vector2(pos_x, pos_y)
+			collision_polygon.name = obj_name if obj_name != "" else "Collision Polygon"
+			if get_property(obj, "one_way", "bool") == "true":
+				collision_polygon.one_way_collision = true
+			var coll_margin = get_property(obj, "one_way_margin", "int")
+			if coll_margin == "":
+				coll_margin = get_property(obj, "one_way_margin", "float")
+			if coll_margin != "":
+				collision_polygon.one_way_collision_margin = coll_margin
+		else:
+			# Ellipse or rectangle
+			var collision_shape = CollisionShape2D.new()
+			parent.add_child(collision_shape)
+			collision_shape.owner = _base_node
+			var x = obj["x"] * scale.x
+			var y = obj["y"] * scale.y
+			var w = obj["width"] * scale.x
+			var h = obj["height"] * scale.y
+			var rot = obj.get("rotation", 0.0)
+			var sin_a = sin(rot * PI / 180.0)
+			var cos_a = cos(rot * PI / 180.0)
+			var pos_x = x + w / 2.0 * cos_a - h / 2.0 * sin_a
+			var pos_y = -tile_height + y + h / 2.0 * cos_a + w / 2.0 * sin_a
+			var trans_pos = transpose_coords(pos_x, pos_y, true)
+			pos_x = trans_pos.x
+			pos_y = trans_pos.y
+			if _map_orientation == "isometric":
+				pos_x -= _map_tile_width
+			if flippedH:
+				if _map_orientation == "isometric":
+					pos_x = -pos_x
+				else:
+					pos_x = tile_width - pos_x
+				rot = -rot
+			if flippedV:
+				pos_y = -tile_height - pos_y
+				rot = -rot
+			collision_shape.position = Vector2(pos_x, pos_y)
+			collision_shape.scale = scale
+			var shape
+			if obj.has("ellipse") and obj["ellipse"]:
+				shape = CapsuleShape2D.new()
+				shape.height = h / scale.y
+				shape.radius = w / 2.0 / scale.x
+				collision_shape.name = obj_name if obj_name != "" else "Capsule Shape"
+			else:
+				shape = RectangleShape2D.new()
+				shape.size = Vector2(w, h) / scale
+				collision_shape.name = obj_name if obj_name != "" else "Rectangle Shape"
+
+			if _map_orientation == "isometric":
+				if _iso_rot == 0.0:
+					var q = float(_map_tile_height) / float(_map_tile_width)
+					q *= q
+					var cos_b = sqrt(1 / (q + 1))
+					_iso_rot = acos(cos_b) * 180 / PI
+					_iso_skew = (90 - 2 * _iso_rot) * PI / 180
+					var scale_b = float(_map_tile_width) / (float(_map_tile_height) * 2 * cos_b)
+					_iso_scale = Vector2(scale_b, scale_b)
+
+				var effective_rot = _iso_rot
+				var effective_skew = _iso_skew
+				if flippedH:
+					effective_rot = -effective_rot
+					effective_skew = -effective_skew
+				if flippedV:
+					effective_rot = -effective_rot
+					effective_skew = -effective_skew
+	
+				collision_shape.skew = effective_skew
+				collision_shape.scale = _iso_scale
+				rot += effective_rot
+
+			collision_shape.shape = shape
+			collision_shape.rotation_degrees = rot
+			if get_property(obj, "one_way", "bool") == "true":
+				collision_shape.one_way_collision = true
+			var coll_margin = get_property(obj, "one_way_margin", "int")
+			if coll_margin == "":
+				coll_margin = get_property(obj, "one_way_margin", "float")
+			if coll_margin != "":
+				collision_shape.one_way_collision_margin = coll_margin
+
+
 func get_property(obj: Dictionary, property_name: String, property_type: String):
 	var ret = ""
 	if not obj.has("properties"): return ret
@@ -973,6 +1172,20 @@ func get_matching_source_id(gid: int):
 	return -1
 
 
+func get_tile_offset(gid: int):
+	var limit: int = 0
+	var prev_source_id: int = -1
+	if _atlas_sources == null:
+		return Vector2i.ZERO
+	for src in _atlas_sources:
+		var source_id: int = src["sourceId"]
+		limit += src["numTiles"] + source_id - prev_source_id - 1
+		if gid <= limit:
+			return src["tileOffset"]
+		prev_source_id = source_id
+	return Vector2i.ZERO
+	
+
 func get_num_tiles_for_source_id(source_id: int):
 	for src in _atlas_sources:
 		if src["sourceId"] == source_id:
@@ -1013,11 +1226,18 @@ func get_bitmask_integer_from_string(mask_string: String, max: int):
 			if i <= max:
 				ret += pow(2, i-1)
 	return ret
-	
+
+
+func get_object_group(index: int):
+	var ret = null
+	if _object_groups != null:
+		ret = _object_groups.get(index, null)
+	return ret
+
 
 func handle_properties(target_node: Node, properties: Array):
 	var has_children = false
-	if target_node is StaticBody2D or target_node is Area2D:
+	if target_node is StaticBody2D or target_node is Area2D or target_node is CharacterBody2D or target_node is RigidBody2D:
 		has_children = target_node.get_child_count() > 0 
 	for property in properties:
 		var name: String = property.get("name", "")
@@ -1151,8 +1371,8 @@ func handle_properties(target_node: Node, properties: Array):
 			target_node.angular_damp = float(val)
 			
 		# StaticBody2D properties
-		elif name.to_lower() == "physics_material" and type == "file" and target_node is StaticBody2D:
-			target_node.pysics_material = load_resource_from_file(val)
+		elif name.to_lower() == "physics_material_override" and type == "file" and target_node is StaticBody2D:
+			target_node.physics_material_override = load_resource_from_file(val)
 		elif name.to_lower() == "constant_linear_velocity_x" and (type == "float" or type == "int") and target_node is StaticBody2D:
 			target_node.constant_linear_velocity = Vector2(float(val), target_node.constant_linear_velocity.y)
 		elif name.to_lower() == "constant_linear_velocity_y" and (type == "float" or type == "int") and target_node is StaticBody2D:
@@ -1160,6 +1380,99 @@ func handle_properties(target_node: Node, properties: Array):
 		elif name.to_lower() == "constant_angular_velocity" and (type == "float" or type == "int") and target_node is StaticBody2D:
 			target_node.constant_angular_velocity = float(val)
 
+		# CharacterBody2D properties
+		elif name.to_lower() == "motion_mode" and type == "int" and target_node is CharacterBody2D:
+			if int(val) < 2:
+				target_node.motion_mode = int(val)
+		elif name.to_lower() == "up_direction_x" and (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.up_direction = Vector2(float(val), target_node.up_direction.y)
+		elif name.to_lower() == "up_direction_y" and (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.up_direction = Vector2(target_node.up_direction.x, float(val))
+		elif name.to_lower() == "slide_on_ceiling" and type == "bool" and target_node is CharacterBody2D:
+			target_node.slide_on_ceiling = val.to_lower() == "true"
+		elif name.to_lower() == "wall_min_slide_angle" and (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.wall_min_slide_angle = float(val)
+		elif name.to_lower() == "floor_stop_on_slope" and type == "bool" and target_node is CharacterBody2D:
+			target_node.floor_stop_on_slope = val.to_lower() == "true"
+		elif name.to_lower() == "floor_constant_speed" and type == "bool" and target_node is CharacterBody2D:
+			target_node.floor_constant_speed = val.to_lower() == "true"
+		elif name.to_lower() == "floor_block_on_wall" and type == "bool" and target_node is CharacterBody2D:
+			target_node.floor_block_on_wall = val.to_lower() == "true"
+		elif name.to_lower() == "floor_max_angle" and (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.floor_max_angle = float(val)
+		elif name.to_lower() == "floor_snap_length" and (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.floor_snap_length = float(val)
+		elif name.to_lower() == "platform_on_leave" and type == "int" and target_node is CharacterBody2D:
+			if int(val) < 3:
+				target_node.platform_on_leave = int(val)
+		elif name.to_lower() == "platform_floor_layers" and type == "string" and target_node is CharacterBody2D:
+			target_node.platform_floor_layers = get_bitmask_integer_from_string(val, 32)
+		elif name.to_lower() == "platform_wall_layers" and type == "string" and target_node is CharacterBody2D:
+			target_node.platform_wall_layers = get_bitmask_integer_from_string(val, 32)
+		elif name.to_lower() == "safe_margin" and  (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.safe_margin = float(val)
+		elif name.to_lower() == "collision_layer" and type == "string" and target_node is CharacterBody2D:
+			target_node.collision_layer = get_bitmask_integer_from_string(val, 32)
+		elif name.to_lower() == "collision_mask" and type == "string" and target_node is CharacterBody2D:
+			target_node.collision_mask = get_bitmask_integer_from_string(val, 32)
+		elif name.to_lower() == "collision_priority" and  (type == "float" or type == "int") and target_node is CharacterBody2D:
+			target_node.collision_priority = float(val)
+
+		# RigidBody2D properties
+		elif name.to_lower() == "mass" and  (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.mass = float(val)
+		elif name.to_lower() == "inertia" and  (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.inertia = float(val)
+		elif name.to_lower() == "center_of_mass_mode" and type == "int" and target_node is RigidBody2D:
+			if int(val) < 2:
+				target_node.center_of_mass_mode = int(val)
+		elif name.to_lower() == "physics_material_override" and type == "file" and target_node is RigidBody2D:
+			target_node.physics_material_override = load_resource_from_file(val)
+		elif name.to_lower() == "gravity_scale" and  (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.gravity_scale = float(val)
+		elif name.to_lower() == "custom_integrator" and type == "bool" and target_node is RigidBody2D:
+			target_node.custom_integrator = val.to_lower() == "true"
+		elif name.to_lower() == "continuous_cd" and type == "int" and target_node is RigidBody2D:
+			if int(val) < 3:
+				target_node.continuous_cd = int(val)
+		elif name.to_lower() == "max_contacts_reported" and type == "int" and target_node is RigidBody2D:
+			target_node.max_contacts_reported = int(val)
+		elif name.to_lower() == "contact_monitor" and type == "bool" and target_node is RigidBody2D:
+			target_node.contact_monitor = val.to_lower() == "true"
+		elif name.to_lower() == "sleeping" and type == "bool" and target_node is RigidBody2D:
+			target_node.sleeping = val.to_lower() == "true"
+		elif name.to_lower() == "can_sleep" and type == "bool" and target_node is RigidBody2D:
+			target_node.can_sleep = val.to_lower() == "true"
+		elif name.to_lower() == "lock_rotation" and type == "bool" and target_node is RigidBody2D:
+			target_node.lock_rotation = val.to_lower() == "true"
+		elif name.to_lower() == "freeze" and type == "bool" and target_node is RigidBody2D:
+			target_node.freeze = val.to_lower() == "true"
+		elif name.to_lower() == "freeze_mode" and type == "int" and target_node is RigidBody2D:
+			if int(val) < 2:
+				target_node.freeze_mode = int(val)
+		elif name.to_lower() == "linear_velocity_x" and (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.linear_velocity = Vector2(float(val), target_node.linear_velocity.y)
+		elif name.to_lower() == "linear_velocity_y" and (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.linear_velocity = Vector2(target_node.linear_velocity.x, float(val))
+		elif name.to_lower() == "linear_damp_mode" and type == "int" and target_node is RigidBody2D:
+			if int(val) < 2:
+				target_node.linear_damp_mode = int(val)
+		elif name.to_lower() == "linear_damp" and  (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.linear_damp = float(val)
+		elif name.to_lower() == "angular_velocity" and (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.angular_velocity = float(val)
+		elif name.to_lower() == "angular_damp_mode" and type == "int" and target_node is RigidBody2D:
+			if int(val) < 2:
+				target_node.angular_damp_mode = int(val)
+		elif name.to_lower() == "angular_damp" and  (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.angular_damp = float(val)
+		elif name.to_lower() == "constant_force_x" and (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.constant_force = Vector2(float(val), target_node.constant_force.y)
+		elif name.to_lower() == "constant_force_y" and (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.constant_force = Vector2(target_node.constant_force.x, float(val))
+		elif name.to_lower() == "constant_torque" and (type == "float" or type == "int") and target_node is RigidBody2D:
+			target_node.constant_torque = float(val)
+				
 		# NavigationRegion2D properties
 		elif name.to_lower() == "enabled" and type == "bool" and target_node is NavigationRegion2D:
 			target_node.enabled = val.to_lower() == "true"

@@ -38,6 +38,7 @@ public class TilemapCreator
 
     private const string BackgroundColorRectName = "Background Color";
     private const string WarningColor = "Yellow";
+    private const string CustomDataInternal = "__internal__";
 
     private string _mapOrientation;
     private int _mapWidth;
@@ -67,6 +68,7 @@ public class TilemapCreator
     private readonly Array<int> _firstGids = new ();
     private Array _atlasSources;
     private bool _useDefaultFilter;
+    private Dictionary _objectGroups;
 
     private float _isoRot;
     private float _isoSkew;
@@ -77,13 +79,17 @@ public class TilemapCreator
 
     private enum ObjectClass
     {
+        Empty,
         Body,
+        CBody,
+        RBody,
         Area,
         Navigation,
         Occluder,
         Line,
         Path,
         Polygon,
+        Instance,
         Unknown
     }
 
@@ -133,11 +139,12 @@ public class TilemapCreator
                 _firstGids.Add((int)tileSet["firstgid"]);
             var tilesetCreator = new TilesetCreator();
             tilesetCreator.SetBasePath(sourceFile);
-            tilesetCreator.SetMapTileSize(new Vector2I(_mapTileWidth, _mapTileHeight));
+            tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight), _mapOrientation);
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
             _atlasSources = tilesetCreator.GetRegisteredAtlasSources();
+            _objectGroups = tilesetCreator.GetRegisteredObjectGroups();
         }
         // If tileset still null create an empty one
         _tileset ??= new TileSet();
@@ -193,6 +200,10 @@ public class TilemapCreator
 
         if (_parallaxBackground.GetChildCount() == 0)
             _baseNode.RemoveChild(_parallaxBackground);
+        
+        // Remove internal helper custom data
+        if (_tileset.GetCustomDataLayersCount() > 0)
+            _tileset.RemoveCustomDataLayer(0);
 
         if (_baseNode.GetChildCount() > 1) return _baseNode;
 
@@ -212,6 +223,10 @@ public class TilemapCreator
         _compression = (string)layer.GetValueOrDefault("compression", "");
         var layertype = (string)layer.GetValueOrDefault("type", "tilelayer");
         var tintColor = (string)layer.GetValueOrDefault("tintcolor", "#ffffff");
+
+        // v1.2: Skip layer
+        if (GetProperty(layer, "no_import", "bool") == "true")
+            return;
 
         if (layertype != "tilelayer" && !_mapLayersToTilemaps)
         {
@@ -557,7 +572,7 @@ public class TilemapCreator
             targetData.SetOccluder(layerId, occluderPolygon);
         }
     }
-    
+
     private void CreateMapFromData(Array<uint> layerData, int offsetX, int offsetY, int mapWidth)
     {
         var cellCounter = -1;
@@ -586,23 +601,26 @@ public class TilemapCreator
                 continue;
             var atlasWidth = atlasSource.GetAtlasGridSize().X;
             if (atlasWidth <= 0) continue;
-            
+
             var effectiveGid = gid - _firstGids[GetFirstGidIndex(gid)];
             var atlasCoords = new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
             if (!atlasSource.HasTile(atlasCoords))
             {
                 atlasSource.CreateTile(atlasCoords);
-                var currentTile = atlasSource.GetTileData(atlasCoords, 0);
-                var tileSize = atlasSource.TextureRegionSize;
-                if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                if (_mapOrientation == "orthogonal")
                 {
-                    var diffX = tileSize.X - _mapTileWidth;
-                    if (diffX % 2 > 0)
-                        diffX -= 1;
-                    var diffY = tileSize.Y - _mapTileHeight;
-                    if (diffY % 2 > 0)
-                        diffY += 1;
-                    currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                    var currentTile = atlasSource.GetTileData(atlasCoords, 0);
+                    var tileSize = atlasSource.TextureRegionSize;
+                    if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                    {
+                        var diffX = tileSize.X - _mapTileWidth;
+                        if (diffX % 2 > 0)
+                            diffX -= 1;
+                        var diffY = tileSize.Y - _mapTileHeight;
+                        if (diffY % 2 > 0)
+                            diffY += 1;
+                        currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                    }
                 }
             }
 
@@ -617,18 +635,21 @@ public class TilemapCreator
                     tileData.FlipH = flippedH;
                     tileData.FlipV = flippedV;
                     tileData.Transpose = flippedD;
-                    var tileSize = atlasSource.TextureRegionSize;
-                    if (flippedD)
-                        tileSize = new Vector2I(tileSize.Y, tileSize.X);
-                    if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                    if (_mapOrientation == "orthogonal")
                     {
-                        var diffX = tileSize.X - _mapTileWidth;
-                        if (diffX % 2 != 0) 
-                            diffX -= 1;
-                        var diffY = tileSize.Y - _mapTileHeight;
-                        if (diffY % 2 != 0)
-                            diffY += 1;
-                        tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                        var tileSize = atlasSource.TextureRegionSize;
+                        if (flippedD)
+                            tileSize = new Vector2I(tileSize.Y, tileSize.X);
+                        if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                        {
+                            var diffX = tileSize.X - _mapTileWidth;
+                            if (diffX % 2 != 0) 
+                                diffX -= 1;
+                            var diffY = tileSize.Y - _mapTileHeight;
+                            if (diffY % 2 != 0)
+                                diffY += 1;
+                            tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
+                        }
                     }
                     CreatePolygonsOnAlternativeTiles(atlasSource.GetTileData(atlasCoords, 0), tileData, altId);
                 }
@@ -637,14 +658,16 @@ public class TilemapCreator
         }
     }
 
-    private ObjectClass GetObjectClass(string className)
+    private static ObjectClass GetObjectClass(string className)
     {
         var cn = className.ToLower();
         return cn switch
         {
-            "" => ObjectClass.Body,
+            "" => ObjectClass.Empty,
             "collision" => ObjectClass.Body,
             "staticbody" => ObjectClass.Body,
+            "characterbody" => ObjectClass.CBody,
+            "rigidbody" => ObjectClass.RBody,
             "area" => ObjectClass.Area,
             "navigation" => ObjectClass.Navigation,
             "occluder" => ObjectClass.Occluder,
@@ -652,6 +675,7 @@ public class TilemapCreator
             "line" => ObjectClass.Line,
             "path" => ObjectClass.Path,
             "polygon" => ObjectClass.Polygon,
+            "instance" => ObjectClass.Instance,
             _ => ObjectClass.Unknown
         };
     }
@@ -683,6 +707,7 @@ public class TilemapCreator
                 //    templateFirstGids.Add((int)tileSet["firstgid"]);
                 var tilesetCreator = new TilesetCreator();
                 tilesetCreator.SetBasePath(templatePath);
+                tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight), _mapOrientation);
                 templateTileSet = tilesetCreator.CreateFromDictionaryArray(tileSets);
                 _errorCount += tilesetCreator.GetErrorCount();
                 _warningCount += tilesetCreator.GetWarningCount();
@@ -696,6 +721,35 @@ public class TilemapCreator
                 }
             }
         }
+        
+        // v1.2: New class 'instance'
+        if (objClass == ObjectClass.Instance && !obj.ContainsKey("template") && !obj.ContainsKey("text"))
+        {
+            var resPath = GetProperty(obj, "res_path", "file");
+            if (resPath == "")
+            {
+                GD.PrintErr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped");
+                _errorCount++;
+            }
+            else
+            {
+                var scene = (PackedScene)LoadResourceFromFile(resPath);
+                // Error check
+                if (scene == null) return;
+
+                var instance = scene.Instantiate();
+                layerNode.AddChild(instance);
+                instance.Owner = _baseNode;
+                instance.Name = (objName != "") ? objName : resPath.GetFile().GetBaseName();
+                ((Node2D)instance).Position = TransposeCoords(objX, objY);
+                ((Node2D)instance).RotationDegrees = objRot;
+                ((Node2D)instance).Visible = objVisible;
+                if (obj.ContainsKey("properties"))
+                    HandleProperties(instance, (Array<Dictionary>)obj["properties"]);
+            }
+
+            return;
+        }
 
         if (obj.ContainsKey("gid"))
         {
@@ -708,6 +762,7 @@ public class TilemapCreator
             var gid = (int)(intId & 0x0FFFFFFF);
 
             var sourceId = GetMatchingSourceId(gid);
+            var tileOffset = GetTileOffset(gid);
             var firstGidId = GetFirstGidIndex(gid);
             if (firstGidId > sourceId)
                 sourceId = firstGidId;
@@ -721,8 +776,11 @@ public class TilemapCreator
             objSprite.Name = objName != "" ?
                 objName : (gidSource.ResourceName != "" ?
                     gidSource.ResourceName : gidSource.Texture.ResourcePath.GetFile().GetBaseName() + "_tile");
-            objSprite.Position = TransposeCoords(objX, objY);
+            objSprite.Position = TransposeCoords(objX, objY) + tileOffset;
             objSprite.Texture = gidSource.Texture;
+            objSprite.RotationDegrees = objRot;
+            objSprite.Visible = objVisible;
+            TileData td;
             if (GetNumTilesForSourceId(sourceId) > 1)
             {
                 // Object is tile from partitioned tileset 
@@ -735,6 +793,7 @@ public class TilemapCreator
                 var atlasCoords = new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
                 if (!gidSource.HasTile(atlasCoords))
                     gidSource.CreateTile(atlasCoords);
+                td = gidSource.GetTileData(atlasCoords, 0);
                 objSprite.RegionEnabled = true;
                 var regionSize = (Vector2)gidSource.TextureRegionSize;
                 var pos = atlasCoords * regionSize;
@@ -776,14 +835,40 @@ public class TilemapCreator
                     var scaleY = objHeight / gidHeight;
                     objSprite.Scale = new Vector2(scaleX, scaleY);
                 }
+
+                td = gidSource.GetTileData(Vector2I.Zero, 0);
+            }
+
+            var idx = (int)td.GetCustomData(CustomDataInternal);
+            if (idx > 0)
+            {
+                CollisionObject2D parent = objClass switch
+                {
+                    ObjectClass.Area => new Area2D(),
+                    ObjectClass.CBody => new CharacterBody2D(),
+                    ObjectClass.RBody => new RigidBody2D(),
+                    ObjectClass.Body => new StaticBody2D(),
+                    _ => null
+                };
+                if (parent != null)
+                {
+                    layerNode.RemoveChild(objSprite);
+                    layerNode.AddChild(parent);
+                    parent.Owner = _baseNode;
+                    parent.Name = objSprite.Name;
+                    parent.Position = objSprite.Position;
+                    parent.RotationDegrees = objSprite.RotationDegrees;
+                    objSprite.Position = Vector2.Zero;
+                    objSprite.RotationDegrees = 0;
+                    parent.AddChild(objSprite);
+                    AddCollisionShapes(parent, GetObjectGroup(idx), objWidth, objHeight, flippedH, flippedV, objSprite.Scale);
+                }
+                if (obj.ContainsKey("properties"))
+                    HandleProperties(parent, (Array<Dictionary>)obj["properties"]);
             }
 
             objSprite.FlipH = flippedH;
             objSprite.FlipV = flippedV;
-            objSprite.RotationDegrees = objRot;
-            objSprite.Visible = objVisible;
-            // if (!_useDefaultFilter)
-            //     objSprite.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
 
             if (obj.ContainsKey("properties"))
                 HandleProperties(objSprite, (Array<Dictionary>)obj["properties"]);
@@ -840,7 +925,11 @@ public class TilemapCreator
                 _warningCount++;
                 objClass = ObjectClass.Body;
             }
+            if (objClass == ObjectClass.Empty)
+                objClass = ObjectClass.Body;
+            
             var objectBaseCoords = TransposeCoords(objX, objY);
+
             if (obj.ContainsKey("point"))
             {
                 var marker = new Marker2D();
@@ -1154,6 +1243,167 @@ public class TilemapCreator
         }
     }
 
+    private void AddCollisionShapes(CollisionObject2D parent, Dictionary objectGroup, float tileWidth, float tileHeight, bool flippedH, bool flippedV, Vector2 scale)
+    {
+        var objects = (Array<Dictionary>)objectGroup["objects"];
+        foreach (var obj in objects)
+        {
+            var objName = (string)obj.GetValueOrDefault("name", "");
+            if (obj.ContainsKey("point") && (bool)obj["point"])
+            {
+                GD.PrintRich(
+                    $"[color={WarningColor}] -- 'Point' has currently no corresponding collision element in Godot 4. -> Skipped[/color]");
+                _warningCount++;
+                break;
+            }
+
+            var objectBaseCoords = TransposeCoords((float)obj["x"], (float)obj["y"], true) * scale;
+
+            if (obj.ContainsKey("polygon"))
+            {
+                var polygonPoints = (Array<Dictionary>)obj["polygon"];
+                var rot = (float)obj.GetValueOrDefault("rotation", 0.0f);
+                var polygon = new Vector2[polygonPoints.Count];
+                var i = 0;
+                foreach (var pt in polygonPoints)
+                {
+                    var pCoord = new Vector2((float)pt["x"], (float)pt["y"]) * scale;
+                    pCoord = TransposeCoords(pCoord.X, pCoord.Y, true);
+                    if (flippedH)
+                        pCoord.X = -pCoord.X;
+                    if (flippedV)
+                        pCoord.Y = -pCoord.Y;
+                    polygon[i] = pCoord;
+                    i++;
+                }
+
+                var collisionPolygon = new CollisionPolygon2D();
+                parent.AddChild(collisionPolygon);
+                collisionPolygon.Owner = _baseNode;
+                collisionPolygon.Polygon = polygon;
+                var posX = objectBaseCoords.X;
+                var posY = objectBaseCoords.Y - tileHeight;
+                if (_mapOrientation == "isometric")
+                    posY += tileHeight / 2.0f;
+                if (flippedH)
+                {
+                    posX = tileWidth - posX;
+                    if (_mapOrientation == "isometric")
+                        posX -= tileWidth;
+                    rot = -rot;
+                }
+
+                if (flippedV)
+                {
+                    posY = -tileHeight - posY;
+                    rot = -rot;
+                }
+                collisionPolygon.RotationDegrees = rot;
+                collisionPolygon.Position = new Vector2(posX, posY);
+                collisionPolygon.Name = (objName != "") ? objName : "Collision Polygon";
+                if (GetProperty(obj, "one_way", "bool") == "true")
+                    collisionPolygon.OneWayCollision = true;
+                var collMargin = GetProperty(obj, "one_way_margin", "int");
+                if (collMargin == "")
+                    collMargin = GetProperty(obj, "one_way_margin", "float");
+                if (collMargin != "")
+                    collisionPolygon.OneWayCollisionMargin = float.Parse(collMargin);
+            }
+            else
+            {
+                // Ellipse or rectangle
+                var collisionShape = new CollisionShape2D();
+                parent.AddChild(collisionShape);
+                collisionShape.Owner = _baseNode;
+                var x = (float)obj["x"] * scale.X;
+                var y = (float)obj["y"] * scale.Y;
+                var w = (float)obj["width"] * scale.X;
+                var h = (float)obj["height"] * scale.Y;
+                var rot = (float)obj.GetValueOrDefault("rotation", 0.0f);
+                var sinA = (float)Math.Sin(rot * Math.PI / 180.0f);
+                var cosA = (float)Math.Cos(rot * Math.PI / 180.0f);
+                var posX = x + w / 2.0f * cosA - h / 2.0f * sinA;
+                var posY = -tileHeight + y + h / 2.0f * cosA + w / 2.0f * sinA;
+                var transPos = TransposeCoords(posX, posY, true);
+                posX = transPos.X;
+                posY = transPos.Y;
+                if (_mapOrientation == "isometric")
+                    posX -= _mapTileWidth;
+                if (flippedH)
+                {
+                    if (_mapOrientation == "isometric")
+                        posX = - posX;
+                    else
+                        posX = tileWidth - posX;
+                    rot = -rot;
+                }
+
+                if (flippedV)
+                {
+                    posY = -tileHeight - posY;
+                    rot = -rot;
+                }
+                collisionShape.Position = new Vector2(posX, posY);
+                collisionShape.Scale = scale;
+                Shape2D shape;
+                if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
+                {
+                    shape = new CapsuleShape2D();
+                    ((CapsuleShape2D)shape).Height = h / scale.Y;
+                    ((CapsuleShape2D)shape).Radius = w / 2.0f / scale.X;
+                    collisionShape.Name = (objName != "") ? objName : "Capsule Shape";
+                }
+                else
+                {
+                    shape = new RectangleShape2D();
+                    ((RectangleShape2D)shape).Size = new Vector2(w,h) / scale;
+                    collisionShape.Name = (objName != "") ? objName : "Rectangle Shape";
+                }
+
+                if (_mapOrientation == "isometric")
+                {
+                    if (_isoRot == 0.0f)
+                    {
+                        var q = (float)_mapTileHeight / _mapTileWidth;
+                        q *= q;
+                        var cosB = Math.Sqrt(1 / (q + 1));
+                        _isoRot = (float)(Math.Acos(cosB) * 180 / Math.PI);
+                        _isoSkew = (float)((90 - 2 * _isoRot) * Math.PI / 180);
+                        var scaleB = (float)(_mapTileWidth / (_mapTileHeight * 2 * cosB));
+                        _isoScale = new Vector2(scaleB, scaleB);
+                    }
+
+                    var effectiveRot = _isoRot;
+                    var effectiveSkew = _isoSkew;
+                    if (flippedH)
+                    {
+                        effectiveRot = -effectiveRot;
+                        effectiveSkew = -effectiveSkew;
+                    }
+                    if (flippedV)
+                    {
+                        effectiveRot = -effectiveRot;
+                        effectiveSkew = -effectiveSkew;
+                    }
+
+                    collisionShape.Skew = effectiveSkew;
+                    collisionShape.Scale = _isoScale;
+                    rot += effectiveRot;
+                }
+                
+                collisionShape.Shape = shape;
+                collisionShape.RotationDegrees = rot;
+                if (GetProperty(obj, "one_way", "bool") == "true")
+                    collisionShape.OneWayCollision = true;
+                var collMargin = GetProperty(obj, "one_way_margin", "int");
+                if (collMargin == "")
+                    collMargin = GetProperty(obj, "one_way_margin", "float");
+                if (collMargin != "")
+                    collisionShape.OneWayCollisionMargin = float.Parse(collMargin);
+            }
+        }
+    }
+
     private static string GetProperty(Dictionary obj, string propertyName, string propertyType)
     {
         const string ret = "";
@@ -1246,6 +1496,24 @@ public class TilemapCreator
         return -1;
     }
 
+    private Vector2I GetTileOffset(int gid)
+    {
+        var limit = 0;
+        var prevSourceId = -1;
+        if (_atlasSources == null)
+            return Vector2I.Zero;
+        foreach (Dictionary src in _atlasSources)
+        {
+            var sourceId = (int)src["sourceId"];
+            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
+            if (gid <= limit)
+                return (Vector2I)src["tileOffset"];
+            prevSourceId = sourceId;
+        }
+        
+        return Vector2I.Zero;
+    }
+
     private int GetNumTilesForSourceId(int sourceId)
     {
         foreach (Dictionary src in _atlasSources)
@@ -1299,12 +1567,21 @@ public class TilemapCreator
 
         return ret;
     }
+
+    private Dictionary GetObjectGroup(int index)
+    {
+        Dictionary ret = null;
+        if (_objectGroups != null)
+            ret = (Dictionary)_objectGroups.GetValueOrDefault(index, (Dictionary)null);
+        return ret;
+    }
     
     private void HandleProperties(Node targetNode, Array<Dictionary> properties)
     {
         var targetNodeClass = targetNode.GetType();
         var hasChildren = false;
-        if (targetNodeClass == typeof(StaticBody2D) || targetNodeClass == typeof(Area2D))
+        if (targetNodeClass == typeof(StaticBody2D) || targetNodeClass == typeof(Area2D) || 
+            targetNodeClass == typeof(CharacterBody2D) || targetNodeClass == typeof(RigidBody2D))
             hasChildren = targetNode.GetChildCount() > 0;
         foreach (var property in properties)
         {
@@ -1494,7 +1771,7 @@ public class TilemapCreator
                     break;
                 
                 // StaticBody2D properties
-                case "physics_material" when (type == "file"):
+                case "physics_material_override" when (type == "file"):
                     ((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)LoadResourceFromFile(val);
                     break;
                 case "constant_linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
@@ -1505,6 +1782,140 @@ public class TilemapCreator
                     break;
                 case "constant_angular_velocity" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
                     ((StaticBody2D)targetNode).ConstantAngularVelocity = float.Parse(val);
+                    break;
+                
+                // Character2D properties
+                case "motion_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    if (int.Parse(val) < 2)
+                        ((CharacterBody2D)targetNode).MotionMode = (CharacterBody2D.MotionModeEnum)int.Parse(val);
+                    break;
+                case "up_direction_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).UpDirection = new Vector2(float.Parse(val), ((CharacterBody2D)targetNode).UpDirection.Y);
+                    break;
+                case "up_direction_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).UpDirection = new Vector2(((CharacterBody2D)targetNode).UpDirection.X, float.Parse(val));
+                    break;
+                case "slide_on_ceiling" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).SlideOnCeiling = bool.Parse(val);
+                    break;
+                case "wall_min_slide_angle" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).WallMinSlideAngle = float.Parse(val);
+                    break;
+                case "floor_stop_on_slope" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).FloorStopOnSlope = bool.Parse(val);
+                    break;
+                case "floor_constant_speed" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).FloorConstantSpeed = bool.Parse(val);
+                    break;
+                case "floor_block_on_wall" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).FloorBlockOnWall = bool.Parse(val);
+                    break;
+                case "floor_max_angle" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).FloorMaxAngle = float.Parse(val);
+                    break;
+                case "floor_snap_length" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).FloorSnapLength = float.Parse(val);
+                    break;
+                case "platform_on_leave" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    if (int.Parse(val) < 3)
+                        ((CharacterBody2D)targetNode).PlatformOnLeave = (CharacterBody2D.PlatformOnLeaveEnum)int.Parse(val);
+                    break;
+                case "platform_floor_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).PlatformFloorLayers = GetBitmaskIntegerFromString(val, 32);
+                    break;
+                case "platform_wall_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).PlatformWallLayers = GetBitmaskIntegerFromString(val, 32);
+                    break;
+                case "safe_margin" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).SafeMargin = float.Parse(val);
+                    break;
+                case "collision_layer" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).CollisionLayer = GetBitmaskIntegerFromString(val, 32);
+                    break;
+                case "collision_mask" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).CollisionMask = GetBitmaskIntegerFromString(val, 32);
+                    break;
+                case "collision_priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
+                    ((CharacterBody2D)targetNode).CollisionPriority = float.Parse(val);
+                    break;
+                
+                // RigidBody2D properties
+                case "mass" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).Mass = float.Parse(val);
+                    break;
+                case "inertia" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).Inertia = float.Parse(val);
+                    break;
+                case "center_of_mass" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    if (int.Parse(val) < 2)
+                        ((RigidBody2D)targetNode).CenterOfMassMode = (RigidBody2D.CenterOfMassModeEnum)int.Parse(val);
+                    break;
+                case "physics_material_override" when (type == "file"):
+                    ((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)LoadResourceFromFile(val);
+                    break;
+                case "gravity_scale" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).GravityScale = float.Parse(val);
+                    break;
+                case "custom_integrator" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).CustomIntegrator = bool.Parse(val);
+                    break;
+                case "continuous_cd" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    if (int.Parse(val) < 3)
+                        ((RigidBody2D)targetNode).ContinuousCd = (RigidBody2D.CcdMode)int.Parse(val);
+                    break;
+                case "max_contacts_reported" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).MaxContactsReported = int.Parse(val);
+                    break;
+                case "contact_monitor" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).ContactMonitor = bool.Parse(val);
+                    break;
+                case "sleeping" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).Sleeping = bool.Parse(val);
+                    break;
+                case "can_sleep" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).CanSleep = bool.Parse(val);
+                    break;
+                case "lock_rotation" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).LockRotation = bool.Parse(val);
+                    break;
+                case "freeze" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).Freeze = bool.Parse(val);
+                    break;
+                case "freeze_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    if (int.Parse(val) < 2)
+                        ((RigidBody2D)targetNode).FreezeMode = (RigidBody2D.FreezeModeEnum)int.Parse(val);
+                    break;
+                case "linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).LinearVelocity = new Vector2(float.Parse(val), ((RigidBody2D)targetNode).LinearVelocity.Y);
+                    break;
+                case "linear_velocity_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).LinearVelocity = new Vector2(((RigidBody2D)targetNode).LinearVelocity.X, float.Parse(val));
+                    break;
+                case "linear_damp_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    if (int.Parse(val) < 2)
+                        ((RigidBody2D)targetNode).LinearDampMode = (RigidBody2D.DampMode)int.Parse(val);
+                    break;
+                case "linear_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).LinearDamp = float.Parse(val);
+                    break;
+                case "angular_velocity" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).AngularVelocity = float.Parse(val);
+                    break;
+                case "angular_damp_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    if (int.Parse(val) < 2)
+                        ((RigidBody2D)targetNode).AngularDampMode = (RigidBody2D.DampMode)int.Parse(val);
+                    break;
+                case "angular_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).AngularDamp = float.Parse(val);
+                    break;
+                case "constant_force_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).ConstantForce = new Vector2(float.Parse(val), ((RigidBody2D)targetNode).ConstantForce.Y);
+                    break;
+                case "constant_force_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).ConstantForce = new Vector2(((RigidBody2D)targetNode).ConstantForce.X, float.Parse(val));
+                    break;
+                case "constant_torque" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
+                    ((RigidBody2D)targetNode).ConstantTorque = float.Parse(val);
                     break;
                 
                 // NavigationRegion2D properties
