@@ -500,7 +500,7 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 	for property in properties:
 		var name = property.get("name", "")
 		var type = property.get("type", "string")
-		var val = property.get("value", "")
+		var val = str(property.get("value", ""))
 		if name == "": continue
 		if name.to_lower() == "texture_origin_x" and  type == "int":
 			current_tile.texture_origin = Vector2i(int(val), current_tile.texture_origin.y)
@@ -561,7 +561,7 @@ func handle_tileset_properties(properties: Array):
 	for property in properties:
 		var name = property.get("name", "")
 		var type = property.get("type", "string")
-		var val = property.get("value", "")
+		var val = str(property.get("value", ""))
 		if name == "": continue
 		var layer_index
 		if name.to_lower() == "collision_layer" and type == "string":
