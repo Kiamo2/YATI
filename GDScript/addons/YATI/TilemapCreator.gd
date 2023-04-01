@@ -46,6 +46,7 @@ var _tilemap = null
 var _tilemap_offset_x: float = 0.0
 var _tilemap_offset_y: float = 0.0
 var _tileset = null
+var _current_tileset_orientation: String
 var _base_node = null
 var _parallax_background = null
 var _background = null
@@ -124,7 +125,7 @@ func create(source_file: String):
 			_first_gids.append(int(tileSet["firstgid"]))
 		var tileset_creator = preload("TilesetCreator.gd").new()
 		tileset_creator.set_base_path(source_file)
-		tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height), _map_orientation)
+		tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
@@ -481,6 +482,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		var cell_coords = Vector2(cell_counter % map_width + offset_x, cell_counter / map_width + offset_y)
 
 		var source_id = get_matching_source_id(gid)
+		var tile_offset = get_tile_offset(gid)
 		var first_gid_id = get_first_gid_index(gid)
 		if first_gid_id > source_id:
 			source_id = first_gid_id
@@ -498,17 +500,16 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		var atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 		if not atlas_source.has_tile(atlas_coords):
 			atlas_source.create_tile(atlas_coords)
-			if _map_orientation == "orthogonal":
-				var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
-				var tile_size = atlas_source.texture_region_size
-				if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
-					var diff_x = tile_size.x - _map_tile_width
-					if diff_x % 2 != 0:
-						diff_x -= 1
-					var diff_y = tile_size.y - _map_tile_height
-					if diff_y % 2 != 0:
-						diff_y += 1
-					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+			var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
+			var tile_size = atlas_source.texture_region_size
+			if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+				var diff_x = tile_size.x - _map_tile_width
+				if diff_x % 2 != 0:
+					diff_x -= 1
+				var diff_y = tile_size.y - _map_tile_height
+				if diff_y % 2 != 0:
+					diff_y += 1
+				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
 
 		var alt_id = 0
 		if flipped_h or flipped_v or flipped_d:
@@ -519,18 +520,17 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 				tile_data.flip_h = flipped_h
 				tile_data.flip_v = flipped_v
 				tile_data.transpose = flipped_d
-				if _map_orientation == "orthogonal":
-					var tile_size = atlas_source.texture_region_size
-					if flipped_d:
-						tile_size = Vector2i(tile_size.y, tile_size.x)
-					if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
-						var diff_x = tile_size.x - _map_tile_width
-						if diff_x % 2 != 0:
-							diff_x -= 1
-						var diff_y = tile_size.y - _map_tile_height
-						if diff_y % 2 != 0:
-							diff_y += 1
-						tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+				var tile_size = atlas_source.texture_region_size
+				if flipped_d:
+					tile_size = Vector2i(tile_size.y, tile_size.x)
+				if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+					var diff_x = tile_size.x - _map_tile_width
+					if diff_x % 2 != 0:
+						diff_x -= 1
+					var diff_y = tile_size.y - _map_tile_height
+					if diff_y % 2 != 0:
+						diff_y += 1
+					tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
 				create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
 		
 		_tilemap.set_cell(_tm_layer_counter, cell_coords, source_id, atlas_coords, alt_id)
@@ -577,7 +577,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			var tilesets = template_dict["tilesets"]
 			var tileset_creator = preload("TilesetCreator.gd").new()
 			tileset_creator.set_base_path(template_path)
-			tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height), _map_orientation)
+			tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
 			template_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 
 		if template_dict.has("objects"):
@@ -614,6 +614,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 		var source_id = get_matching_source_id(gid)
 		var tile_offset = get_tile_offset(gid)
+		_current_tileset_orientation = get_tileset_orientation(gid)
 		var first_gid_id = get_first_gid_index(gid)
 		if first_gid_id > source_id:
 			source_id = first_gid_id
@@ -986,7 +987,12 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 			_warning_count += 1
 			break
 
-		var object_base_coords = transpose_coords(obj["x"], obj["y"], true) * scale
+		var fact = tile_height / _map_tile_height
+		var object_base_coords = Vector2(obj["x"], obj["y"]) * scale
+		if _current_tileset_orientation == "isometric":
+			object_base_coords = transpose_coords(obj["x"], obj["y"], true) * scale
+			tile_width = _map_tile_width
+			tile_height = _map_tile_height
 
 		if obj.has("polygon"):
 			var polygon_points = obj["polygon"] as Array
@@ -994,7 +1000,8 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 			var polygon = []
 			for pt in polygon_points:
 				var p_coord = Vector2(pt["x"], pt["y"]) * scale
-				p_coord = transpose_coords(p_coord.x, p_coord.y, true)
+				if _current_tileset_orientation == "isometric":
+					p_coord = transpose_coords(p_coord.x, p_coord.y, true)
 				if flippedH:
 					p_coord.x = -p_coord.x
 				if flippedV:
@@ -1007,8 +1014,8 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 			collision_polygon.polygon = polygon
 			var pos_x = object_base_coords.x
 			var pos_y = object_base_coords.y - tile_height
-			if _map_orientation == "isometric":
-				pos_y += tile_height / 2.0
+			if _map_orientation == "isometric" and _current_tileset_orientation == "orthogonal":
+				pos_x -= tile_width / 2.0
 			if flippedH:
 				pos_x = tile_width - pos_x
 				if _map_orientation == "isometric":
@@ -1016,6 +1023,8 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 				rot = -rot
 			if flippedV:
 				pos_y = -tile_height - pos_y
+				if _current_tileset_orientation == "isometric":
+					pos_y -= _map_tile_height * fact - tile_height
 				rot = -rot
 			collision_polygon.rotation_degrees = rot
 			collision_polygon.position = Vector2(pos_x, pos_y)
@@ -1041,19 +1050,23 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 			var cos_a = cos(rot * PI / 180.0)
 			var pos_x = x + w / 2.0 * cos_a - h / 2.0 * sin_a
 			var pos_y = -tile_height + y + h / 2.0 * cos_a + w / 2.0 * sin_a
-			var trans_pos = transpose_coords(pos_x, pos_y, true)
-			pos_x = trans_pos.x
-			pos_y = trans_pos.y
-			if _map_orientation == "isometric":
-				pos_x -= _map_tile_width
+			if _current_tileset_orientation == "isometric":
+				var trans_pos = transpose_coords(pos_x, pos_y, true)
+				pos_x = trans_pos.x
+				pos_y = trans_pos.y
+				pos_x -= tile_width / 2.0 - h * fact / 4.0 * sin_a
+				pos_y -= tile_height / 2.0
+			elif _map_orientation == "isometric":
+				pos_x -= tile_width / 2.0
 			if flippedH:
+				pos_x = tile_width - pos_x 
 				if _map_orientation == "isometric":
-					pos_x = -pos_x
-				else:
-					pos_x = tile_width - pos_x
+					pos_x -= tile_width
 				rot = -rot
 			if flippedV:
 				pos_y = -tile_height - pos_y
+				if _current_tileset_orientation == "isometric":
+					pos_y -= _map_tile_height * fact - tile_height
 				rot = -rot
 			collision_shape.position = Vector2(pos_x, pos_y)
 			collision_shape.scale = scale
@@ -1068,7 +1081,7 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 				shape.size = Vector2(w, h) / scale
 				collision_shape.name = obj_name if obj_name != "" else "Rectangle Shape"
 
-			if _map_orientation == "isometric":
+			if _current_tileset_orientation == "isometric":
 				if _iso_rot == 0.0:
 					var q = float(_map_tile_height) / float(_map_tile_width)
 					q *= q
@@ -1184,6 +1197,20 @@ func get_tile_offset(gid: int):
 			return src["tileOffset"]
 		prev_source_id = source_id
 	return Vector2i.ZERO
+	
+
+func get_tileset_orientation(gid: int):
+	var limit: int = 0
+	var prev_source_id: int = -1
+	if _atlas_sources == null:
+		return _map_orientation
+	for src in _atlas_sources:
+		var source_id: int = src["sourceId"]
+		limit += src["numTiles"] + source_id - prev_source_id - 1
+		if gid <= limit:
+			return src["tilesetOrientation"]
+		prev_source_id = source_id
+	return _map_orientation
 	
 
 func get_num_tiles_for_source_id(source_id: int):

@@ -54,6 +54,7 @@ public class TilemapCreator
     private float _tilemapOffsetX;
     private float _tilemapOffsetY;
     private TileSet _tileset;
+    private string _currentTilesetOrientation;
     private Node2D _baseNode;
     private ParallaxBackground _parallaxBackground;
     private ColorRect _background;
@@ -139,7 +140,7 @@ public class TilemapCreator
                 _firstGids.Add((int)tileSet["firstgid"]);
             var tilesetCreator = new TilesetCreator();
             tilesetCreator.SetBasePath(sourceFile);
-            tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight), _mapOrientation);
+            tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
@@ -588,6 +589,7 @@ public class TilemapCreator
             var cellCoords = new Vector2I(cellCounter % mapWidth + offsetX, cellCounter / mapWidth + offsetY);
 
             var sourceId = GetMatchingSourceId(gid);
+            var tileOffset = GetTileOffset(gid);
             var firstGidId = GetFirstGidIndex(gid);
             if (firstGidId > sourceId)
                 sourceId = firstGidId;
@@ -607,20 +609,17 @@ public class TilemapCreator
             if (!atlasSource.HasTile(atlasCoords))
             {
                 atlasSource.CreateTile(atlasCoords);
-                if (_mapOrientation == "orthogonal")
+                var currentTile = atlasSource.GetTileData(atlasCoords, 0);
+                var tileSize = atlasSource.TextureRegionSize;
+                if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
                 {
-                    var currentTile = atlasSource.GetTileData(atlasCoords, 0);
-                    var tileSize = atlasSource.TextureRegionSize;
-                    if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
-                    {
-                        var diffX = tileSize.X - _mapTileWidth;
-                        if (diffX % 2 > 0)
-                            diffX -= 1;
-                        var diffY = tileSize.Y - _mapTileHeight;
-                        if (diffY % 2 > 0)
-                            diffY += 1;
-                        currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
-                    }
+                    var diffX = tileSize.X - _mapTileWidth;
+                    if (diffX % 2 > 0)
+                        diffX -= 1;
+                    var diffY = tileSize.Y - _mapTileHeight;
+                    if (diffY % 2 > 0)
+                        diffY += 1;
+                    currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
                 }
             }
 
@@ -635,21 +634,18 @@ public class TilemapCreator
                     tileData.FlipH = flippedH;
                     tileData.FlipV = flippedV;
                     tileData.Transpose = flippedD;
-                    if (_mapOrientation == "orthogonal")
+                    var tileSize = atlasSource.TextureRegionSize;
+                    if (flippedD)
+                        tileSize = new Vector2I(tileSize.Y, tileSize.X);
+                    if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
                     {
-                        var tileSize = atlasSource.TextureRegionSize;
-                        if (flippedD)
-                            tileSize = new Vector2I(tileSize.Y, tileSize.X);
-                        if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
-                        {
-                            var diffX = tileSize.X - _mapTileWidth;
-                            if (diffX % 2 != 0) 
-                                diffX -= 1;
-                            var diffY = tileSize.Y - _mapTileHeight;
-                            if (diffY % 2 != 0)
-                                diffY += 1;
-                            tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
-                        }
+                        var diffX = tileSize.X - _mapTileWidth;
+                        if (diffX % 2 != 0) 
+                            diffX -= 1;
+                        var diffY = tileSize.Y - _mapTileHeight;
+                        if (diffY % 2 != 0)
+                            diffY += 1;
+                        tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
                     }
                     CreatePolygonsOnAlternativeTiles(atlasSource.GetTileData(atlasCoords, 0), tileData, altId);
                 }
@@ -707,7 +703,7 @@ public class TilemapCreator
                 //    templateFirstGids.Add((int)tileSet["firstgid"]);
                 var tilesetCreator = new TilesetCreator();
                 tilesetCreator.SetBasePath(templatePath);
-                tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight), _mapOrientation);
+                tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
                 templateTileSet = tilesetCreator.CreateFromDictionaryArray(tileSets);
                 _errorCount += tilesetCreator.GetErrorCount();
                 _warningCount += tilesetCreator.GetWarningCount();
@@ -763,6 +759,7 @@ public class TilemapCreator
 
             var sourceId = GetMatchingSourceId(gid);
             var tileOffset = GetTileOffset(gid);
+            _currentTilesetOrientation = GetTilesetOrientation(gid);
             var firstGidId = GetFirstGidIndex(gid);
             if (firstGidId > sourceId)
                 sourceId = firstGidId;
@@ -1257,7 +1254,14 @@ public class TilemapCreator
                 break;
             }
 
-            var objectBaseCoords = TransposeCoords((float)obj["x"], (float)obj["y"], true) * scale;
+            var fact = tileHeight / _mapTileHeight;
+            var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]) * scale;
+            if (_currentTilesetOrientation == "isometric")
+            {
+                objectBaseCoords = TransposeCoords((float)obj["x"], (float)obj["y"], true) * scale;
+                tileWidth = _mapTileWidth;
+                tileHeight = _mapTileHeight;
+            }
 
             if (obj.ContainsKey("polygon"))
             {
@@ -1268,7 +1272,8 @@ public class TilemapCreator
                 foreach (var pt in polygonPoints)
                 {
                     var pCoord = new Vector2((float)pt["x"], (float)pt["y"]) * scale;
-                    pCoord = TransposeCoords(pCoord.X, pCoord.Y, true);
+                    if (_currentTilesetOrientation == "isometric")
+                        pCoord = TransposeCoords(pCoord.X, pCoord.Y, true);
                     if (flippedH)
                         pCoord.X = -pCoord.X;
                     if (flippedV)
@@ -1283,8 +1288,8 @@ public class TilemapCreator
                 collisionPolygon.Polygon = polygon;
                 var posX = objectBaseCoords.X;
                 var posY = objectBaseCoords.Y - tileHeight;
-                if (_mapOrientation == "isometric")
-                    posY += tileHeight / 2.0f;
+                if (_mapOrientation == "isometric" && _currentTilesetOrientation == "orthogonal")
+                    posX -= tileWidth / 2.0f;
                 if (flippedH)
                 {
                     posX = tileWidth - posX;
@@ -1296,6 +1301,8 @@ public class TilemapCreator
                 if (flippedV)
                 {
                     posY = -tileHeight - posY;
+                    if (_currentTilesetOrientation == "isometric")
+                        posY -= _mapTileHeight * fact - tileHeight;
                     rot = -rot;
                 }
                 collisionPolygon.RotationDegrees = rot;
@@ -1324,23 +1331,30 @@ public class TilemapCreator
                 var cosA = (float)Math.Cos(rot * Math.PI / 180.0f);
                 var posX = x + w / 2.0f * cosA - h / 2.0f * sinA;
                 var posY = -tileHeight + y + h / 2.0f * cosA + w / 2.0f * sinA;
-                var transPos = TransposeCoords(posX, posY, true);
-                posX = transPos.X;
-                posY = transPos.Y;
-                if (_mapOrientation == "isometric")
-                    posX -= _mapTileWidth;
-                if (flippedH)
+                if (_currentTilesetOrientation == "isometric")
                 {
+                    var transPos = TransposeCoords(posX, posY, true);
+                    posX = transPos.X;
+                    posY = transPos.Y;
+                    posX -= tileWidth / 2.0f - h * fact / 4.0f * sinA;
+                    posY -= tileHeight / 2.0f;
+                }
+                else if (_mapOrientation == "isometric")
+                    posX -= tileWidth / 2.0f;
+
+                if (flippedH)
+                {                    
+                    posX = tileWidth - posX;
                     if (_mapOrientation == "isometric")
-                        posX = - posX;
-                    else
-                        posX = tileWidth - posX;
+                        posX -= tileWidth;
                     rot = -rot;
                 }
 
                 if (flippedV)
                 {
                     posY = -tileHeight - posY;
+                    if (_currentTilesetOrientation == "isometric")
+                        posY -= _mapTileHeight * fact - tileHeight;
                     rot = -rot;
                 }
                 collisionShape.Position = new Vector2(posX, posY);
@@ -1360,7 +1374,7 @@ public class TilemapCreator
                     collisionShape.Name = (objName != "") ? objName : "Rectangle Shape";
                 }
 
-                if (_mapOrientation == "isometric")
+                if (_currentTilesetOrientation == "isometric")
                 {
                     if (_isoRot == 0.0f)
                     {
@@ -1512,6 +1526,24 @@ public class TilemapCreator
         }
         
         return Vector2I.Zero;
+    }
+
+    private string GetTilesetOrientation(int gid)
+    {
+        var limit = 0;
+        var prevSourceId = -1;
+        if (_atlasSources == null)
+            return _mapOrientation;
+        foreach (Dictionary src in _atlasSources)
+        {
+            var sourceId = (int)src["sourceId"];
+            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
+            if (gid <= limit)
+                return (string)src["tilesetOrientation"];
+            prevSourceId = sourceId;
+        }
+        
+        return _mapOrientation;
     }
 
     private int GetNumTilesForSourceId(int sourceId)

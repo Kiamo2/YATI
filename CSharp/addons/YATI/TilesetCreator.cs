@@ -53,9 +53,10 @@ public class TilesetCreator
     private int _errorCount;
     private int _warningCount;
     private Vector2I _mapTileSize;
+    private Vector2I _gridSize;
+    private Vector2I _tileOffset;
     private Dictionary _objectGroups;
     private int _objectGroupsCounter;
-    private string _mapOrientation;
     private string _tilesetOrientation;
 
     private enum LayerType
@@ -81,10 +82,9 @@ public class TilesetCreator
         _basePathTileset = _basePathMap;
     }
 
-    public void SetMapParameters(Vector2I mapTileSize, string mapOrientation)
+    public void SetMapParameters(Vector2I mapTileSize)
     {
         _mapTileSize = mapTileSize;
-        _mapOrientation = mapOrientation;
     }
     
     public TileSet CreateFromDictionaryArray(Array<Dictionary> tileSets)
@@ -105,8 +105,6 @@ public class TilesetCreator
                 _basePathTileset = checkedFile.GetBaseDir();
 
                 tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
-
-                //File.WriteAllText("test".PathJoin(checkedFile.GetFile().GetBaseName() + "_parse.json"), tileSetDict.ToString());
             }
 
             // Possible error condition
@@ -159,12 +157,22 @@ public class TilesetCreator
             _tileset.TileSize = _mapTileSize;
         _tileCount = tileSet.ContainsKey("tilecount") ? (int)tileSet["tilecount"] : 0;
         _columns = tileSet.ContainsKey("columns") ? (int)tileSet["columns"] : 0;
-        _tilesetOrientation = _mapOrientation;
+        _tilesetOrientation = "orthogonal";
+        _gridSize = _tileSize;
+        if (tileSet.ContainsKey("tileoffset"))
+        {
+            var to = (Dictionary)tileSet["tileoffset"];
+            _tileOffset = new Vector2I((int)to["x"], (int)to["y"]);
+        }
+        else
+            _tileOffset = Vector2I.Zero;
         if (tileSet.ContainsKey("grid"))
         {
             var grid = (Dictionary)tileSet["grid"];
             if (grid.ContainsKey("orientation"))
                 _tilesetOrientation = (string)grid["orientation"];
+            _gridSize.X = (int)grid.GetValueOrDefault("width", _tileSize.X);
+            _gridSize.Y = (int)grid.GetValueOrDefault("height", _tileSize.Y);
         }
 
         if (_append)
@@ -179,14 +187,6 @@ public class TilesetCreator
                 _currentAtlasSource.Margins = new Vector2I((int)tileSet["margin"], (int)tileSet["margin"]);
             if (tileSet.ContainsKey("spacing"))
                 _currentAtlasSource.Separation = new Vector2I((int)tileSet["spacing"], (int)tileSet["spacing"]);
-            Vector2I tileOffset;
-            if (tileSet.ContainsKey("tileoffset"))
-            {
-                var to = (Dictionary)tileSet["tileoffset"];
-                tileOffset = new Vector2I((int)to["x"], (int)to["y"]);
-            }
-            else
-                tileOffset = Vector2I.Zero;
             
             var texture = LoadImage((string)tileSet["image"]);
             if (texture == null)
@@ -208,7 +208,7 @@ public class TilesetCreator
                 _columns = imagewidth / _tileSize.X;
                 _tileCount = _columns * imageheight / _tileSize.X;
             }
-            RegisterAtlasSource(_atlasSourceCounter, _tileCount, -1, tileOffset);
+            RegisterAtlasSource(_atlasSourceCounter, _tileCount, -1, _tileOffset);
             var atlasGridSize = _currentAtlasSource.GetAtlasGridSize();
             _currentMaxX = atlasGridSize.X - 1;
             _currentMaxY = atlasGridSize.Y - 1;
@@ -260,6 +260,7 @@ public class TilesetCreator
         atlasSourceItem.Add("numTiles", numTiles);
         atlasSourceItem.Add("assignedId", assignedTileId);
         atlasSourceItem.Add("tileOffset", tileOffset);
+        atlasSourceItem.Add("tilesetOrientation", _tilesetOrientation);
         _atlasSources.Add(atlasSourceItem);
     }
 
@@ -347,17 +348,16 @@ public class TilesetCreator
                     continue;
             }
 
-            if (_tilesetOrientation == "orthogonal")
-                if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
-                {
-                    var diffX = _tileSize.X - _mapTileSize.X;
-                    if (diffX % 2 > 0)
-                        diffX -= 1;
-                    var diffY = _tileSize.Y - _mapTileSize.Y;
-                    if (diffY % 2 > 0)
-                        diffY += 1;
-                    currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
-                }
+            if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+            {
+                var diffX = _tileSize.X - _mapTileSize.X;
+                if (diffX % 2 > 0)
+                    diffX -= 1;
+                var diffY = _tileSize.Y - _mapTileSize.Y;
+                if (diffY % 2 > 0)
+                    diffY += 1;
+                currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - _tileOffset;
+            }
             
             if (tile.ContainsKey("probability"))
                 currentTile.Probability = (int)tile["probability"];
@@ -463,12 +463,17 @@ public class TilesetCreator
             }
             
             var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]);
-            objectBaseCoords -= currentTile.TextureOrigin;
-            objectBaseCoords -= (Vector2)_tileSize / 2.0f;
             objectBaseCoords = TransposeCoords(objectBaseCoords.X, objectBaseCoords.Y);
+            objectBaseCoords -= currentTile.TextureOrigin;
             if (_tilesetOrientation == "isometric")
-                objectBaseCoords.Y += _tileSize.Y / 2.0f;
-            
+            {
+                objectBaseCoords.Y -= _gridSize.Y / 2.0f;
+                if (_gridSize.Y != _tileSize.Y)
+                    objectBaseCoords.Y += (_tileSize.Y - _gridSize.Y) / 2.0f;
+            }
+            else
+                objectBaseCoords -= (Vector2)_tileSize / 2.0f;
+
             var rot = (float)obj.GetValueOrDefault("rotation", 0.0f);
             var sinA = (float)Math.Sin(rot * Math.PI / 180.0f);
             var cosA = (float)Math.Cos(rot * Math.PI / 180.0f);
@@ -560,7 +565,7 @@ public class TilesetCreator
     {
         if (_tilesetOrientation == "isometric")
         {
-            var transX = (x - y) * _mapTileSize.X / _mapTileSize.Y / 2.0f;
+            var transX = (x - y) * _gridSize.X / _gridSize.Y / 2.0f;
             var transY = (x + y) * 0.5f;
             return new Vector2(transX, transY);
         }
@@ -856,17 +861,16 @@ public class TilesetCreator
                         // Error occurred
                         break;
 
-                    if (_tilesetOrientation == "orthogonal")
-                        if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
-                        {
-                            var diffX = _tileSize.X - _mapTileSize.X;
-                            if (diffX % 2 > 0)
-                                diffX -= 1;
-                            var diffY = _tileSize.Y - _mapTileSize.Y;
-                            if (diffY % 2 > 0)
-                                diffY += 1;
-                            currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
-                        }
+                    if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+                    {
+                        var diffX = _tileSize.X - _mapTileSize.X;
+                        if (diffX % 2 > 0)
+                            diffX -= 1;
+                        var diffY = _tileSize.Y - _mapTileSize.Y;
+                        if (diffY % 2 > 0)
+                            diffY += 1;
+                        currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - _tileOffset;
+                    }
 
                     currentTile.TerrainSet = currentTerrainSet;
                     currentTile.Terrain = currentTerrain;

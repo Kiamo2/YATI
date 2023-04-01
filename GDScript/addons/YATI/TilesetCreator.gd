@@ -46,9 +46,10 @@ var _atlas_sources = null
 var _error_count = 0
 var _warning_count = 0
 var _map_tile_size: Vector2i
+var _grid_size: Vector2i
+var _tile_offset: Vector2i
 var _object_groups = null
 var _object_groups_counter: int = 0
-var _map_orientation
 var _tileset_orientation
 
 enum layer_type {
@@ -71,9 +72,8 @@ func set_base_path(source_file: String):
 	_base_path_tileset = _base_path_map
 
 
-func set_map_parameters(map_tile_size: Vector2i, map_orientation: String):
+func set_map_parameters(map_tile_size: Vector2i):
 	_map_tile_size = map_tile_size
-	_map_orientation = map_orientation
 
 
 func create_from_dictionary_array(tileSets: Array):
@@ -134,11 +134,19 @@ func create_or_append(tile_set: Dictionary):
 		_tileset.tile_size = _map_tile_size
 	_tile_count = tile_set.get("tilecount", 0)
 	_columns = tile_set.get("columns", 0)
-	_tileset_orientation = _map_orientation
+	_tileset_orientation = "orthogonal"
+	_grid_size = _tile_size
+	if tile_set.has("tileoffset"):
+		var to = tile_set["tileoffset"]
+		_tile_offset = Vector2i(to["x"], to["y"])
+	else:
+		_tile_offset = Vector2i.ZERO
 	if tile_set.has("grid"):
 		var grid = tile_set["grid"]
 		if grid.has("orientation"):
 			_tileset_orientation = grid["orientation"]
+		_grid_size.x = grid.get("width", _tile_size.x)
+		_grid_size.y = grid.get("height", _tile_size.y)
 
 	if _append:
 		_terrain_counter = 0
@@ -151,13 +159,6 @@ func create_or_append(tile_set: Dictionary):
 			_current_atlas_source.margins = Vector2i(tile_set["margin"], tile_set["margin"])
 		if tile_set.has("spacing"):
 			_current_atlas_source.separation = Vector2i(tile_set["spacing"], tile_set["spacing"])
-
-		var tile_offset
-		if tile_set.has("tileoffset"):
-			var to = tile_set["tileoffset"]
-			tile_offset = Vector2i(to["x"], to["y"])
-		else:
-			tile_offset = Vector2i.ZERO
 
 		var texture = load_image(tile_set["image"])
 		if not texture:
@@ -176,7 +177,7 @@ func create_or_append(tile_set: Dictionary):
 			_columns = image_width / _tile_size.x
 			_tile_count = _columns * image_height / _tile_size.x
 	
-		register_atlas_source(_atlas_source_counter, _tile_count, -1, tile_offset)
+		register_atlas_source(_atlas_source_counter, _tile_count, -1, _tile_offset)
 		var atlas_grid_size = _current_atlas_source.get_atlas_grid_size()
 		_current_max_x = atlas_grid_size.x - 1
 		_current_max_y = atlas_grid_size.y - 1
@@ -219,6 +220,7 @@ func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int
 	atlas_source_item["numTiles"] = num_tiles
 	atlas_source_item["assignedId"] = assigned_tile_id
 	atlas_source_item["tileOffset"] = tile_offset
+	atlas_source_item["tilesetOrientation"] = _tileset_orientation
 	_atlas_sources.push_back(atlas_source_item)
 	
 
@@ -280,15 +282,14 @@ func handle_tiles(tiles: Array):
 				#Error occurred
 				continue
 
-		if _tileset_orientation == "orthogonal":
-			if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
-				var diff_x = _tile_size.x - _map_tile_size.x
-				if diff_x % 2 != 0:
-					diff_x -= 1
-				var diff_y = _tile_size.y - _map_tile_size.y
-				if diff_y % 2 != 0:
-					diff_y += 1
-				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+		if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+			var diff_x = _tile_size.x - _map_tile_size.x
+			if diff_x % 2 != 0:
+				diff_x -= 1
+			var diff_y = _tile_size.y - _map_tile_size.y
+			if diff_y % 2 != 0:
+				diff_y += 1
+			current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 				
 		if tile.has("probability"):
 			current_tile.probability = tile["probability"]
@@ -369,11 +370,14 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 			break
 
 		var object_base_coords = Vector2(obj["x"], obj["y"])
-		object_base_coords -= Vector2(current_tile.texture_origin)
-		object_base_coords -= _tile_size / 2.0
 		object_base_coords = transpose_coords(object_base_coords.x, object_base_coords.y)
+		object_base_coords -= Vector2(current_tile.texture_origin)
 		if _tileset_orientation == "isometric":
-			object_base_coords.y += _tile_size.y / 2.0
+			object_base_coords.y += _grid_size.y / 2.0
+			if _grid_size.y != _tile_size.y:
+				object_base_coords.y += (_tile_size.y - _grid_size.y) / 2.0
+		else:
+			object_base_coords -= Vector2(_tile_size / 2.0)
 
 		var rot = obj.get("rotation", 0.0)
 		var sin_a = sin(rot * PI / 180.0)
@@ -442,7 +446,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 
 func transpose_coords(x: float, y: float):
 	if _tileset_orientation == "isometric":
-		var trans_x = (x - y) * _map_tile_size.x / _map_tile_size.y / 2.0
+		var trans_x = (x - y) * _grid_size.x / _grid_size.y / 2.0
 		var trans_y = (x + y) * 0.5
 		return Vector2(trans_x, trans_y)
 
@@ -653,15 +657,14 @@ func handle_wangsets(wangsets):
 				if current_tile == null:
 					break
 
-				if _tileset_orientation == "orthogonal":
-					if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
-						var diff_x = _tile_size.x - _map_tile_size.x
-						if diff_x % 2 != 0:
-							diff_x -= 1
-						var diff_y = _tile_size.y - _map_tile_size.y
-						if diff_y % 2 != 0:
-							diff_y += 1
-						current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2)
+				if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+					var diff_x = _tile_size.x - _map_tile_size.x
+					if diff_x % 2 != 0:
+						diff_x -= 1
+					var diff_y = _tile_size.y - _map_tile_size.y
+					if diff_y % 2 != 0:
+						diff_y += 1
+					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 
 				current_tile.terrain_set = current_terrain_set
 				current_tile.terrain = current_terrain

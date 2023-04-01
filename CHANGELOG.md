@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.2] - 2023-04-01
+
+### Fixed
+
+- Isometric: Problem resolved with offsets introduced in 1.2.0 (issue #6)
+- Isometric: Tilesets used by isometric maps can be orthogonal or isometric, this now no longer matters
+- Isometric: Enhanced position and rotation calculations for tile collision elements
+
 ## [1.2.1] - 2023-03-29
 
 ### Fixed
