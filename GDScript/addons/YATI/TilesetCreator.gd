@@ -373,7 +373,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		object_base_coords = transpose_coords(object_base_coords.x, object_base_coords.y)
 		object_base_coords -= Vector2(current_tile.texture_origin)
 		if _tileset_orientation == "isometric":
-			object_base_coords.y += _grid_size.y / 2.0
+			object_base_coords.y -= _grid_size.y / 2.0
 			if _grid_size.y != _tile_size.y:
 				object_base_coords.y += (_tile_size.y - _grid_size.y) / 2.0
 		else:
@@ -430,8 +430,8 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		if phys < 0: continue
 		polygon_index += 1
 		ensure_layer_existing(layer_type.PHYSICS, phys)
-		current_tile.add_collision_polygon(0)
-		current_tile.set_collision_polygon_points(0, polygon_index, polygon)
+		current_tile.add_collision_polygon(phys)
+		current_tile.set_collision_polygon_points(phys, polygon_index, polygon)
 		if not obj.has("properties"): continue
 		for property in obj["properties"]:
 			var name = property.get("name", "")
@@ -584,28 +584,28 @@ func handle_tileset_properties(properties: Array):
 			layer_index = int(name.substr(15))
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			_tileset.set_physics_layer_collision_mask(layer_index, get_bitmask_integer_from_string(val, 32))
-		elif name.to_lower() == "navigation_layers" and type == "string":
+		elif name.to_lower() == "layers" and type == "string":
 			ensure_layer_existing(layer_type.NAVIGATION, 0)
 			_tileset.set_navigation_layer_layers(0, get_bitmask_integer_from_string(val, 32))
-		elif name.to_lower().begins_with("navigation_layers_") and type == "string":
-			if not name.substr(18).is_valid_int(): continue
-			layer_index = int(name.substr(18))
+		elif name.to_lower().begins_with("layers_") and type == "string":
+			if not name.substr(7).is_valid_int(): continue
+			layer_index = int(name.substr(7))
 			ensure_layer_existing(layer_type.NAVIGATION, layer_index)
 			_tileset.set_navigation_layer_layers(layer_index, get_bitmask_integer_from_string(val, 32))
-		elif name.to_lower() == "occlusion_light_mask" and type == "string":
+		elif name.to_lower() == "light_mask" and type == "string":
 			ensure_layer_existing(layer_type.OCCLUSION, 0)
 			_tileset.set_occlusion_layer_light_mask(0, get_bitmask_integer_from_string(val, 20))
-		elif name.to_lower().begins_with("occlusion_light_mask_") and type == "string":
-			if not name.substr(21).is_valid_int(): continue
-			layer_index = int(name.substr(21))
+		elif name.to_lower().begins_with("light_mask_") and type == "string":
+			if not name.substr(11).is_valid_int(): continue
+			layer_index = int(name.substr(11))
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_light_mask(layer_index, get_bitmask_integer_from_string(val, 20))
-		elif name.to_lower() == "occlusion_sdf_collision_" and type == "bool":
+		elif name.to_lower() == "sdf_collision_" and type == "bool":
 			ensure_layer_existing(layer_type.OCCLUSION, 0)
 			_tileset.set_occlusion_layer_sdf_collision(0, val.to_lower() == "true")
-		elif name.to_lower().begins_with("occlusion_sdf_collision_") and type == "bool":
-			if not name.substr(24).is_valid_int(): continue
-			layer_index = int(name.substr(24))
+		elif name.to_lower().begins_with("sdf_collision_") and type == "bool":
+			if not name.substr(14).is_valid_int(): continue
+			layer_index = int(name.substr(14))
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_sdf_collision(layer_index, val.to_lower() == "true")
 		else:

@@ -749,36 +749,36 @@ public class TilesetCreator
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 _tileset.SetPhysicsLayerCollisionMask(layerIndex, GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower() == "navigation_layers" && type == "string")
+            else if (name.ToLower() == "layers" && type == "string")
             {
                 EnsureLayerExisting(LayerType.Navigation, 0);
                 _tileset.SetNavigationLayerLayers(0, GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower().StartsWith("navigation_layers_") && type == "string")
+            else if (name.ToLower().StartsWith("layers_") && type == "string")
             {
-                if (!int.TryParse(name.AsSpan(18), out layerIndex)) continue;
+                if (!int.TryParse(name.AsSpan(7), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Navigation, layerIndex);
                 _tileset.SetNavigationLayerLayers(layerIndex, GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower() == "occlusion_light_mask" && type == "string")
+            else if (name.ToLower() == "light_mask" && type == "string")
             {
                 EnsureLayerExisting(LayerType.Occlusion, 0);
                 _tileset.SetOcclusionLayerLightMask(0, (int)GetBitmaskIntegerFromString(val, 20));
             }
-            else if (name.ToLower().StartsWith("occlusion_light_mask_") && type == "string")
+            else if (name.ToLower().StartsWith("light_mask_") && type == "string")
             {
-                if (!int.TryParse(name.AsSpan(21), out layerIndex)) continue;
+                if (!int.TryParse(name.AsSpan(11), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerLightMask(layerIndex, (int)GetBitmaskIntegerFromString(val, 20));
             }
-            else if (name.ToLower() == "occlusion_sdf_collision" && type == "bool")
+            else if (name.ToLower() == "sdf_collision" && type == "bool")
             {
                 EnsureLayerExisting(LayerType.Occlusion, 0);
                 _tileset.SetOcclusionLayerSdfCollision(0, bool.Parse(val));
             }
-            else if (name.ToLower().StartsWith("occlusion_sdf_collision_") && type == "bool")
+            else if (name.ToLower().StartsWith("sdf_collision_") && type == "bool")
             {
-                if (!int.TryParse(name.AsSpan(24), out layerIndex)) continue;
+                if (!int.TryParse(name.AsSpan(14), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
             }

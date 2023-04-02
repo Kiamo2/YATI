@@ -7,13 +7,13 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 
 Tested on Windows 10 with Godot 4.0.1 and Tiled 1.10 (Tiled maps from older Tiled versions may work too)
 
-Latest version: 1.2.2
+Latest version: 1.2.3
 
 ## Installation
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v1.2.2/v1.2.2-gdscript.zip) or the [CSharp version](../../releases/download/v1.2.2/v1.2.2-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v1.2.3/v1.2.3-gdscript.zip) or the [CSharp version](../../releases/download/v1.2.3/v1.2.3-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
 - **C# version:** Run your project once for building the plugin, otherwise enabling will fail
