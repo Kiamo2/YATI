@@ -145,8 +145,8 @@ public class DictionaryFromXml
                 {
                     // Add nested "layers" array
                     attributes.Add("type", "group");
-                    if (_currentDictionary.ContainsKey("layers"))
-                        _currentArray = (Array)_currentDictionary["layers"];
+                    if (_currentDictionary.TryGetValue("layers", out var layersVal))
+                        _currentArray = (Array)layersVal;
                     else
                     {
                         _currentArray = new Array();
@@ -157,9 +157,9 @@ public class DictionaryFromXml
 
                 if ((dictKey != "animation") && (dictKey != "properties"))
                     dictKey += "s";
-                if (_currentDictionary.ContainsKey(dictKey))
+                if (_currentDictionary.TryGetValue(dictKey, out var dictVal))
                 {
-                    _currentArray = (Array)_currentDictionary[dictKey];
+                    _currentArray = (Array)dictVal;
                 }
                 else
                 {
@@ -199,13 +199,13 @@ public class DictionaryFromXml
                 return Error.Ok;
             case "data":
                 _currentDictionary.Add("type", "tilelayer");
-                if (attributes.ContainsKey("encoding"))
+                if (attributes.TryGetValue("encoding", out var encoding))
                 {
-                    _currentDictionary.Add("encoding", attributes["encoding"]);
+                    _currentDictionary.Add("encoding", encoding);
                     _csvEncoded = attributes["encoding"] == "csv";
                 }
-                if (attributes.ContainsKey("compression"))
-                    _currentDictionary.Add("compression", attributes["compression"]);
+                if (attributes.TryGetValue("compression", out var attribute))
+                    _currentDictionary.Add("compression", attribute);
                     
                 return Error.Ok;
             case "tileset":

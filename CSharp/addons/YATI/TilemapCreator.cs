@@ -133,9 +133,9 @@ public class TilemapCreator
         //_parallaxOriginY = (int)baseDictionary.GetValueOrDefault("parallaxoriginy", 0);
         _backgroundColor = (string)baseDictionary.GetValueOrDefault("backgroundcolor", "");
 
-        if (baseDictionary.ContainsKey("tilesets"))
+        if (baseDictionary.TryGetValue("tilesets", out var tsVal))
         {
-            var tileSets = (Array<Dictionary>)baseDictionary["tilesets"];
+            var tileSets = (Array<Dictionary>)tsVal;
             foreach (var tileSet in tileSets)
                 _firstGids.Add((int)tileSet["firstgid"]);
             var tilesetCreator = new TilesetCreator();
@@ -195,8 +195,8 @@ public class TilemapCreator
             _background.Owner = _baseNode;
         }
 
-        if (baseDictionary.ContainsKey("layers"))
-            foreach (var layer in (Array<Dictionary>)baseDictionary["layers"])
+        if (baseDictionary.TryGetValue("layers", out var layers))
+            foreach (var layer in (Array<Dictionary>)layers)
                 HandleLayer(layer, _baseNode);
 
         if (_parallaxBackground.GetChildCount() == 0)
@@ -268,7 +268,7 @@ public class TilemapCreator
                         _tilemapOffsetX = layerOffsetX;
                         _tilemapOffsetY = layerOffsetY;
                         _tilemap.Position = new Vector2(layerOffsetX, layerOffsetY);
-                        if (_mapOrientation == "isometric")
+                        if (_mapOrientation is "isometric" or "staggered")
                             _tilemap.YSortEnabled = true;
                     }
                     else
@@ -290,10 +290,10 @@ public class TilemapCreator
                 if (!_useDefaultFilter)
                     _tilemap.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
 
-                if (_infinite && layer.ContainsKey("chunks"))
+                if (_infinite && layer.TryGetValue("chunks", out var chunks))
                 {
                     // Chunks
-                    foreach (var chunk in (Array<Dictionary>)layer["chunks"])
+                    foreach (var chunk in (Array<Dictionary>)chunks)
                     {
                         var offsetX = (int)chunk["x"];
                         var offsetY = (int)chunk["y"];
@@ -303,16 +303,16 @@ public class TilemapCreator
                             CreateMapFromData(chunkData, offsetX, offsetY, chunkWidth);
                     }
                 }
-                else if (layer.ContainsKey("data"))
+                else if (layer.TryGetValue("data", out var dataVal))
                 {
                     // Data
-                    var data = HandleData(layer["data"]);
+                    var data = HandleData(dataVal);
                     if (data != null)
                         CreateMapFromData(data, 0, 0, _mapWidth);
                 }
 
-                if (layer.ContainsKey("properties"))
-                    HandleProperties(_tilemap, (Array<Dictionary>)layer["properties"]);
+                if (layer.TryGetValue("properties", out var props))
+                    HandleProperties(_tilemap, (Array<Dictionary>)props);
               
                 if (!_mapLayersToTilemaps)
                     _tmLayerCounter++;
@@ -324,8 +324,8 @@ public class TilemapCreator
                 var layerNode = new Node2D();
                 HandleParallaxes(parent, layerNode, layer);
 
-                if (layer.ContainsKey("name"))
-                    layerNode.Name = (string)layer["name"];
+                if (layer.TryGetValue("name", out var name))
+                    layerNode.Name = (string)name;
                 if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
                     layerNode.Modulate = new Color(tintColor, layerOpacity);
                 layerNode.Visible = (bool)layer.GetValueOrDefault("visible", true);
@@ -337,12 +337,12 @@ public class TilemapCreator
                 if (_mapOrientation is "isometric" or "staggered")
                     layerNode.YSortEnabled = true;
 
-                if (layer.ContainsKey("objects"))
-                    foreach (var obj in (Array<Dictionary>)layer["objects"])
+                if (layer.TryGetValue("objects", out var objs))
+                    foreach (var obj in (Array<Dictionary>)objs)
                         HandleObject(obj, layerNode, _tileset, Vector2.Zero);
 
-                if (layer.ContainsKey("properties"))
-                    HandleProperties(layerNode, (Array<Dictionary>)layer["properties"]);
+                if (layer.TryGetValue("properties", out var props))
+                    HandleProperties(layerNode, (Array<Dictionary>)props);
                 
                 break;
             }
@@ -363,8 +363,8 @@ public class TilemapCreator
                 foreach (Dictionary childLayer in (Array)layer["layers"])
                     HandleLayer(childLayer, groupNode);
 
-                if (layer.ContainsKey("properties"))
-                    HandleProperties(groupNode, (Array<Dictionary>)layer["properties"]);
+                if (layer.TryGetValue("properties", out var props))
+                    HandleProperties(groupNode, (Array<Dictionary>)props);
                 
                 break;
             }
@@ -406,8 +406,8 @@ public class TilemapCreator
                     _errorCount++;
                 }
 
-                if (layer.ContainsKey("properties"))
-                    HandleProperties(textureRect, (Array<Dictionary>)layer["properties"]);
+                if (layer.TryGetValue("properties", out var props))
+                    HandleProperties(textureRect, (Array<Dictionary>)props);
                 
                 break;
             }
@@ -605,7 +605,7 @@ public class TilemapCreator
             if (atlasWidth <= 0) continue;
 
             var effectiveGid = gid - _firstGids[GetFirstGidIndex(gid)];
-            var atlasCoords = new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
+            var atlasCoords = atlasSource.GetAtlasGridSize() == Vector2I.One ? Vector2I.Zero : new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
             if (!atlasSource.HasTile(atlasCoords))
             {
                 atlasSource.CreateTile(atlasCoords);
@@ -690,15 +690,15 @@ public class TilemapCreator
             classString = (string)obj.GetValueOrDefault("type", "");
         var objClass = GetObjectClass(classString);
 
-        if (obj.ContainsKey("template"))
+        if (obj.TryGetValue("template", out var tplVal))
         {
-            var templatePath = _basePath.PathJoin((string)obj["template"]);
+            var templatePath = _basePath.PathJoin((string)tplVal);
             var templateDict = DictionaryBuilder.GetDictionary(templatePath);
             //var templateFirstGids = new Array<int>();
             TileSet templateTileSet = null;
-            if (templateDict.ContainsKey("tilesets"))
+            if (templateDict.TryGetValue("tilesets", out var tsVal))
             {
-                var tileSets = (Array<Dictionary>)templateDict["tilesets"];
+                var tileSets = (Array<Dictionary>)tsVal;
                 //foreach (var tileSet in tileSets)
                 //    templateFirstGids.Add((int)tileSet["firstgid"]);
                 var tilesetCreator = new TilesetCreator();
@@ -709,9 +709,9 @@ public class TilemapCreator
                 _warningCount += tilesetCreator.GetWarningCount();
             }
 
-            if (templateDict.ContainsKey("objects"))
+            if (templateDict.TryGetValue("objects", out var objs))
             {
-                foreach (var templateObj in (Array<Dictionary>)templateDict["objects"])
+                foreach (var templateObj in (Array<Dictionary>)objs)
                 {
                     HandleObject(templateObj, layerNode, templateTileSet, new Vector2(objX, objY));
                 }
@@ -740,8 +740,8 @@ public class TilemapCreator
                 ((Node2D)instance).Position = TransposeCoords(objX, objY);
                 ((Node2D)instance).RotationDegrees = objRot;
                 ((Node2D)instance).Visible = objVisible;
-                if (obj.ContainsKey("properties"))
-                    HandleProperties(instance, (Array<Dictionary>)obj["properties"]);
+                if (obj.TryGetValue("properties", out var props))
+                    HandleProperties(instance, (Array<Dictionary>)props);
             }
 
             return;
@@ -860,17 +860,17 @@ public class TilemapCreator
                     parent.AddChild(objSprite);
                     AddCollisionShapes(parent, GetObjectGroup(idx), objWidth, objHeight, flippedH, flippedV, objSprite.Scale);
                 }
-                if (obj.ContainsKey("properties"))
-                    HandleProperties(parent, (Array<Dictionary>)obj["properties"]);
+                if (obj.TryGetValue("properties", out var props))
+                    HandleProperties(parent, (Array<Dictionary>)props);
             }
 
             objSprite.FlipH = flippedH;
             objSprite.FlipV = flippedV;
 
-            if (obj.ContainsKey("properties"))
-                HandleProperties(objSprite, (Array<Dictionary>)obj["properties"]);
+            if (obj.TryGetValue("properties", out var props2))
+                HandleProperties(objSprite, (Array<Dictionary>)props2);
         }
-        else if (obj.ContainsKey("text"))
+        else if (obj.TryGetValue("text", out var txtVal))
         {
             var objText = new Label();
             layerNode.AddChild(objText);
@@ -881,7 +881,7 @@ public class TilemapCreator
             objText.ClipText = true;
             objText.RotationDegrees = objRot;
             objText.Visible = objVisible;
-            var txt = (Dictionary)obj["text"];
+            var txt = (Dictionary)txtVal;
             objText.Text = (string)txt.GetValueOrDefault("text", "Hello World");
             var wrap = (bool)txt.GetValueOrDefault("wrap", false);
             objText.AutowrapMode = wrap ? TextServer.AutowrapMode.WordSmart : TextServer.AutowrapMode.Off;
@@ -911,8 +911,8 @@ public class TilemapCreator
             objText.AddThemeFontSizeOverride("font_size", fontSize);
             var fontColor = (string)txt.GetValueOrDefault("color", "#000000");
             objText.AddThemeColorOverride("font_color", new Color(fontColor));
-            if (obj.ContainsKey("properties"))
-                HandleProperties(objText, (Array<Dictionary>)obj["properties"]);
+            if (obj.TryGetValue("properties", out var props))
+                HandleProperties(objText, (Array<Dictionary>)props);
         }
         else if (!obj.ContainsKey("template"))
         {
@@ -936,8 +936,8 @@ public class TilemapCreator
                 marker.Position = objectBaseCoords;
                 marker.RotationDegrees = objRot;
                 marker.Visible = objVisible;
-                if (obj.ContainsKey("properties"))
-                    HandleProperties(marker, (Array<Dictionary>)obj["properties"]);
+                if (obj.TryGetValue("properties", out var props))
+                    HandleProperties(marker, (Array<Dictionary>)props);
             }
             else if (obj.ContainsKey("polygon"))
             {
@@ -969,8 +969,8 @@ public class TilemapCreator
                         polygonShape.Name = (objName != "") ? objName : "Polygon Shape";
                         polygonShape.Position = Vector2.Zero;
                         polygonShape.RotationDegrees = objRot;
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(co, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(co, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Navigation:
@@ -987,8 +987,8 @@ public class TilemapCreator
                         navRegion.NavigationPolygon = navPoly;
                         navPoly.AddOutline(PolygonFromArray((Array<Dictionary>)obj["polygon"]));
                         navPoly.MakePolygonsFromOutlines();
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(navRegion, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(navRegion, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Occluder:
@@ -1004,8 +1004,8 @@ public class TilemapCreator
                         var occPoly = new OccluderPolygon2D();
                         lightOcc.Occluder = occPoly;
                         occPoly.Polygon = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(lightOcc, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(lightOcc, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Polygon:
@@ -1019,8 +1019,8 @@ public class TilemapCreator
                         polygon.Visible = objVisible;
                         polygon.Polygon = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
                         
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(polygon, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(polygon, (Array<Dictionary>)props);
                         break;
                     }
                 }
@@ -1042,8 +1042,8 @@ public class TilemapCreator
                     
                         line.Points = PolygonFromArray((Array<Dictionary>)obj["polyline"]);
 
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(line, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(line, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Path:
@@ -1061,14 +1061,14 @@ public class TilemapCreator
                             curve.AddPoint(new Vector2((float)point["x"], (float)point["y"]));
                         path.Curve = curve;
 
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(path, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(path, (Array<Dictionary>)props);
                         break;
                     }
                     default:
                     {
                         CollisionObject2D co;
-                        if (objClass == ObjectClass.Body)
+                        if (objClass == ObjectClass.Area)
                         {
                             co = new Area2D();
                             layerNode.AddChild(co);
@@ -1101,8 +1101,8 @@ public class TilemapCreator
                             collisionShape.Name = "Segment Shape";
                         }
 
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(co, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(co, (Array<Dictionary>)props);
                         break;
                     }
                 }
@@ -1169,8 +1169,8 @@ public class TilemapCreator
 
                         collisionShape.Position = TransposeCoords(objWidth / 2.0f, objHeight / 2.0f, true);
                         collisionShape.RotationDegrees = objRot;
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(co, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(co, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Navigation when obj.ContainsKey("ellipse"):
@@ -1191,8 +1191,8 @@ public class TilemapCreator
                         navRegion.NavigationPolygon = navPoly;
                         navPoly.AddOutline(PolygonFromRectangle(objWidth, objHeight));
                         navPoly.MakePolygonsFromOutlines();
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(navRegion, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(navRegion, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Occluder when obj.ContainsKey("ellipse"):
@@ -1212,8 +1212,8 @@ public class TilemapCreator
                         var occPoly = new OccluderPolygon2D();
                         lightOcc.Occluder = occPoly;
                         occPoly.Polygon = PolygonFromRectangle(objWidth, objHeight);
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(lightOcc, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(lightOcc, (Array<Dictionary>)props);
                         break;
                     }
                     case ObjectClass.Polygon when obj.ContainsKey("ellipse"):
@@ -1231,8 +1231,8 @@ public class TilemapCreator
                         polygon.Visible = objVisible;
                         polygon.Polygon = PolygonFromRectangle(objWidth, objHeight);
                         
-                        if (obj.ContainsKey("properties"))
-                            HandleProperties(polygon, (Array<Dictionary>)obj["properties"]);
+                        if (obj.TryGetValue("properties", out var props))
+                            HandleProperties(polygon, (Array<Dictionary>)props);
                         break;
                     }
                 }
@@ -1263,9 +1263,9 @@ public class TilemapCreator
                 tileHeight = _mapTileHeight;
             }
 
-            if (obj.ContainsKey("polygon"))
+            if (obj.TryGetValue("polygon", out var pts))
             {
-                var polygonPoints = (Array<Dictionary>)obj["polygon"];
+                var polygonPoints = (Array<Dictionary>)pts;
                 var rot = (float)obj.GetValueOrDefault("rotation", 0.0f);
                 var polygon = new Vector2[polygonPoints.Count];
                 var i = 0;

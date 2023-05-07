@@ -145,8 +145,8 @@ Custom properties which are not in this list or not fitting to the element are a
 
 Remarks:  
 (*) refers to a string consisting of comma separated values, each value representing an element number to enable.  
-Example for a collision layer property, where layers 1,3,5,6,7 are to enable:  
-`collision_layer=1,3,5-7` (you can set ranges like 5-7 in this example)
+Example for a collision layer property (name+value), where layers 1,3,5,6,7 on physics layer 0 are to enable:  
+`collision_layer_0 = 1,3,5-7` (you can set ranges like 5-7 in this example)
 
 (col) refers to a string consisting of an # followed by hex (RGB) values. Example: `#4e4aff`
 

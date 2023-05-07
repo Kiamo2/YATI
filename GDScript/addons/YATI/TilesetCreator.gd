@@ -307,35 +307,40 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 	var frame_count: int = 0
 	var separation_x: int = 0
 	var separation_y: int = 0
+	var separation_vect = Vector2(separation_x, separation_y)
 	var anim_columns: int = 0
 	var tile_coords = Vector2(tile_id % _columns, tile_id / _columns)
+	var max_diff_x = _columns - tile_coords.x
+	var max_diff_y = _tile_count / _columns - tile_coords.y
+	var diff_x = 0
+	var diff_y = 0
 	for frame in frames:
 		frame_count += 1
 		var frame_tile_id: int = frame["tileid"]
 		if frame_count == 2:
-			var diff_x = (frame_tile_id - tile_id) % _columns
-			var diff_y = (frame_tile_id - tile_id) / _columns
-			if diff_x == 0 and diff_y > 0 and diff_y < 4:
+			diff_x = (frame_tile_id - tile_id) % _columns
+			diff_y = (frame_tile_id - tile_id) / _columns
+			if diff_x == 0 and diff_y > 0 and diff_y < max_diff_y:
 				separation_y = diff_y - 1
 				anim_columns = 1
-			elif diff_y == 0 and diff_x > 0 and diff_x < 4:
+			elif diff_y == 0 and diff_x > 0 and diff_x < max_diff_x:
 				separation_x = diff_x - 1
 				anim_columns = 0
 			else:
 				print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
 				_warning_count += 1
 				return
+			separation_vect = Vector2(separation_x, separation_y)
 
-			if frames.size() > 2:
-				var next_frame_tile_id: int = frames[2]["tileid"]
-				var compare_diff_x = (next_frame_tile_id - frame_tile_id) % _columns
-				var compare_diff_y = (next_frame_tile_id - frame_tile_id) / _columns
-				if compare_diff_x != diff_x or compare_diff_y != diff_y:
-					print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
-					_warning_count += 1
-					return
+		if frame_count > 1 and frame_count < frames.size():
+			var next_frame_tile_id: int = frames[frame_count]["tileid"]
+			var compare_diff_x = (next_frame_tile_id - frame_tile_id) % _columns
+			var compare_diff_y = (next_frame_tile_id - frame_tile_id) / _columns
+			if compare_diff_x != diff_x or compare_diff_y != diff_y:
+				print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
+				_warning_count += 1
+				return
 
-		var separation_vect = Vector2(separation_x, separation_y)
 		if _current_atlas_source.has_room_for_tile(tile_coords, Vector2.ONE, anim_columns, separation_vect, frame_count, tile_coords):
 			_current_atlas_source.set_tile_animation_separation(tile_coords, separation_vect)
 			_current_atlas_source.set_tile_animation_columns(tile_coords, anim_columns)
@@ -609,7 +614,7 @@ func handle_tileset_properties(properties: Array):
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_sdf_collision(layer_index, val.to_lower() == "true")
 		else:
-			_tileset.set_meta(property["name"], property.get("value", ""))
+			_tileset.set_meta(name, val)
 
 
 func ensure_layer_existing(tp: layer_type, layer: int):
@@ -648,7 +653,7 @@ func handle_wangsets(wangsets):
 		_tileset.set_terrain_set_mode(current_terrain_set, terrain_mode)
 
 		if wangset.has("colors"):
-			_tileset.set_terrain_color(current_terrain_set, _terrain_counter, Color((wangset["colors"])[0]["color"]))
+			_tileset.set_terrain_color(current_terrain_set, _terrain_counter, Color(wangset["colors"][0]["color"]))
 
 		if wangset.has("wangtiles"):
 			for wangtile in wangset["wangtiles"]:

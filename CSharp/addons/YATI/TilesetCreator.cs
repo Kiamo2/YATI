@@ -92,9 +92,9 @@ public class TilesetCreator
         foreach (var tileSet in tileSets)
         {
             var tileSetDict = tileSet;
-            if (tileSet.ContainsKey("source"))
+            if (tileSet.TryGetValue("source", out var srcVal))
             {
-                var checkedFile = (string)tileSet["source"];
+                var checkedFile = (string)srcVal;
                 
                 // Catch the AutoMap Rules tileset (is Tiled internal)
                 if (checkedFile.StartsWith(":/automap"))
@@ -155,22 +155,22 @@ public class TilesetCreator
         _tileSize = new Vector2I((int)tileSet["tilewidth"], (int)tileSet["tileheight"]);
         if (!_append)
             _tileset.TileSize = _mapTileSize;
-        _tileCount = tileSet.ContainsKey("tilecount") ? (int)tileSet["tilecount"] : 0;
-        _columns = tileSet.ContainsKey("columns") ? (int)tileSet["columns"] : 0;
+        _tileCount = tileSet.TryGetValue("tilecount", out var tileCount) ? (int)tileCount : 0;
+        _columns = tileSet.TryGetValue("columns", out var columns) ? (int)columns : 0;
         _tilesetOrientation = "orthogonal";
         _gridSize = _tileSize;
-        if (tileSet.ContainsKey("tileoffset"))
+        if (tileSet.TryGetValue("tileoffset", out var toVal))
         {
-            var to = (Dictionary)tileSet["tileoffset"];
+            var to = (Dictionary)toVal;
             _tileOffset = new Vector2I((int)to["x"], (int)to["y"]);
         }
         else
             _tileOffset = Vector2I.Zero;
-        if (tileSet.ContainsKey("grid"))
+        if (tileSet.TryGetValue("grid", out var gridVal))
         {
-            var grid = (Dictionary)tileSet["grid"];
-            if (grid.ContainsKey("orientation"))
-                _tilesetOrientation = (string)grid["orientation"];
+            var grid = (Dictionary)gridVal;
+            if (grid.TryGetValue("orientation", out var orient))
+                _tilesetOrientation = (string)orient;
             _gridSize.X = (int)grid.GetValueOrDefault("width", _tileSize.X);
             _gridSize.Y = (int)grid.GetValueOrDefault("height", _tileSize.Y);
         }
@@ -178,7 +178,7 @@ public class TilesetCreator
         if (_append)
             _terrainCounter = 0;
 
-        if (tileSet.ContainsKey("image"))
+        if (tileSet.TryGetValue("image", out var imagePath))
         {
             _currentAtlasSource = new TileSetAtlasSource();
             _tileset.AddSource(_currentAtlasSource, _atlasSourceCounter);
@@ -188,7 +188,7 @@ public class TilesetCreator
             if (tileSet.ContainsKey("spacing"))
                 _currentAtlasSource.Separation = new Vector2I((int)tileSet["spacing"], (int)tileSet["spacing"]);
             
-            var texture = LoadImage((string)tileSet["image"]);
+            var texture = LoadImage((string)imagePath);
             if (texture == null)
                 // Can't continue without texture
                 return;
@@ -197,8 +197,8 @@ public class TilesetCreator
  
             if ((_tileCount == 0) || (_columns == 0))
             {
-                var imagewidth = tileSet.ContainsKey("imagewidth") ? (int)tileSet["imagewidth"] : 0;
-                var imageheight = tileSet.ContainsKey("imageheight") ? (int)tileSet["imageheight"] : 0;
+                var imagewidth = tileSet.TryGetValue("imagewidth", out var imgWidth) ? (int)imgWidth : 0;
+                var imageheight = tileSet.TryGetValue("imageheight", out var imgHeight) ? (int)imgHeight : 0;
                 if (imagewidth == 0)
                 {
                     var img = _currentAtlasSource.Texture;
@@ -215,12 +215,12 @@ public class TilesetCreator
             _atlasSourceCounter++;
         }
         
-        if (tileSet.ContainsKey("tiles"))
-            HandleTiles((Array<Dictionary>)tileSet["tiles"]);
-        if (tileSet.ContainsKey("wangsets"))
-            HandleWangsets((Array<Dictionary>)tileSet["wangsets"]);
-        if (tileSet.ContainsKey("properties"))
-            HandleTilesetProperties((Array<Dictionary>)tileSet["properties"]);
+        if (tileSet.TryGetValue("tiles", out var tiles))
+            HandleTiles((Array<Dictionary>)tiles);
+        if (tileSet.TryGetValue("wangsets", out var wangsets))
+            HandleWangsets((Array<Dictionary>)wangsets);
+        if (tileSet.TryGetValue("properties", out var props))
+            HandleTilesetProperties((Array<Dictionary>)props);
     }
 
     private Texture2D LoadImage(string path)
@@ -359,14 +359,14 @@ public class TilesetCreator
                 currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - _tileOffset;
             }
             
-            if (tile.ContainsKey("probability"))
-                currentTile.Probability = (int)tile["probability"];
-            if (tile.ContainsKey("animation"))
-                HandleAnimation((Array<Dictionary>)tile["animation"], tileId);
-            if (tile.ContainsKey("objectgroup"))
-                HandleObjectgroup((Dictionary)tile["objectgroup"], currentTile);
-            if (tile.ContainsKey("properties"))
-                HandleTileProperties((Array<Dictionary>)tile["properties"], currentTile);
+            if (tile.TryGetValue("probability", out var probVal))
+                currentTile.Probability = (float)probVal;
+            if (tile.TryGetValue("animation", out var animVal))
+                HandleAnimation((Array<Dictionary>)animVal, tileId);
+            if (tile.TryGetValue("objectgroup", out var objgrp))
+                HandleObjectgroup((Dictionary)objgrp, currentTile);
+            if (tile.TryGetValue("properties", out var props))
+                HandleTileProperties((Array<Dictionary>)props, currentTile);
         }
 
         _atlasSourceCounter = lastAtlasSourceCount;
@@ -377,56 +377,62 @@ public class TilesetCreator
         var frameCount = 0;
         var separationX = 0;
         var separationY = 0;
+        var separationVect = new Vector2I(separationX, separationY);
         var animColumns = 0;
         var tileCoords = new Vector2I(tileId % _columns, tileId / _columns);
+        var maxDiffX = _columns - tileCoords.X;
+        var maxDiffY = _tileCount / _columns - tileCoords.Y;
+        var diffX = 0;
+        var diffY = 0;
         foreach (var frame in frames)
         {
             frameCount++;
             var frameTileId = (int)frame["tileid"];
             if (frameCount == 2)
             {
-                var diffX = (frameTileId - tileId) % _columns;
-                var diffY = (frameTileId - tileId) / _columns;
-                if ((diffX == 0) && diffY is > 0 and < 4)
+                diffX = (frameTileId - tileId) % _columns;
+                diffY = (frameTileId - tileId) / _columns;
+                if (diffX == 0 && diffY > 0 && diffY < maxDiffY)
                 {
                     separationY = diffY - 1;
                     animColumns = 1;
                 }
-                else if ((diffY == 0) && diffX is > 0 and < 4)
+                else if (diffY == 0 && diffX > 0 && diffX < maxDiffX)
                 {
                     separationX = diffX - 1;
                     animColumns = 0;
                 }
                 else
                 {
-                    GD.PrintRich($"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
+                    GD.PrintRich(
+                        $"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
                     _warningCount++;
                     return;
                 }
 
-                if (frames.Count > 2)
+                separationVect = new Vector2I(separationX, separationY);
+            }
+            if (frameCount > 1 && frameCount < frames.Count) 
+            {
+                var nextFrameTileId = (int)frames[frameCount]["tileid"];
+                var compareDiffX = (nextFrameTileId - frameTileId) % _columns;
+                var compareDiffY = (nextFrameTileId - frameTileId) / _columns;
+                if ((compareDiffX != diffX) || (compareDiffY != diffY))
                 {
-                    var nextFrameTileId = (int)frames[2]["tileid"];
-                    var compareDiffX = (nextFrameTileId - frameTileId) % _columns;
-                    var compareDiffY = (nextFrameTileId - frameTileId) / _columns;
-                    if ((compareDiffX != diffX) || (compareDiffY != diffY))
-                    {
-                        GD.PrintRich($"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
-                        _warningCount++;
-                        return;
-                    }
+                    GD.PrintRich($"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
+                    _warningCount++;
+                    return;
                 }
             }
-
-            var separationVect = new Vector2I(separationX, separationY);
+ 
             if (_currentAtlasSource.HasRoomForTile(tileCoords, Vector2I.One, animColumns, separationVect, frameCount, tileCoords))
             {
                 _currentAtlasSource.SetTileAnimationSeparation(tileCoords, separationVect);
                 _currentAtlasSource.SetTileAnimationColumns(tileCoords, animColumns);
                 _currentAtlasSource.SetTileAnimationFramesCount(tileCoords,frameCount);
                 var durationInSecs = 1.0f;
-                if (frame.ContainsKey("duration"))
-                    durationInSecs = (float)frame["duration"] / 1000.0f;
+                if (frame.TryGetValue("duration", out var duration))
+                    durationInSecs = (float)duration / 1000.0f;
                 _currentAtlasSource.SetTileAnimationFrameDuration(tileCoords,frameCount-1, durationInSecs);
             }
             else
@@ -479,9 +485,9 @@ public class TilesetCreator
             var cosA = (float)Math.Cos(rot * Math.PI / 180.0f);
 
             Vector2[] polygon;
-            if (obj.ContainsKey("polygon"))
+            if (obj.TryGetValue("polygon", out var pts))
             {
-                var polygonPoints = (Array<Dictionary>)obj["polygon"];
+                var polygonPoints = (Array<Dictionary>)pts;
                 polygon = new Vector2[polygonPoints.Count];
                 var i = 0;
                 foreach (var pt in polygonPoints)
@@ -833,12 +839,12 @@ public class TilesetCreator
             var currentTerrainSet = _terrainSetsCounter;
             _tileset.AddTerrain(currentTerrainSet);
             var currentTerrain = _terrainCounter;
-            if (wangset.ContainsKey("name"))
-                _tileset.SetTerrainName(currentTerrainSet, _terrainCounter, (string)wangset["name"]);
+            if (wangset.TryGetValue("name", out var wsName))
+                _tileset.SetTerrainName(currentTerrainSet, _terrainCounter, (string)wsName);
 
             var terrainMode = TileSet.TerrainMode.Corners;
-            if (wangset.ContainsKey("type"))
-                terrainMode = (string)wangset["type"] switch
+            if (wangset.TryGetValue("type", out var wsType))
+                terrainMode = (string)wsType switch
                 {
                     "corner" => TileSet.TerrainMode.Corners,
                     "edge" => TileSet.TerrainMode.Sides,
@@ -848,12 +854,12 @@ public class TilesetCreator
             
             _tileset.SetTerrainSetMode(currentTerrainSet, terrainMode);
 
-            if (wangset.ContainsKey("colors"))
+            if (wangset.TryGetValue("colors", out var colors))
                 _tileset.SetTerrainColor(currentTerrainSet, _terrainCounter,
-                    new Color((Color)((Dictionary)((Array)wangset["colors"])[0])["color"]));
+                    new Color((Color)((Dictionary)((Array)colors)[0])["color"]));
 
-            if (wangset.ContainsKey("wangtiles"))
-                foreach (var wangtile in (Array<Dictionary>)wangset["wangtiles"])
+            if (wangset.TryGetValue("wangtiles", out var wangtiles))
+                foreach (var wangtile in (Array<Dictionary>)wangtiles)
                 {
                     var tileId = (int)wangtile["tileid"];
                     var currentTile = CreateTileIfNotExistingAndGetTileData(tileId);

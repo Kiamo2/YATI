@@ -31,7 +31,6 @@ const BACKGROUND_COLOR_RECT_NAME = "Background Color"
 const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
 
-
 var _map_orientation: String
 var _map_width: int = 0
 var _map_height: int = 0
@@ -287,7 +286,7 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		layer_node.position = Vector2(layer_pos_x + layer_offset_x, layer_pos_y + layer_offset_y)
 		if not _use_default_filter:
 			layer_node.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		if _map_orientation == "isometric":
+		if _map_orientation == "isometric" or _map_orientation == "staggered":
 			layer_node.y_sort_enabled = true
 
 		if layer.has("objects"):
@@ -497,7 +496,11 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		if atlas_width <= 0: continue
 
 		var effective_gid: int = gid - _first_gids[get_first_gid_index(gid)]
-		var atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
+		var atlas_coords
+		if atlas_source.get_atlas_grid_size() == Vector2i.ONE:
+			atlas_coords = Vector2i.ZERO
+		else:
+			atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 		if not atlas_source.has_tile(atlas_coords):
 			atlas_source.create_tile(atlas_coords)
 			var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
@@ -710,7 +713,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		var obj_text = Label.new()
 		layer_node.add_child(obj_text)
 		obj_text.owner = _base_node
-		obj_text.name = obj_name if obj_name != "" else "text"
+		obj_text.name = obj_name if obj_name != "" else "Text"
 		obj_text.position = transpose_coords(obj_x, obj_y)
 		obj_text.size = Vector2(obj_width, obj_height)
 		obj_text.clip_text = true
