@@ -172,6 +172,9 @@ func create(source_file: String):
 		for layer in base_dictionary["layers"]:
 			handle_layer(layer, _base_node)
 
+	if base_dictionary.has("properties"):
+		handle_properties(_base_node, base_dictionary["properties"], true)
+
 	if _parallax_background.get_child_count() == 0:
 		_base_node.remove_child(_parallax_background)
 
@@ -182,6 +185,8 @@ func create(source_file: String):
 	if _base_node.get_child_count() > 1: return _base_node
 
 	var ret = _base_node.get_child(0)
+	if base_dictionary.has("properties"):
+		handle_properties(ret, base_dictionary["properties"], true)
 	ret.name = _base_name
 	return ret
 
@@ -1265,7 +1270,7 @@ func get_object_group(index: int):
 	return ret
 
 
-func handle_properties(target_node: Node, properties: Array):
+func handle_properties(target_node: Node, properties: Array, map_properties: bool = false):
 	var has_children = false
 	if target_node is StaticBody2D or target_node is Area2D or target_node is CharacterBody2D or target_node is RigidBody2D:
 		has_children = target_node.get_child_count() > 0 
@@ -1300,12 +1305,16 @@ func handle_properties(target_node: Node, properties: Array):
 			target_node.light_mask = get_bitmask_integer_from_string(val, 20)
 		elif name.to_lower() == "visibility_layer" and type == "string":
 			target_node.visibility_layer = get_bitmask_integer_from_string(val, 20)	
-		elif name.to_lower() == "z_index" and type == "int":
+		elif name.to_lower() == "z_index" and type == "int" and (not target_node is TileMap or map_properties):
+			target_node.z_index = int(val)
+		elif name.to_lower() == "canvas_z_index" and type == "int":
 			target_node.z_index = int(val)
 		elif name.to_lower() == "z_as_relative" and type == "bool":
 			target_node.z_as_relative = val.to_lower() == "true"
 		elif name.to_lower() == "y_sort_enabled" and type == "bool":
 			target_node.y_sort_enabled = val.to_lower() == "true"
+			if target_node is TileMap:
+				target_node.set_layer_y_sort_enabled(_tm_layer_counter, val.to_lower() == "true")
 		elif name.to_lower() == "texture_filter" and type == "int":
 			if int(val) < CanvasItem.TEXTURE_FILTER_MAX:
 				target_node.texture_filter = int(val)
@@ -1328,7 +1337,18 @@ func handle_properties(target_node: Node, properties: Array):
 		elif name.to_lower() == "navigation_visibility_mode" and type == "int" and target_node is TileMap:
 			if int(val) < 3:
 				target_node.navigation_visibility_mode = int(val)
-			
+
+		# TileMap layer properties
+		elif name.to_lower() == "layer_z_index" and type == "int" and target_node is TileMap:
+			target_node.z_index = int(val)
+		elif name.to_lower() == "z_index" and type == "int" and target_node is TileMap:
+			if _map_layers_to_tilemaps:
+				target_node.z_index = int(val)
+			else:
+				target_node.set_layer_z_index(_tm_layer_counter, int(val))
+		elif name.to_lower() == "y_sort_origin" and type == "int" and target_node is TileMap:
+			target_node.set_layer_y_sort_origin(_tm_layer_counter, int(val))
+		
 		# CollisionObject2D properties
 		elif name.to_lower() == "disable_mode" and type == "int" and target_node is CollisionObject2D:
 			if int(val) < 3:

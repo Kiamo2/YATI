@@ -199,6 +199,9 @@ public class TilemapCreator
             foreach (var layer in (Array<Dictionary>)layers)
                 HandleLayer(layer, _baseNode);
 
+        if (baseDictionary.TryGetValue("properties", out var mapProps))
+            HandleProperties(_baseNode, (Array<Dictionary>)mapProps, true);
+
         if (_parallaxBackground.GetChildCount() == 0)
             _baseNode.RemoveChild(_parallaxBackground);
         
@@ -209,6 +212,8 @@ public class TilemapCreator
         if (_baseNode.GetChildCount() > 1) return _baseNode;
 
         var ret = (Node2D)_baseNode.GetChild(0);
+        if (baseDictionary.TryGetValue("properties", out mapProps))
+            HandleProperties(ret, (Array<Dictionary>)mapProps, true);
         ret.Name = _baseName;
         return ret;
     }
@@ -1608,7 +1613,7 @@ public class TilemapCreator
         return ret;
     }
     
-    private void HandleProperties(Node targetNode, Array<Dictionary> properties)
+    private void HandleProperties(Node targetNode, Array<Dictionary> properties, bool mapProperties = false)
     {
         var targetNodeClass = targetNode.GetType();
         var hasChildren = false;
@@ -1657,7 +1662,10 @@ public class TilemapCreator
                 case "visibility_layer" when (type == "string"):
                     ((CanvasItem)targetNode).VisibilityLayer = GetBitmaskIntegerFromString(val, 20);
                     break;
-                case "z_index" when (type == "int"):
+                case "z_index" when (type == "int") && (!targetNodeClass.IsAssignableTo(typeof(TileMap)) || mapProperties):
+                    ((CanvasItem)targetNode).ZIndex = int.Parse(val);
+                    break;
+                case "canvas_z_index" when (type == "int"):
                     ((CanvasItem)targetNode).ZIndex = int.Parse(val);
                     break;
                 case "z_as_relative" when (type == "bool"):
@@ -1665,6 +1673,8 @@ public class TilemapCreator
                     break;
                 case "y_sort_enabled" when (type == "bool"):
                     ((CanvasItem)targetNode).YSortEnabled = bool.Parse(val);
+                    if (targetNodeClass.IsAssignableTo(typeof(TileMap)))
+                        ((TileMap)targetNode).SetLayerYSortEnabled(_tmLayerCounter, bool.Parse(val));
                     break;
                 case "texture_filter" when (type == "int"):
                     if (int.Parse(val) < (int)CanvasItem.TextureFilterEnum.Max)
@@ -1697,6 +1707,20 @@ public class TilemapCreator
                         ((TileMap)targetNode).NavigationVisibilityMode = (TileMap.VisibilityMode)int.Parse(val);
                     break;
                 
+                // Tilemap Layer properties
+                case "layer_z_index" when (type == "int") && targetNodeClass.IsAssignableTo(typeof(TileMap)):
+                    ((TileMap)targetNode).SetLayerZIndex(_tmLayerCounter, int.Parse(val));
+                    break;
+                case "z_index" when (type == "int") && targetNodeClass.IsAssignableTo(typeof(TileMap)):
+                    if (_mapLayersToTilemaps)
+                        ((TileMap)targetNode).ZIndex = int.Parse(val);
+                    else
+                        ((TileMap)targetNode).SetLayerZIndex(_tmLayerCounter, int.Parse(val));
+                    break;
+                case "y_sort_origin" when (type == "int") && targetNodeClass.IsAssignableTo(typeof(TileMap)):
+                    ((TileMap)targetNode).SetLayerYSortOrigin(_tmLayerCounter, int.Parse(val));
+                    break;
+
                 // CollisionObject2D properties
                 case "disable_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
                     if (int.Parse(val) < 3)
