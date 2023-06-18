@@ -610,7 +610,9 @@ public class TilemapCreator
             if (atlasWidth <= 0) continue;
 
             var effectiveGid = gid - _firstGids[GetFirstGidIndex(gid)];
-            var atlasCoords = atlasSource.GetAtlasGridSize() == Vector2I.One ? Vector2I.Zero : new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
+            var atlasCoords = Vector2I.Zero;
+            if (GetNumTilesForSourceId(sourceId) > 1)
+                atlasCoords = atlasSource.GetAtlasGridSize() == Vector2I.One ? Vector2I.Zero : new Vector2I(effectiveGid % atlasWidth, effectiveGid / atlasWidth);
             if (!atlasSource.HasTile(atlasCoords))
             {
                 atlasSource.CreateTile(atlasCoords);
@@ -864,9 +866,9 @@ public class TilemapCreator
                     objSprite.RotationDegrees = 0;
                     parent.AddChild(objSprite);
                     AddCollisionShapes(parent, GetObjectGroup(idx), objWidth, objHeight, flippedH, flippedV, objSprite.Scale);
+                    if (obj.TryGetValue("properties", out var props))
+                        HandleProperties(parent, (Array<Dictionary>)props);
                 }
-                if (obj.TryGetValue("properties", out var props))
-                    HandleProperties(parent, (Array<Dictionary>)props);
             }
 
             objSprite.FlipH = flippedH;

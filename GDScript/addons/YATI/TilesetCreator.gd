@@ -271,7 +271,20 @@ func handle_tiles(tiles: Array):
 			var texture_path = tile["image"]
 			_current_atlas_source.texture = load_image(texture_path)
 			_current_atlas_source.resource_name = texture_path.get_file().get_basename()
-			_current_atlas_source.texture_region_size = Vector2i(_current_atlas_source.texture.get_width(), _current_atlas_source.texture.get_height())
+			var texture_width = _current_atlas_source.texture.get_width()
+			if tile.has("width"):
+				texture_width = tile["width"]
+			var texture_height = _current_atlas_source.texture.get_height()
+			if tile.has("height"):
+				texture_height = tile["height"]
+			_current_atlas_source.texture_region_size = Vector2i(texture_width, texture_height)
+			var tile_offset_x = 0
+			if tile.has("x"):
+				tile_offset_x = tile["x"]
+			var tile_offset_y = 0
+			if tile.has("y"):
+				tile_offset_y = tile["y"]
+			_current_atlas_source.margins = Vector2i(tile_offset_x, tile_offset_y)
 
 			_current_atlas_source.create_tile(Vector2(0, 0))
 			current_tile = _current_atlas_source.get_tile_data(Vector2(0, 0), 0)

@@ -333,8 +333,20 @@ public class TilesetCreator
                     break;
                 }
                 _currentAtlasSource.ResourceName = texturePath.GetFile().GetBaseName();
-                _currentAtlasSource.TextureRegionSize = new Vector2I(_currentAtlasSource.Texture.GetWidth(),
-                    _currentAtlasSource.Texture.GetHeight());                
+                var textureWidth = _currentAtlasSource.Texture.GetWidth();
+                if (tile.TryGetValue("width", out var tileWidth))
+                    textureWidth = (int)tileWidth;
+                var textureHeight = _currentAtlasSource.Texture.GetHeight();
+                if (tile.TryGetValue("height", out var tileHeight))
+                    textureHeight = (int)tileHeight;
+                _currentAtlasSource.TextureRegionSize = new Vector2I(textureWidth, textureHeight);
+                var tileOffsetX = 0;
+                if (tile.TryGetValue("x", out var offsetX))
+                    tileOffsetX = (int)offsetX;
+                var tileOffsetY = 0;
+                if (tile.TryGetValue("y", out var offsetY))
+                    tileOffsetY = (int)offsetY;
+                _currentAtlasSource.Margins = new Vector2I(tileOffsetX, tileOffsetY);
                 
                 _currentAtlasSource.CreateTile(Vector2I.Zero);
                 currentTile = _currentAtlasSource.GetTileData(Vector2I.Zero, 0);

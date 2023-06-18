@@ -501,11 +501,12 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		if atlas_width <= 0: continue
 
 		var effective_gid: int = gid - _first_gids[get_first_gid_index(gid)]
-		var atlas_coords
-		if atlas_source.get_atlas_grid_size() == Vector2i.ONE:
-			atlas_coords = Vector2i.ZERO
-		else:
-			atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
+		var atlas_coords = Vector2i.ZERO
+		if get_num_tiles_for_source_id(source_id) > 1:
+			if atlas_source.get_atlas_grid_size() == Vector2i.ONE:
+				atlas_coords = Vector2i.ZERO
+			else:
+				atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 		if not atlas_source.has_tile(atlas_coords):
 			atlas_source.create_tile(atlas_coords)
 			var current_tile = atlas_source.get_tile_data(atlas_coords, 0)
@@ -704,9 +705,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				obj_sprite.rotation_degrees = 0.0
 				parent.add_child(obj_sprite)
 				add_collision_shapes(parent, get_object_group(idx), obj_width, obj_height, flippedH, flippedV, obj_sprite.scale)
-			if obj.has("properties"):
-				handle_properties(parent, obj["properties"])
-		
+				if obj.has("properties"):
+					handle_properties(parent, obj["properties"])
 			
 		obj_sprite.flip_h = flippedH
 		obj_sprite.flip_v = flippedV
