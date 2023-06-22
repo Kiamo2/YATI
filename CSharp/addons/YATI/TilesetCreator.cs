@@ -26,6 +26,7 @@ using Godot.Collections;
 using Array = Godot.Collections.Array;
 using FileAccess = Godot.FileAccess;
 using System;
+using System.Globalization;
 
 [Tool]
 public class TilesetCreator
@@ -33,6 +34,7 @@ public class TilesetCreator
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
 
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private TileSet _tileset;
     private TileSetAtlasSource _currentAtlasSource;
     private int _currentMaxX;
@@ -650,6 +652,27 @@ public class TilesetCreator
         return ret;
     }
 
+    private static Variant GetRightTypedValue(string type, string val)
+    {
+        switch (type)
+        {
+            case "bool":
+                return bool.Parse(val);
+            case "float":
+                return float.Parse(val, Inv);
+            case "int":
+                return int.Parse(val);
+            case "color":
+            {
+                // If alpha is present it's strangely the first byte, so we have to shift it to the end
+                if (val.Length == 9) val = val[0] + val[3..] + val.Substring(1, 2);
+                return val;
+            }
+            default:
+                return val;
+        }
+    }
+
     private void HandleTileProperties(Array<Dictionary> properties, TileData currentTile)
     {
         foreach (var property in properties)
@@ -680,36 +703,44 @@ public class TilesetCreator
                 currentTile.YSortOrigin = int.Parse(val);
             else if (name.ToLower() == "linear_velocity_x" && type is "int" or "float")
             {
+                EnsureLayerExisting(LayerType.Physics, 0);
                 var linVelo = currentTile.GetConstantLinearVelocity(0);
-                linVelo.X = float.Parse(val);
+                linVelo.X = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(0, linVelo);
             }
             else if (name.ToLower().StartsWith("linear_velocity_x_") && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Physics, layerIndex);
                 var linVelo = currentTile.GetConstantLinearVelocity(layerIndex);
-                linVelo.X = float.Parse(val);
+                linVelo.X = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
             }
             else if (name.ToLower() == "linear_velocity_y" && type is "int" or "float")
             {
+                EnsureLayerExisting(LayerType.Physics, 0);
                 var linVelo = currentTile.GetConstantLinearVelocity(0);
-                linVelo.Y = float.Parse(val);
+                linVelo.Y = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(0, linVelo);
             }
             else if (name.ToLower().StartsWith("linear_velocity_y_") && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
+                EnsureLayerExisting(LayerType.Physics, layerIndex);
                 var linVelo = currentTile.GetConstantLinearVelocity(layerIndex);
-                linVelo.Y = float.Parse(val);
+                linVelo.Y = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
             }
             else if (name.ToLower() == "angular_velocity" && type is "int" or "float")
-                currentTile.SetConstantAngularVelocity(0, float.Parse(val));
+            {
+                EnsureLayerExisting(LayerType.Physics, 0);
+                currentTile.SetConstantAngularVelocity(0, float.Parse(val, Inv));
+            }
             else if (name.ToLower().StartsWith("angular_velocity_") && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(17), out var layerIndex)) continue;
-                currentTile.SetConstantAngularVelocity(layerIndex, float.Parse(val));
+                EnsureLayerExisting(LayerType.Physics, layerIndex);
+                currentTile.SetConstantAngularVelocity(layerIndex, float.Parse(val, Inv));
             }
             else
             {
@@ -731,7 +762,7 @@ public class TilesetCreator
                     _tileset.SetCustomDataLayerType(customLayer, customType);
                 }
 
-                currentTile.SetCustomData(name, val);
+                currentTile.SetCustomData(name, GetRightTypedValue(type, val));
             }
         }
     }
@@ -801,7 +832,7 @@ public class TilesetCreator
                 _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
             }
             else
-                _tileset.SetMeta(name, val);
+                _tileset.SetMeta(name, GetRightTypedValue(type, val));
         }
     }
 

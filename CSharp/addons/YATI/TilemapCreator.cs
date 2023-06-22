@@ -22,6 +22,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using Godot;
@@ -40,6 +41,7 @@ public class TilemapCreator
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
 
+    private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private string _mapOrientation;
     private int _mapWidth;
     private int _mapHeight;
@@ -201,7 +203,7 @@ public class TilemapCreator
 
         if (baseDictionary.TryGetValue("properties", out var mapProps))
             HandleProperties(_baseNode, (Array<Dictionary>)mapProps, true);
-
+        
         if (_parallaxBackground.GetChildCount() == 0)
             _baseNode.RemoveChild(_parallaxBackground);
         
@@ -1321,7 +1323,7 @@ public class TilemapCreator
                 if (collMargin == "")
                     collMargin = GetProperty(obj, "one_way_margin", "float");
                 if (collMargin != "")
-                    collisionPolygon.OneWayCollisionMargin = float.Parse(collMargin);
+                    collisionPolygon.OneWayCollisionMargin = float.Parse(collMargin, Inv);
             }
             else
             {
@@ -1420,7 +1422,7 @@ public class TilemapCreator
                 if (collMargin == "")
                     collMargin = GetProperty(obj, "one_way_margin", "float");
                 if (collMargin != "")
-                    collisionShape.OneWayCollisionMargin = float.Parse(collMargin);
+                    collisionShape.OneWayCollisionMargin = float.Parse(collMargin, Inv);
             }
         }
     }
@@ -1615,6 +1617,27 @@ public class TilemapCreator
         return ret;
     }
     
+    private static Variant GetRightTypedValue(string type, string val)
+    {
+        switch (type)
+        {
+            case "bool":
+                return bool.Parse(val);
+            case "float":
+                return float.Parse(val, Inv);
+            case "int":
+                return int.Parse(val);
+            case "color":
+            {
+                // If alpha is present it's strangely the first byte, so we have to shift it to the end
+                if (val.Length == 9) val = val[0] + val[3..] + val.Substring(1, 2);
+                return val;
+            }
+            default:
+                return val;
+        }
+    }
+
     private void HandleProperties(Node targetNode, Array<Dictionary> properties, bool mapProperties = false)
     {
         var targetNodeClass = targetNode.GetType();
@@ -1735,7 +1758,7 @@ public class TilemapCreator
                     ((CollisionObject2D)targetNode).CollisionMask = GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "collision_priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
-                    ((CollisionObject2D)targetNode).CollisionPriority = float.Parse(val);
+                    ((CollisionObject2D)targetNode).CollisionPriority = float.Parse(val, Inv);
                     break;
                 case "input_pickable" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
                     ((CollisionObject2D)targetNode).InputPickable = bool.Parse(val);
@@ -1766,9 +1789,9 @@ public class TilemapCreator
                 case "one_way_collision_margin" when type is "float" or "int" && hasChildren:
                     foreach (var child in targetNode.GetChildren())
                         if (child.GetType().IsAssignableTo(typeof(CollisionPolygon2D)))
-                            ((CollisionPolygon2D)child).OneWayCollisionMargin = float.Parse(val);
+                            ((CollisionPolygon2D)child).OneWayCollisionMargin = float.Parse(val, Inv);
                         else if (child.GetType().IsAssignableTo(typeof(CollisionShape2D)))
-                            ((CollisionShape2D)child).OneWayCollisionMargin = float.Parse(val);
+                            ((CollisionShape2D)child).OneWayCollisionMargin = float.Parse(val, Inv);
                     break;
 
                 // CollisionShape2D properties
@@ -1786,7 +1809,7 @@ public class TilemapCreator
                     ((Area2D)targetNode).Monitorable = bool.Parse(val);
                     break;
                 case "priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).Priority = float.Parse(val);
+                    ((Area2D)targetNode).Priority = float.Parse(val, Inv);
                     break;
                 case "gravity_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     if (int.Parse(val) < 5)
@@ -1796,36 +1819,36 @@ public class TilemapCreator
                     ((Area2D)targetNode).GravityPoint = bool.Parse(val);
                     break;
                 case "gravity_point_center_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).GravityPointCenter = new Vector2(float.Parse(val), ((Area2D)targetNode).GravityPointCenter.Y);
+                    ((Area2D)targetNode).GravityPointCenter = new Vector2(float.Parse(val, Inv), ((Area2D)targetNode).GravityPointCenter.Y);
                     break;
                 case "gravity_point_center_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).GravityPointCenter = new Vector2(((Area2D)targetNode).GravityPointCenter.X, float.Parse(val));
+                    ((Area2D)targetNode).GravityPointCenter = new Vector2(((Area2D)targetNode).GravityPointCenter.X, float.Parse(val, Inv));
                     break;
                 case "gravity_point_unit_distance" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).GravityPointUnitDistance = float.Parse(val);
+                    ((Area2D)targetNode).GravityPointUnitDistance = float.Parse(val, Inv);
                     break;
                 case "gravity_direction_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).GravityDirection = new Vector2(float.Parse(val), ((Area2D)targetNode).GravityDirection.Y);
+                    ((Area2D)targetNode).GravityDirection = new Vector2(float.Parse(val, Inv), ((Area2D)targetNode).GravityDirection.Y);
                     break;
                 case "gravity_direction_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).GravityDirection = new Vector2(((Area2D)targetNode).GravityDirection.X, float.Parse(val));
+                    ((Area2D)targetNode).GravityDirection = new Vector2(((Area2D)targetNode).GravityDirection.X, float.Parse(val, Inv));
                     break;
                 case "gravity" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).Gravity = float.Parse(val);
+                    ((Area2D)targetNode).Gravity = float.Parse(val, Inv);
                     break;
                 case "linear_damp_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     if (int.Parse(val) < 5)
                         ((Area2D)targetNode).LinearDampSpaceOverride = (Area2D.SpaceOverride)int.Parse(val);
                     break;
                 case "linear_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).LinearDamp = float.Parse(val);
+                    ((Area2D)targetNode).LinearDamp = float.Parse(val, Inv);
                     break;
                 case "angular_damp_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     if (int.Parse(val) < 5)
                         ((Area2D)targetNode).AngularDampSpaceOverride = (Area2D.SpaceOverride)int.Parse(val);
                     break;
                 case "angular_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).AngularDamp = float.Parse(val);
+                    ((Area2D)targetNode).AngularDamp = float.Parse(val, Inv);
                     break;
                 
                 // StaticBody2D properties
@@ -1833,13 +1856,13 @@ public class TilemapCreator
                     ((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)LoadResourceFromFile(val);
                     break;
                 case "constant_linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
-                    ((StaticBody2D)targetNode).ConstantLinearVelocity = new Vector2(float.Parse(val), ((StaticBody2D)targetNode).ConstantLinearVelocity.Y);
+                    ((StaticBody2D)targetNode).ConstantLinearVelocity = new Vector2(float.Parse(val, Inv), ((StaticBody2D)targetNode).ConstantLinearVelocity.Y);
                     break;
                 case "constant_linear_velocity_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
-                    ((StaticBody2D)targetNode).ConstantLinearVelocity = new Vector2(((StaticBody2D)targetNode).ConstantLinearVelocity.X, float.Parse(val));
+                    ((StaticBody2D)targetNode).ConstantLinearVelocity = new Vector2(((StaticBody2D)targetNode).ConstantLinearVelocity.X, float.Parse(val, Inv));
                     break;
                 case "constant_angular_velocity" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
-                    ((StaticBody2D)targetNode).ConstantAngularVelocity = float.Parse(val);
+                    ((StaticBody2D)targetNode).ConstantAngularVelocity = float.Parse(val, Inv);
                     break;
                 
                 // Character2D properties
@@ -1848,16 +1871,16 @@ public class TilemapCreator
                         ((CharacterBody2D)targetNode).MotionMode = (CharacterBody2D.MotionModeEnum)int.Parse(val);
                     break;
                 case "up_direction_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).UpDirection = new Vector2(float.Parse(val), ((CharacterBody2D)targetNode).UpDirection.Y);
+                    ((CharacterBody2D)targetNode).UpDirection = new Vector2(float.Parse(val, Inv), ((CharacterBody2D)targetNode).UpDirection.Y);
                     break;
                 case "up_direction_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).UpDirection = new Vector2(((CharacterBody2D)targetNode).UpDirection.X, float.Parse(val));
+                    ((CharacterBody2D)targetNode).UpDirection = new Vector2(((CharacterBody2D)targetNode).UpDirection.X, float.Parse(val, Inv));
                     break;
                 case "slide_on_ceiling" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).SlideOnCeiling = bool.Parse(val);
                     break;
                 case "wall_min_slide_angle" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).WallMinSlideAngle = float.Parse(val);
+                    ((CharacterBody2D)targetNode).WallMinSlideAngle = float.Parse(val, Inv);
                     break;
                 case "floor_stop_on_slope" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).FloorStopOnSlope = bool.Parse(val);
@@ -1869,10 +1892,10 @@ public class TilemapCreator
                     ((CharacterBody2D)targetNode).FloorBlockOnWall = bool.Parse(val);
                     break;
                 case "floor_max_angle" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).FloorMaxAngle = float.Parse(val);
+                    ((CharacterBody2D)targetNode).FloorMaxAngle = float.Parse(val, Inv);
                     break;
                 case "floor_snap_length" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).FloorSnapLength = float.Parse(val);
+                    ((CharacterBody2D)targetNode).FloorSnapLength = float.Parse(val, Inv);
                     break;
                 case "platform_on_leave" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     if (int.Parse(val) < 3)
@@ -1885,7 +1908,7 @@ public class TilemapCreator
                     ((CharacterBody2D)targetNode).PlatformWallLayers = GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "safe_margin" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).SafeMargin = float.Parse(val);
+                    ((CharacterBody2D)targetNode).SafeMargin = float.Parse(val, Inv);
                     break;
                 case "collision_layer" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).CollisionLayer = GetBitmaskIntegerFromString(val, 32);
@@ -1894,15 +1917,15 @@ public class TilemapCreator
                     ((CharacterBody2D)targetNode).CollisionMask = GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "collision_priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).CollisionPriority = float.Parse(val);
+                    ((CharacterBody2D)targetNode).CollisionPriority = float.Parse(val, Inv);
                     break;
                 
                 // RigidBody2D properties
                 case "mass" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).Mass = float.Parse(val);
+                    ((RigidBody2D)targetNode).Mass = float.Parse(val, Inv);
                     break;
                 case "inertia" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).Inertia = float.Parse(val);
+                    ((RigidBody2D)targetNode).Inertia = float.Parse(val, Inv);
                     break;
                 case "center_of_mass" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     if (int.Parse(val) < 2)
@@ -1912,7 +1935,7 @@ public class TilemapCreator
                     ((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)LoadResourceFromFile(val);
                     break;
                 case "gravity_scale" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).GravityScale = float.Parse(val);
+                    ((RigidBody2D)targetNode).GravityScale = float.Parse(val, Inv);
                     break;
                 case "custom_integrator" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     ((RigidBody2D)targetNode).CustomIntegrator = bool.Parse(val);
@@ -1944,36 +1967,36 @@ public class TilemapCreator
                         ((RigidBody2D)targetNode).FreezeMode = (RigidBody2D.FreezeModeEnum)int.Parse(val);
                     break;
                 case "linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).LinearVelocity = new Vector2(float.Parse(val), ((RigidBody2D)targetNode).LinearVelocity.Y);
+                    ((RigidBody2D)targetNode).LinearVelocity = new Vector2(float.Parse(val, Inv), ((RigidBody2D)targetNode).LinearVelocity.Y);
                     break;
                 case "linear_velocity_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).LinearVelocity = new Vector2(((RigidBody2D)targetNode).LinearVelocity.X, float.Parse(val));
+                    ((RigidBody2D)targetNode).LinearVelocity = new Vector2(((RigidBody2D)targetNode).LinearVelocity.X, float.Parse(val, Inv));
                     break;
                 case "linear_damp_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     if (int.Parse(val) < 2)
                         ((RigidBody2D)targetNode).LinearDampMode = (RigidBody2D.DampMode)int.Parse(val);
                     break;
                 case "linear_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).LinearDamp = float.Parse(val);
+                    ((RigidBody2D)targetNode).LinearDamp = float.Parse(val, Inv);
                     break;
                 case "angular_velocity" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).AngularVelocity = float.Parse(val);
+                    ((RigidBody2D)targetNode).AngularVelocity = float.Parse(val, Inv);
                     break;
                 case "angular_damp_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     if (int.Parse(val) < 2)
                         ((RigidBody2D)targetNode).AngularDampMode = (RigidBody2D.DampMode)int.Parse(val);
                     break;
                 case "angular_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).AngularDamp = float.Parse(val);
+                    ((RigidBody2D)targetNode).AngularDamp = float.Parse(val, Inv);
                     break;
                 case "constant_force_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).ConstantForce = new Vector2(float.Parse(val), ((RigidBody2D)targetNode).ConstantForce.Y);
+                    ((RigidBody2D)targetNode).ConstantForce = new Vector2(float.Parse(val, Inv), ((RigidBody2D)targetNode).ConstantForce.Y);
                     break;
                 case "constant_force_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).ConstantForce = new Vector2(((RigidBody2D)targetNode).ConstantForce.X, float.Parse(val));
+                    ((RigidBody2D)targetNode).ConstantForce = new Vector2(((RigidBody2D)targetNode).ConstantForce.X, float.Parse(val, Inv));
                     break;
                 case "constant_torque" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).ConstantTorque = float.Parse(val);
+                    ((RigidBody2D)targetNode).ConstantTorque = float.Parse(val, Inv);
                     break;
                 
                 // NavigationRegion2D properties
@@ -1984,10 +2007,10 @@ public class TilemapCreator
                     ((NavigationRegion2D)targetNode).NavigationLayers = GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "enter_cost" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
-                    ((NavigationRegion2D)targetNode).EnterCost = float.Parse(val);
+                    ((NavigationRegion2D)targetNode).EnterCost = float.Parse(val, Inv);
                     break;
                 case "travel_cost" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
-                    ((NavigationRegion2D)targetNode).TravelCost = float.Parse(val);
+                    ((NavigationRegion2D)targetNode).TravelCost = float.Parse(val, Inv);
                     break;
 
                 // LightOccluder2D properties
@@ -2005,7 +2028,7 @@ public class TilemapCreator
 
                 // Line2D properties
                 case "width" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Line2D)):
-                    ((Line2D)targetNode).Width = float.Parse(val);
+                    ((Line2D)targetNode).Width = float.Parse(val, Inv);
                     break;
                 case "default_color" when type == "string" && targetNodeClass.IsAssignableTo(typeof(Line2D)):
                     ((Line2D)targetNode).DefaultColor = new Color(val);
@@ -2013,13 +2036,13 @@ public class TilemapCreator
                 
                 // Marker2D properties
                 case "gizmo_extents" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Line2D)):
-                    ((Marker2D)targetNode).GizmoExtents = float.Parse(val);
+                    ((Marker2D)targetNode).GizmoExtents = float.Parse(val, Inv);
                     break;
                 
                 // Other properties are added as Metadata
                 default:
                 {
-                    targetNode.SetMeta(name, val);
+                    targetNode.SetMeta(name, GetRightTypedValue(type, val));
                     break;
                 }
             }

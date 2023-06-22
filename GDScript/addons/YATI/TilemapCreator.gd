@@ -1270,6 +1270,21 @@ func get_object_group(index: int):
 	return ret
 
 
+func get_right_typed_value(type: String, val: String):
+	if type == "bool":
+		return val == "true"
+	elif type == "float":
+		return float(val)
+	elif type == "int":
+		return int(val)
+	elif type == "color":
+		# If alpha is present it's strangely the first byte, so we have to shift it to the end
+		if val.length() == 9: val = val[0] + val.substr(3) + val.substr(1,2)
+		return val
+	else:
+		return val
+	
+
 func handle_properties(target_node: Node, properties: Array, map_properties: bool = false):
 	var has_children = false
 	if target_node is StaticBody2D or target_node is Area2D or target_node is CharacterBody2D or target_node is RigidBody2D:
@@ -1555,4 +1570,4 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 
 		# Other properties are added as Metadata
 		else:
-			target_node.set_meta(name, val)
+			target_node.set_meta(name, get_right_typed_value(type, val))

@@ -518,6 +518,21 @@ func get_bitmask_integer_from_string(mask_string: String, max: int):
 	return ret
 
 
+func get_right_typed_value(type: String, val: String):
+	if type == "bool":
+		return val == "true"
+	elif type == "float":
+		return float(val)
+	elif type == "int":
+		return int(val)
+	elif type == "color":
+		# If alpha is present it's strangely the first byte, so we have to shift it to the end
+		if val.length() == 9: val = val[0] + val.substr(3) + val.substr(1,2)
+		return val
+	else:
+		return val
+
+
 func handle_tile_properties(properties: Array, current_tile: TileData):
 	for property in properties:
 		var name = property.get("name", "")
@@ -537,30 +552,36 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 		elif name.to_lower() == "y_sort_origin" and  type == "int":
 			current_tile.y_sort_origin = int(val)
 		elif name.to_lower() == "linear_velocity_x" and (type == "int" or type == "float"):
+			ensure_layer_existing(layer_type.PHYSICS, 0)
 			var lin_velo = current_tile.get_constant_linear_velocity(0)
 			lin_velo.x = float(val)
 			current_tile.set_constant_linear_velocity(0, lin_velo)
 		elif name.to_lower().begins_with("linear_velocity_x_") and (type == "int" or type == "float"):
 			if not name.substr(18).is_valid_int(): continue
 			var layer_index = int(name.substr(18))
+			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			var lin_velo = current_tile.get_constant_linear_velocity(layer_index)
 			lin_velo.x = float(val)
 			current_tile.set_constant_linear_velocity(layer_index, lin_velo)
 		elif name.to_lower() == "linear_velocity_y" and (type == "int" or type == "float"):
+			ensure_layer_existing(layer_type.PHYSICS, 0)
 			var lin_velo = current_tile.get_constant_linear_velocity(0)
 			lin_velo.y = float(val)
 			current_tile.set_constant_linear_velocity(0, lin_velo)
 		elif name.to_lower().begins_with("linear_velocity_y_") and (type == "int" or type == "float"):
 			if not name.substr(18).is_valid_int(): continue
 			var layer_index = int(name.substr(18))
+			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			var lin_velo = current_tile.get_constant_linear_velocity(layer_index)
 			lin_velo.y = float(val)
 			current_tile.set_constant_linear_velocity(layer_index, lin_velo)
 		elif name.to_lower() == "angular_velocity" and (type == "int" or type == "float"):
+			ensure_layer_existing(layer_type.PHYSICS, 0)
 			current_tile.set_constant_angular_velocity(0, float(val))
 		elif name.to_lower().begins_with("angular_velocity_") and (type == "int" or type == "float"):
 			if not name.substr(17).is_valid_int(): continue
 			var layer_index = int(name.substr(17))
+			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			current_tile.set_constant_angular_velocity(layer_index, float(val))
 		else:
 			var custom_layer = _tileset.get_custom_data_layer_by_name(name)
@@ -576,7 +597,7 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 					"color": TYPE_COLOR
 				}.get(type, TYPE_STRING)
 				_tileset.set_custom_data_layer_type(custom_layer, custom_type)
-			current_tile.set_custom_data(name, val)
+			current_tile.set_custom_data(name, get_right_typed_value(type, val))
 
 
 func handle_tileset_properties(properties: Array):
@@ -627,7 +648,7 @@ func handle_tileset_properties(properties: Array):
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_sdf_collision(layer_index, val.to_lower() == "true")
 		else:
-			_tileset.set_meta(name, val)
+			_tileset.set_meta(name, get_right_typed_value(type, val))
 
 
 func ensure_layer_existing(tp: layer_type, layer: int):
