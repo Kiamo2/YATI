@@ -71,6 +71,7 @@ public class TilemapCreator
     private readonly Array<int> _firstGids = new ();
     private Array _atlasSources;
     private bool _useDefaultFilter;
+    private bool _mapWangsetToTerrain;
     private Dictionary _objectGroups;
 
     private float _isoRot;
@@ -116,6 +117,11 @@ public class TilemapCreator
         _useDefaultFilter = value;
     }
 
+    public void SetMapWangsetToTerrain(bool value)
+    {
+        _mapWangsetToTerrain = value;
+    }
+
     public TileSet GetTileset()
     {
         return _tileset;
@@ -143,6 +149,8 @@ public class TilemapCreator
             var tilesetCreator = new TilesetCreator();
             tilesetCreator.SetBasePath(sourceFile);
             tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
+            if (_mapWangsetToTerrain)
+                tilesetCreator.MapWangsetToTerrain();
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
@@ -713,6 +721,8 @@ public class TilemapCreator
                 var tilesetCreator = new TilesetCreator();
                 tilesetCreator.SetBasePath(templatePath);
                 tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
+                if (_mapWangsetToTerrain)
+                    tilesetCreator.MapWangsetToTerrain();
                 templateTileSet = tilesetCreator.CreateFromDictionaryArray(tileSets);
                 _errorCount += tilesetCreator.GetErrorCount();
                 _warningCount += tilesetCreator.GetWarningCount();
@@ -1809,7 +1819,7 @@ public class TilemapCreator
                     ((Area2D)targetNode).Monitorable = bool.Parse(val);
                     break;
                 case "priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).Priority = float.Parse(val, Inv);
+                    ((Area2D)targetNode).Priority = int.Parse(val, Inv);
                     break;
                 case "gravity_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     if (int.Parse(val) < 5)

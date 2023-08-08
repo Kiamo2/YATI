@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2023-08-08
+
+### Fixed
+
+- Tiled wangsets ('terrain sets') were previously mapped to Godot terrains to keep the terrain set names.<br>Strictly speaking, this was not quite correct (issue #14).<br>
+  From this version on they are now mapped to Godot terrain sets and the colors ('terrains') are mapped to Godot terrains.<br>So the mapping is as expected.<br>
+  Please note: Godot terrain sets are automatically named 'Terrain Set 0', 'Terrain Set 1' etc. and cannot be named differently (Godot 4 "feature").<br><br>
+  The previous mapping can still be enforced using the new 'Map Wangset to Terrain' option.
+
 ## [1.3.1] - 2023-06-22
 
 ### Fixed

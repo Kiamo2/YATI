@@ -51,6 +51,7 @@ var _tile_offset: Vector2i
 var _object_groups = null
 var _object_groups_counter: int = 0
 var _tileset_orientation
+var _map_wangset_to_terrain: bool = false
 
 enum layer_type {
 	PHYSICS,
@@ -75,6 +76,10 @@ func set_base_path(source_file: String):
 func set_map_parameters(map_tile_size: Vector2i):
 	_map_tile_size = map_tile_size
 
+
+func map_wangset_to_terrain():
+	_map_wangset_to_terrain = true
+	
 
 func create_from_dictionary_array(tileSets: Array):
 	for tile_set in tileSets:
@@ -186,7 +191,10 @@ func create_or_append(tile_set: Dictionary):
 	if tile_set.has("tiles"):
 		handle_tiles(tile_set["tiles"])
 	if tile_set.has("wangsets"):
-		handle_wangsets(tile_set["wangsets"])
+		if _map_wangset_to_terrain:
+			handle_wangsets_old_mapping(tile_set["wangsets"])
+		else:
+			handle_wangsets(tile_set["wangsets"])
 	if tile_set.has("properties"):
 		handle_tileset_properties(tile_set["properties"])
 
@@ -667,7 +675,7 @@ func ensure_layer_existing(tp: layer_type, layer: int):
 				_occlusion_layer_counter += 1
 	
 
-func handle_wangsets(wangsets):
+func handle_wangsets_old_mapping(wangsets):
 	_tileset.add_terrain_set()
 	_terrain_sets_counter += 1
 	for wangset in wangsets:
@@ -684,6 +692,7 @@ func handle_wangsets(wangsets):
 				"edge": TileSet.TERRAIN_MODE_MATCH_SIDES,
 				"mixed": TileSet.TERRAIN_MODE_MATCH_CORNERS_AND_SIDES
 			}.get(wangset["type"], terrain_mode)
+
 		_tileset.set_terrain_set_mode(current_terrain_set, terrain_mode)
 
 		if wangset.has("colors"):
@@ -723,3 +732,70 @@ func handle_wangsets(wangsets):
 					i += 1
 
 		_terrain_counter += 1
+
+
+func handle_wangsets(wangsets):
+	for wangset in wangsets:
+		_tileset.add_terrain_set()
+		_terrain_sets_counter += 1
+		_terrain_counter = -1
+		var current_terrain_set = _terrain_sets_counter
+
+		var current_terrain = _terrain_counter
+		var terrain_set_name = ""
+		if "name" in wangset:
+			terrain_set_name = wangset["name"]
+
+		var terrain_mode = TileSet.TERRAIN_MODE_MATCH_CORNERS
+		if wangset.has("type"):
+			terrain_mode = {
+				"corner": TileSet.TERRAIN_MODE_MATCH_CORNERS,
+				"edge": TileSet.TERRAIN_MODE_MATCH_SIDES,
+				"mixed": TileSet.TERRAIN_MODE_MATCH_CORNERS_AND_SIDES
+			}.get(wangset["type"], terrain_mode)
+
+		_tileset.set_terrain_set_mode(current_terrain_set, terrain_mode)
+
+		if wangset.has("colors"):
+			for wangcolor in wangset["colors"]:
+				_terrain_counter += 1
+				_tileset.add_terrain(current_terrain_set)
+				_tileset.set_terrain_color(current_terrain_set, _terrain_counter, Color(wangcolor["color"]))
+				var col_name = terrain_set_name
+				if wangcolor.has("name"):
+					if wangcolor["name"] != "":
+						col_name = wangcolor["name"]
+				_tileset.set_terrain_name(current_terrain_set, _terrain_counter, col_name)
+
+		if wangset.has("wangtiles"):
+			for wangtile in wangset["wangtiles"]:
+				var tile_id = wangtile["tileid"]
+				var current_tile = create_tile_if_not_existing_and_get_tiledata(tile_id)
+				if current_tile == null:
+					break
+
+				if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+					var diff_x = _tile_size.x - _map_tile_size.x
+					if diff_x % 2 != 0:
+						diff_x -= 1
+					var diff_y = _tile_size.y - _map_tile_size.y
+					if diff_y % 2 != 0:
+						diff_y += 1
+					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
+
+				current_tile.terrain_set = current_terrain_set
+				var i = 0
+				for wi in wangtile["wangid"]:
+					var peering_bit = {
+						1: TileSet.CELL_NEIGHBOR_TOP_RIGHT_CORNER,
+						2: TileSet.CELL_NEIGHBOR_RIGHT_SIDE,
+						3: TileSet.CELL_NEIGHBOR_BOTTOM_RIGHT_CORNER,
+						4: TileSet.CELL_NEIGHBOR_BOTTOM_SIDE,
+						5: TileSet.CELL_NEIGHBOR_BOTTOM_LEFT_CORNER,
+						6: TileSet.CELL_NEIGHBOR_LEFT_SIDE,
+						7: TileSet.CELL_NEIGHBOR_TOP_LEFT_CORNER
+					}.get(i, TileSet.CELL_NEIGHBOR_TOP_SIDE)
+					if wi > 0:
+						current_tile.terrain = wi-1
+						current_tile.set_terrain_peering_bit(peering_bit, wi-1)
+					i += 1

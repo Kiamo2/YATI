@@ -48,6 +48,7 @@ public partial class Importer: EditorImportPlugin
         {
             new() { { "name", "use_tilemap_layers" }, { "default_value", false } },
             new() { { "name", "use_default_filter" }, { "default_value", false } },
+            new() { { "name", "map_wangset_to_terrain" }, { "default_value", false } },
             new() { { "name", "post_processor" }, { "default_value", "" },
                     { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.cs;C# Script" } },
             new() { { "name", "save_tileset_to" }, { "default_value", "" },
@@ -79,6 +80,8 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetMapLayersToTilemaps(true);
         if ((string)options["use_default_filter"] == "true")
             tilemapCreator.SetUseDefaultFilter(true);
+        if ((string)options["map_wangset_to_terrain"] == "true")
+            tilemapCreator.SetMapWangsetToTerrain(true);
         var node2D = tilemapCreator.Create(sourceFile);
         if (node2D == null)
             return Error.Failed;

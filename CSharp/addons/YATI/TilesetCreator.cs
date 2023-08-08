@@ -60,6 +60,7 @@ public class TilesetCreator
     private Dictionary _objectGroups;
     private int _objectGroupsCounter;
     private string _tilesetOrientation;
+    private bool _mapWangsetToTerrain;
 
     private enum LayerType
     {
@@ -87,6 +88,11 @@ public class TilesetCreator
     public void SetMapParameters(Vector2I mapTileSize)
     {
         _mapTileSize = mapTileSize;
+    }
+
+    public void MapWangsetToTerrain()
+    {
+        _mapWangsetToTerrain = true;
     }
     
     public TileSet CreateFromDictionaryArray(Array<Dictionary> tileSets)
@@ -220,7 +226,12 @@ public class TilesetCreator
         if (tileSet.TryGetValue("tiles", out var tiles))
             HandleTiles((Array<Dictionary>)tiles);
         if (tileSet.TryGetValue("wangsets", out var wangsets))
-            HandleWangsets((Array<Dictionary>)wangsets);
+        {
+            if (_mapWangsetToTerrain)
+                HandleWangsetsOldMapping((Array<Dictionary>)wangsets);
+            else
+                HandleWangsets((Array<Dictionary>)wangsets);
+        }
         if (tileSet.TryGetValue("properties", out var props))
             HandleTilesetProperties((Array<Dictionary>)props);
     }
@@ -873,7 +884,7 @@ public class TilesetCreator
         }
     }
 
-    private void HandleWangsets(Array<Dictionary> wangsets)
+    private void HandleWangsetsOldMapping(Array<Dictionary> wangsets)
     {
         _tileset.AddTerrainSet();
         _terrainSetsCounter++;
@@ -894,7 +905,7 @@ public class TilesetCreator
                     "mixed" => TileSet.TerrainMode.CornersAndSides,
                     _ => terrainMode
                 };
-            
+
             _tileset.SetTerrainSetMode(currentTerrainSet, terrainMode);
 
             if (wangset.TryGetValue("colors", out var colors))
@@ -944,6 +955,93 @@ public class TilesetCreator
                 }
 
             _terrainCounter++;
+        }
+    }
+    
+    private void HandleWangsets(Array<Dictionary> wangsets)
+    {
+        foreach (var wangset in wangsets)
+        {
+            _tileset.AddTerrainSet();
+            _terrainSetsCounter++;
+            _terrainCounter = -1;
+            var currentTerrainSet = _terrainSetsCounter;
+            var terrainSetName = "";
+            if (wangset.TryGetValue("name", out var wsName))
+                terrainSetName = (string)wsName;
+
+            var terrainMode = TileSet.TerrainMode.Corners;
+            if (wangset.TryGetValue("type", out var wsType))
+                terrainMode = (string)wsType switch
+                {
+                    "corner" => TileSet.TerrainMode.Corners,
+                    "edge" => TileSet.TerrainMode.Sides,
+                    "mixed" => TileSet.TerrainMode.CornersAndSides,
+                    _ => terrainMode
+                };
+
+            _tileset.SetTerrainSetMode(currentTerrainSet, terrainMode);
+
+            if (wangset.TryGetValue("colors", out var colors))
+                foreach (var wangcolor in (Array<Dictionary>) colors)
+                {
+                    _terrainCounter++;
+                    _tileset.AddTerrain(currentTerrainSet);
+                    _tileset.SetTerrainColor(currentTerrainSet, _terrainCounter, new Color((Color)wangcolor["color"]));
+                    if (wangcolor.TryGetValue("name", out var colName))
+                    {
+                        if ((string)colName == "")
+                            colName = terrainSetName;
+                        _tileset.SetTerrainName(currentTerrainSet, _terrainCounter, (string)colName);
+                    }
+                    else
+                        _tileset.SetTerrainName(currentTerrainSet, _terrainCounter, terrainSetName);                     
+                }
+
+            if (!wangset.TryGetValue("wangtiles", out var wangtiles)) continue;
+            
+            foreach (var wangtile in (Array<Dictionary>)wangtiles)
+            {
+                var tileId = (int)wangtile["tileid"];
+                var currentTile = CreateTileIfNotExistingAndGetTileData(tileId);
+                if (currentTile == null)
+                    // Error occurred
+                    break;
+
+                if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+                {
+                    var diffX = _tileSize.X - _mapTileSize.X;
+                    if (diffX % 2 > 0)
+                        diffX -= 1;
+                    var diffY = _tileSize.Y - _mapTileSize.Y;
+                    if (diffY % 2 > 0)
+                        diffY += 1;
+                    currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - _tileOffset;
+                }
+
+                currentTile.TerrainSet = currentTerrainSet;
+                var i = 0;
+                foreach (var wi in (Array<int>)wangtile["wangid"])
+                {
+                    var peeringBit = i switch
+                    {
+                        1 => TileSet.CellNeighbor.TopRightCorner,
+                        2 => TileSet.CellNeighbor.RightSide,
+                        3 => TileSet.CellNeighbor.BottomRightCorner,
+                        4 => TileSet.CellNeighbor.BottomSide,
+                        5 => TileSet.CellNeighbor.BottomLeftCorner,
+                        6 => TileSet.CellNeighbor.LeftSide,
+                        7 => TileSet.CellNeighbor.TopLeftCorner,
+                        _ => TileSet.CellNeighbor.TopSide
+                    };
+                    if (wi > 0)
+                    {
+                        currentTile.Terrain = wi-1;
+                        currentTile.SetTerrainPeeringBit(peeringBit, wi-1);
+                    }
+                    i++;
+                }
+            }
         }
     }
 }

@@ -60,6 +60,7 @@ var _tm_layer_counter: int = 0
 var _first_gids = []
 var _atlas_sources = null
 var _use_default_filter = false
+var _map_wangset_to_terrain = false
 var _object_groups
 
 var _iso_rot: float = 0.0
@@ -101,6 +102,10 @@ func set_use_default_filter(value: bool):
 	_use_default_filter = value
 
 
+func set_map_wangset_to_terrain(value: bool):
+		_map_wangset_to_terrain = value
+	
+	
 func get_tileset():
 	return _tileset
 
@@ -125,6 +130,8 @@ func create(source_file: String):
 		var tileset_creator = preload("TilesetCreator.gd").new()
 		tileset_creator.set_base_path(source_file)
 		tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
+		if _map_wangset_to_terrain:
+			tileset_creator.map_wangset_to_terrain()
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
@@ -587,6 +594,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			var tileset_creator = preload("TilesetCreator.gd").new()
 			tileset_creator.set_base_path(template_path)
 			tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
+			if _map_wangset_to_terrain:
+				tileset_creator.map_wangset_to_terrain()
 			template_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 
 		if template_dict.has("objects"):
