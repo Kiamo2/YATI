@@ -30,6 +30,7 @@ const FLIPPED_DIAGONALLY_FLAG = 0x20000000
 const BACKGROUND_COLOR_RECT_NAME = "Background Color"
 const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
+const GODOT_PROPERTY = "godot_node_type"
 
 var _map_orientation: String
 var _map_width: int = 0
@@ -61,6 +62,7 @@ var _first_gids = []
 var _atlas_sources = null
 var _use_default_filter = false
 var _map_wangset_to_terrain = false
+var _add_class_as_metadata = false
 var _object_groups
 
 var _iso_rot: float = 0.0
@@ -70,7 +72,7 @@ var _iso_scale: Vector2
 var _error_count = 0
 var _warning_count = 0
 
-enum object_class {
+enum _godot_type {
 	EMPTY,
 	BODY,
 	CBODY,
@@ -100,6 +102,10 @@ func set_map_layers_to_tilemaps(value: bool):
 
 func set_use_default_filter(value: bool):
 	_use_default_filter = value
+
+
+func set_add_class_as_metadata(value: bool):
+	_add_class_as_metadata = value
 
 
 func set_map_wangset_to_terrain(value: bool):
@@ -219,9 +225,11 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 	if layer_type == "tilelayer":
 		if _map_orientation == "isometric":
 			layer_offset_x += _map_tile_width * (_map_height / 2.0 - 0.5)
+		var layer_name = str(layer["name"])
 		if _map_layers_to_tilemaps:
 			_tilemap = TileMap.new()
-			_tilemap.name = str(layer["name"])
+			if layer_name != "":
+				_tilemap.name = layer_name
 			_tilemap.visible = layer_visible
 			if layer_offset_x > 0 or layer_offset_y > 0:
 				_tilemap.position = Vector2(layer_offset_x, layer_offset_y)
@@ -235,7 +243,8 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		else:
 			if _tilemap == null:
 				_tilemap = TileMap.new()
-				_tilemap.name = str(layer["name"])
+				if layer_name != "":
+					_tilemap.name = layer_name
 				_tilemap.remove_layer(0)
 				handle_parallaxes(parent, _tilemap, layer)
 				_tilemap_offset_x = layer_offset_x
@@ -243,12 +252,12 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 				_tilemap.position = Vector2(layer_offset_x, layer_offset_y)
 				if _map_orientation == "isometric" or _map_orientation == "staggered":
 					_tilemap.y_sort_enabled = true
-			else:
-				_tilemap.name += "|" + str(layer["name"])
+			elif layer_name != "":
+				_tilemap.name += "|" + layer_name
 			if _tilemap.tile_set == null:
 				_tilemap.tile_set = _tileset 
 			_tilemap.add_layer(_tm_layer_counter)
-			_tilemap.set_layer_name(_tm_layer_counter, str(layer["name"]))
+			_tilemap.set_layer_name(_tm_layer_counter, layer_name)
 			_tilemap.set_layer_enabled(_tm_layer_counter, layer_visible)
 			if _map_orientation == "isometric" or _map_orientation == "staggered":
 				_tilemap.set_layer_y_sort_enabled(_tm_layer_counter, true)
@@ -552,23 +561,38 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		_tilemap.set_cell(_tm_layer_counter, cell_coords, source_id, atlas_coords, alt_id)
 
 
-func get_object_class(classname: String):
-	var cn = classname.to_lower()
-	var obj_class = {
-		"": object_class.EMPTY,
-		"collision": object_class.BODY,
-		"staticbody": object_class.BODY,
-		"characterbody": object_class.CBODY,
-		"rigidbody": object_class.RBODY,
-		"area": object_class.AREA,
-		"navigation": object_class.NAVIGATION,
-		"occluder": object_class.OCCLUDER,
-		"line": object_class.LINE,
-		"path": object_class.PATH,
-		"polygon": object_class.POLYGON,
-		"instance": object_class.INSTANCE
-	}.get(cn, object_class.UNKNOWN)
-	return obj_class
+func get_godot_type(godot_type_string: String):
+	var gts = godot_type_string.to_lower()
+	var _godot_type = {
+		"": _godot_type.EMPTY,
+		"collision": _godot_type.BODY,
+		"staticbody": _godot_type.BODY,
+		"characterbody": _godot_type.CBODY,
+		"rigidbody": _godot_type.RBODY,
+		"area": _godot_type.AREA,
+		"navigation": _godot_type.NAVIGATION,
+		"occluder": _godot_type.OCCLUDER,
+		"line": _godot_type.LINE,
+		"path": _godot_type.PATH,
+		"polygon": _godot_type.POLYGON,
+		"instance": _godot_type.INSTANCE
+	}.get(gts, _godot_type.UNKNOWN)
+	return _godot_type
+
+
+func get_godot_property(obj: Dictionary):
+	var ret = ""
+	var property_found = false
+	if obj.has("properties"):
+		for property in obj["properties"]:
+			var name: String = property.get("name", "")
+			var type: String = property.get("type", "string")
+			var val: String = str(property.get("value", ""))
+			if name.to_lower() == GODOT_PROPERTY and type == "string":
+				property_found = true
+				ret = val
+				break
+	return [ret, property_found]
 
 
 func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: Vector2) -> void:
@@ -582,8 +606,23 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	var class_string = obj.get("class", "")
 	if class_string == "":
 		class_string = obj.get("type", "")
-	var obj_class = get_object_class(class_string)
-	
+	var search_result = get_godot_property(obj)
+	var godot_property_string = search_result[0]
+	var godot_prop_found = search_result[1]
+	if not godot_prop_found:
+		godot_property_string = class_string
+	var godot_type = get_godot_type(godot_property_string)
+
+	if godot_type == _godot_type.UNKNOWN:
+		if not _add_class_as_metadata and class_string != "" and not godot_prop_found:
+			print_rich("[color=" + WARNING_COLOR +"] -- Unknown class '" + class_string + "'. -> Assuming Default[/color]")
+			_warning_count += 1
+		elif godot_prop_found and godot_property_string != "":	
+			print_rich("[color=" + WARNING_COLOR +"] -- Unknown " + GODOT_PROPERTY + " '" + godot_property_string + "'. -> Assuming Default[/color]")
+			_warning_count += 1
+		godot_type = _godot_type.BODY
+
+
 	if obj.has("template"):
 		var template_path = _base_path.path_join(obj["template"])
 		var template_dict = preload("DictionaryBuilder.gd").new().get_dictionary(template_path)
@@ -603,7 +642,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				handle_object(template_obj, layer_node, template_tileset, Vector2(obj_x, obj_y))
 
 	# v1.2: New class 'instance'
-	if obj_class == object_class.INSTANCE and not obj.has("template") and not obj.has("text"):
+	if godot_type == _godot_type.INSTANCE and not obj.has("template") and not obj.has("text"):
 		var res_path = get_property(obj, "res_path", "file")
 		if res_path == "":
 			printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
@@ -698,11 +737,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		var idx = td.get_custom_data(CUSTOM_DATA_INTERNAL)
 		if idx > 0:
 			var parent = {
-				object_class.AREA: Area2D.new(),
-				object_class.CBODY: CharacterBody2D.new(),
-				object_class.RBODY: RigidBody2D.new(),
-				object_class.BODY: StaticBody2D.new(),
-			}.get(obj_class, null)
+				_godot_type.AREA: Area2D.new(),
+				_godot_type.CBODY: CharacterBody2D.new(),
+				_godot_type.RBODY: RigidBody2D.new(),
+				_godot_type.BODY: StaticBody2D.new(),
+			}.get(_godot_type, null)
 			if parent != null:
 				layer_node.remove_child(obj_sprite)
 				layer_node.add_child(parent)
@@ -720,6 +759,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		obj_sprite.flip_h = flippedH
 		obj_sprite.flip_v = flippedV
 
+		if _add_class_as_metadata and class_string != "":
+			obj_sprite.set_meta("class", class_string)
 		if obj.has("properties"):
 			handle_properties(obj_sprite, obj["properties"])
 
@@ -760,12 +801,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 	elif not obj.has("template"):
 
-		if obj_class == object_class.UNKNOWN:
-			print_rich("[color=" + WARNING_COLOR +"] -- Unknown class '" + class_string + "'. -> Assuming Default[/color]")
-			_warning_count += 1
-			obj_class = object_class.BODY
-		if obj_class == object_class.EMPTY:
-			obj_class = object_class.BODY
+		if godot_type == _godot_type.EMPTY:
+			godot_type = _godot_type.BODY
 
 		var object_base_coords = transpose_coords(obj_x, obj_y)
 
@@ -777,12 +814,14 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			marker.position = object_base_coords
 			marker.rotation_degrees = obj_rot
 			marker.visible = obj_visible
+			if _add_class_as_metadata and class_string != "":
+				marker.set_meta("class", class_string)
 			if obj.has("properties"):
 				handle_properties(marker, obj["properties"])
 		elif obj.has("polygon"):
-			if obj_class == object_class.BODY or obj_class == object_class.AREA:
+			if godot_type == _godot_type.BODY or godot_type == _godot_type.AREA:
 				var co: CollisionObject2D
-				if obj_class == object_class.AREA:
+				if godot_type == _godot_type.AREA:
 					co = Area2D.new()
 					layer_node.add_child(co)
 					co.name = obj_name + " (Area)" if obj_name != "" else "Area"
@@ -800,9 +839,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				polygon_shape.name = obj_name if obj_name != "" else "Polygon Shape"
 				polygon_shape.position = Vector2.ZERO
 				polygon_shape.rotation_degrees = obj_rot
+				if _add_class_as_metadata and class_string != "":
+					co.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
-			elif obj_class == object_class.NAVIGATION:
+			elif godot_type == _godot_type.NAVIGATION:
 				var nav_region = NavigationRegion2D.new()
 				layer_node.add_child(nav_region)
 				nav_region.owner = _base_node
@@ -814,9 +855,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				nav_region.navigation_polygon = nav_poly
 				nav_poly.add_outline(polygon_from_array(obj["polygon"]))
 				nav_poly.make_polygons_from_outlines()
+				if _add_class_as_metadata and class_string != "":
+					nav_region.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(nav_region, obj["properties"])
-			elif obj_class == object_class.OCCLUDER:
+			elif godot_type == _godot_type.OCCLUDER:
 				var light_occ = LightOccluder2D.new()
 				layer_node.add_child(light_occ)
 				light_occ.owner = _base_node
@@ -827,9 +870,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				var occ_poly = OccluderPolygon2D.new()
 				light_occ.occluder = occ_poly
 				occ_poly.polygon = polygon_from_array(obj["polygon"])
+				if _add_class_as_metadata and class_string != "":
+					light_occ.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(light_occ, obj["properties"])
-			elif obj_class == object_class.POLYGON:
+			elif godot_type == _godot_type.POLYGON:
 				var polygon = Polygon2D.new()
 				layer_node.add_child(polygon)
 				polygon.owner = _base_node
@@ -838,10 +883,12 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				polygon.rotation_degrees = obj_rot
 				polygon.visible = obj_visible
 				polygon.polygon = polygon_from_array(obj["polygon"])
+				if _add_class_as_metadata and class_string != "":
+					polygon.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(polygon, obj["properties"])	
 		elif obj.has("polyline"):
-			if obj_class == object_class.LINE:
+			if godot_type == _godot_type.LINE:
 				var line = Line2D.new()
 				layer_node.add_child(line)
 				line.owner = _base_node
@@ -851,9 +898,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				line.rotation_degrees = obj_rot
 				line.width = 1.0
 				line.points = polygon_from_array(obj["polyline"])
+				if _add_class_as_metadata and class_string != "":
+					line.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(line, obj["properties"])
-			elif obj_class == object_class.PATH:
+			elif godot_type == _godot_type.PATH:
 				var path = Path2D.new()
 				layer_node.add_child(path)
 				path.owner = _base_node
@@ -865,11 +914,13 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				for point in obj["polyline"]:
 					curve.add_point(Vector2(point.x, point.y))
 				path.curve = curve
+				if _add_class_as_metadata and class_string != "":
+					path.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(path, obj["properties"])
 			else:
 				var co: CollisionObject2D
-				if obj_class == object_class.AREA:
+				if godot_type == _godot_type.AREA:
 					co = Area2D.new()
 					layer_node.add_child(co)
 					co.name = obj_name + " (Area)" if obj_name != "" else "Area"
@@ -892,12 +943,14 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					collision_shape.position = Vector2(obj_width / 2.0, obj_height / 2.0)
 					collision_shape.rotation_degrees = obj_rot
 					collision_shape.name = "Segment Shape"
+				if _add_class_as_metadata and class_string != "":
+					co.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
 		else:
-			if obj_class == object_class.BODY or obj_class == object_class.AREA:
+			if godot_type == _godot_type.BODY or godot_type == _godot_type.AREA:
 				var co: CollisionObject2D
-				if obj_class == object_class.AREA:
+				if godot_type == _godot_type.AREA:
 					co = Area2D.new()
 					layer_node.add_child(co)
 					co.name = obj_name + " (Area)" if obj_name != "" else "Area"
@@ -941,9 +994,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				collision_shape.position = transpose_coords(obj_width / 2.0, obj_height / 2.0, true)
 				collision_shape.rotation_degrees = obj_rot
 				collision_shape.visible = obj_visible
+				if _add_class_as_metadata and class_string != "":
+					co.set_meta("class", class_string)
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
-			elif obj_class == object_class.NAVIGATION:
+			elif godot_type == _godot_type.NAVIGATION:
 				if obj.has("ellipse"):
 					print_rich("[color="+WARNING_COLOR+"] -- Ellipse is unusable for NavigationRegion2D. -> Skipped[/color]")
 					_warning_count += 1
@@ -959,9 +1014,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					nav_region.navigation_polygon = nav_poly
 					nav_poly.add_outline(polygon_from_rectangle(obj_width, obj_height))
 					nav_poly.make_polygons_from_outlines()
+					if _add_class_as_metadata and class_string != "":
+						nav_region.set_meta("class", class_string)
 					if obj.has("properties"):
 						handle_properties(nav_region, obj["properties"])
-			elif obj_class == object_class.OCCLUDER:
+			elif godot_type == _godot_type.OCCLUDER:
 				if obj.has("ellipse"):
 					print_rich("[color="+WARNING_COLOR+"] -- Ellipse is unusable for LightOccluder2D. -> Skipped[/color]")
 					_warning_count += 1
@@ -976,9 +1033,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					var occ_poly = OccluderPolygon2D.new()
 					light_occ.occluder = occ_poly
 					occ_poly.polygon = polygon_from_rectangle(obj_width, obj_height)
+					if _add_class_as_metadata and class_string != "":
+						light_occ.set_meta("class", class_string)
 					if obj.has("properties"):
 						handle_properties(light_occ, obj["properties"])
-			elif obj_class == object_class.POLYGON:
+			elif godot_type == _godot_type.POLYGON:
 				if obj.has("ellipse"):
 					print_rich("[color="+WARNING_COLOR+"] -- Ellipse is unusable for Polygon2D. -> Skipped[/color]")
 					_warning_count += 1
@@ -991,6 +1050,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					polygon.rotation_degrees = obj_rot
 					polygon.visible = obj_visible
 					polygon.polygon = polygon_from_rectangle(obj_width, obj_height)
+					if _add_class_as_metadata and class_string != "":
+						polygon.set_meta("class", class_string)
 					if obj.has("properties"):
 						handle_properties(polygon, obj["properties"])	
 
@@ -1302,7 +1363,7 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 		var name: String = property.get("name", "")
 		var type: String = property.get("type", "string")
 		var val: String = str(property.get("value", ""))
-		if name == "": continue
+		if name == "" or name.to_lower() == GODOT_PROPERTY: continue
 		if name.begins_with("__") and has_children:
 			var child_prop_dict = {}
 			child_prop_dict["name"] = name.substr(2)

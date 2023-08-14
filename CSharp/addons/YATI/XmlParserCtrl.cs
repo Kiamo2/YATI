@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#if TOOLS
 using Godot;
 using Godot.Collections;
 
@@ -93,3 +94,4 @@ public class XmlParserCtrl
         return err;
     }
 }
+#endif

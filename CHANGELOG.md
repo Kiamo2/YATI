@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2023-08-14
+
+### Added
+
+- For defining the mapping of Tiled objects to Godot elements Tiled's Class field was used so far.<br>
+  However, this Class field is required by some users for Custom Types.<br>
+  As a new feature now a property 'godot_node_type' can be used for this mapping.<br>
+  It has priority i.e. if 'godot_node_type' is present the class field is no longer evaluated.
+- Post processors sometimes must know the content of the (Tiled) Class field.<br>
+  By enabling a new option 'add_class_as_metadata' the Class field is made available in Godot.
+
+### Fixed
+
+- In rare cases tile ids in tilesets turned out to be not sorted.<br>
+  This could produce errors and is now fixed.
+
 ## [1.4.0] - 2023-08-08
 
 ### Fixed

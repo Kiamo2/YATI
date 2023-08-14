@@ -51,6 +51,7 @@ func _get_import_options(path: String, preset_index: int) -> Array:
 	return [
 		{ "name": "use_tilemap_layers", "default_value": false },
 		{ "name": "use_default_filter", "default_value": false },
+		{ "name": "add_class_as_metadata", "default_value": false },
 		{ "name": "map_wangset_to_terrain", "default_value": false },
 		{ "name": "post_processor", "default_value": "", "property_hint": PROPERTY_HINT_FILE, "hint_string": "*.gd;GDScript" },
 		{ "name": "save_tileset_to", "default_value": "", "property_hint": PROPERTY_HINT_SAVE_FILE, "hint_string": "*.tres;Resource File" }
@@ -73,6 +74,8 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		tilemapCreator.set_map_layers_to_tilemaps(true)
 	if options["use_default_filter"] == true:
 		tilemapCreator.set_use_default_filter(true)
+	if options["add_class_as_metadata"] == true:
+		tilemapCreator.set_add_class_as_metadata(true)
 	if options["map_wangset_to_terrain"] == true:
 		tilemapCreator.set_map_wangset_to_terrain(true)
 	var node2D = tilemapCreator.create(source_file)

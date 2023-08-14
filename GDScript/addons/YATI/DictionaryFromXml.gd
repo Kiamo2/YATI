@@ -68,7 +68,6 @@ func create(source_file_name: String):
 		return null
 
 func simple_element(element_name: String, attribs: Dictionary) -> int:
-	var dict_key = element_name
 	if element_name == "image":
 		_current_dictionary["image"] = attribs["source"]
 		if attribs.has("width"):
@@ -78,69 +77,73 @@ func simple_element(element_name: String, attribs: Dictionary) -> int:
 		if attribs.has("trans"):
 			_current_dictionary["transparentcolor"] = attribs["trans"]
 		return OK
-	elif element_name == "wangcolor":
-		dict_key = "color"
-	elif element_name == "point":
+	if element_name == "wangcolor":
+		element_name = "color"
+	if element_name == "point":
 		_current_dictionary["point"] = true
 		return OK
-	elif element_name == "ellipse":
+	if element_name == "ellipse":
 		_current_dictionary["ellipse"] = true
 		return OK
-	elif (element_name == "objectgroup" and (not _is_map or _in_tileset)) or (element_name == "text") or (element_name == "tileoffset") or (element_name == "grid"):
+
+	var dict_key = element_name
+	if (element_name == "objectgroup" and (not _is_map or _in_tileset)) or (element_name == "text") or (element_name == "tileoffset") or (element_name == "grid"):
 		# Create a single dictionary, not an array.
 		_current_dictionary[dict_key] = {}
 		_current_dictionary = _current_dictionary[dict_key]
 		if attribs.size() > 0:
 			insert_attributes(_current_dictionary, attribs)
-	elif dict_key == "polygon" or dict_key == "polyline":
-		var arr = []
-		for pt in attribs["points"].split(" "):
-			var dict = {}
-			var x = float(pt.split(",")[0])
-			var y = float(pt.split(",")[1])
-			dict["x"] = x
-			dict["y"] = y
-			arr.append(dict)
-		_current_dictionary[dict_key] = arr
-	elif dict_key == "frame" or dict_key == "property":
-		# i.e. will be part of the superior array (animation or properties)
-		var dict = {}
-		insert_attributes(dict, attribs)
-		_current_array.append(dict)
 	else:
-		if dict_key == "objectgroup" or dict_key == "imagelayer":
-			# to be later added to the layer attributes (by insert_attributes)
-			attribs["type"] = dict_key
-			dict_key = "layer"
-		if dict_key == "group":
-			# Add nested layers array
-			attribs["type"] = "group"
-			if _current_dictionary.has("layers"):
-				_current_array = _current_dictionary["layers"]
+		if dict_key == "polygon" or dict_key == "polyline":
+			var arr = []
+			for pt in attribs["points"].split(" "):
+				var dict = {}
+				var x = float(pt.split(",")[0])
+				var y = float(pt.split(",")[1])
+				dict["x"] = x
+				dict["y"] = y
+				arr.append(dict)
+			_current_dictionary[dict_key] = arr
+		elif dict_key == "frame" or dict_key == "property":
+			# i.e. will be part of the superior array (animation or properties)
+			var dict = {}
+			insert_attributes(dict, attribs)
+			_current_array.append(dict)
+		else:
+			if dict_key == "objectgroup" or dict_key == "imagelayer":
+				# to be later added to the layer attributes (by insert_attributes)
+				attribs["type"] = dict_key
+				dict_key = "layer"
+			if dict_key == "group":
+				# Add nested layers array
+				attribs["type"] = "group"
+				if _current_dictionary.has("layers"):
+					_current_array = _current_dictionary["layers"]
+				else:
+					_current_array = []
+					_current_dictionary["layers"] = _current_array
+				dict_key = "layer"
+			if dict_key != "animation" and dict_key != "properties":
+				dict_key = dict_key + "s"
+			if _current_dictionary.has(dict_key):
+				_current_array = _current_dictionary[dict_key]
 			else:
 				_current_array = []
-				_current_dictionary["layers"] = _current_array
-			dict_key = "layer"
-		if dict_key != "animation" and dict_key != "properties":
-			dict_key = dict_key + "s"
-		if _current_dictionary.has(dict_key):
-			_current_array = _current_dictionary[dict_key]
-		else:
-			_current_array = []
-			_current_dictionary[dict_key] = _current_array
-		if dict_key != "animation" and dict_key != "properties":
-			_current_dictionary = {}
-			_current_array.append(_current_dictionary)
-		if dict_key == "wangtiles":
-			_current_dictionary["tileid"] = int(attribs["tileid"])
-			var arr = []
-			for s in attribs["wangid"].split(","):
-				arr.append(int(s))
-			_current_dictionary["wangid"] = arr
-		else:
-			if attribs.size() > 0:
-				insert_attributes(_current_dictionary, attribs)
+				_current_dictionary[dict_key] = _current_array
+			if dict_key != "animation" and dict_key != "properties":
+				_current_dictionary = {}
+				_current_array.append(_current_dictionary)
+			if dict_key == "wangtiles":
+				_current_dictionary["tileid"] = int(attribs["tileid"])
+				var arr = []
+				for s in attribs["wangid"].split(","):
+					arr.append(int(s))
+				_current_dictionary["wangid"] = arr
+			else:
+				if attribs.size() > 0:
+					insert_attributes(_current_dictionary, attribs)
 	return OK        
+
 
 func nested_element(element_name: String, attribs: Dictionary):
 	var err = OK

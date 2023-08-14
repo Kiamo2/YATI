@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#if TOOLS
 using Godot;
 using Godot.Collections;
 
@@ -48,6 +49,7 @@ public partial class Importer: EditorImportPlugin
         {
             new() { { "name", "use_tilemap_layers" }, { "default_value", false } },
             new() { { "name", "use_default_filter" }, { "default_value", false } },
+            new() { { "name", "add_class_as_metadata" }, { "default_value", false } },
             new() { { "name", "map_wangset_to_terrain" }, { "default_value", false } },
             new() { { "name", "post_processor" }, { "default_value", "" },
                     { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.cs;C# Script" } },
@@ -80,6 +82,8 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetMapLayersToTilemaps(true);
         if ((string)options["use_default_filter"] == "true")
             tilemapCreator.SetUseDefaultFilter(true);
+        if ((string)options["add_class_as_metadata"] == "true")
+            tilemapCreator.SetAddClassAsMetadata(true);
         if ((string)options["map_wangset_to_terrain"] == "true")
             tilemapCreator.SetMapWangsetToTerrain(true);
         var node2D = tilemapCreator.Create(sourceFile);
@@ -143,3 +147,4 @@ public partial class Importer: EditorImportPlugin
         return ret;
     }
 }
+#endif

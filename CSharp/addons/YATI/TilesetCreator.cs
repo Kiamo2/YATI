@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#if TOOLS
 using System.Collections.Generic;
 using Godot;
 using Godot.Collections;
@@ -89,7 +90,7 @@ public class TilesetCreator
     {
         _mapTileSize = mapTileSize;
     }
-
+    
     public void MapWangsetToTerrain()
     {
         _mapWangsetToTerrain = true;
@@ -113,6 +114,8 @@ public class TilesetCreator
                 _basePathTileset = checkedFile.GetBaseDir();
 
                 tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
+
+                //File.WriteAllText("test".PathJoin(checkedFile.GetFile().GetBaseName() + "_parse.json"), tileSetDict.ToString());
             }
 
             // Possible error condition
@@ -198,9 +201,12 @@ public class TilesetCreator
             
             var texture = LoadImage((string)imagePath);
             if (texture == null)
-                // Can't continue without texture
+            {
+                // Can't continue without texture but as source was already added, counter must be incremented
+                _atlasSourceCounter++;
                 return;
-            
+            }
+
             _currentAtlasSource.Texture = texture;
  
             if ((_tileCount == 0) || (_columns == 0))
@@ -317,7 +323,7 @@ public class TilesetCreator
 
     private void HandleTiles(Array<Dictionary> tiles)
     {
-        var lastAtlasSourceCount = _atlasSourceCounter;
+        var maxLastAtlasSourceCount = _atlasSourceCounter;
         foreach (var tile in tiles)
         {
             var tileId = (int)tile["id"];
@@ -327,7 +333,9 @@ public class TilesetCreator
             {
                 // Tile with it's own image -> separate atlas source
                 _currentAtlasSource = new TileSetAtlasSource();
-                lastAtlasSourceCount = _atlasSourceCounter + tileId + 1;
+                var lastAtlasSourceCount = _atlasSourceCounter + tileId + 1;
+                if (lastAtlasSourceCount > maxLastAtlasSourceCount)
+                    maxLastAtlasSourceCount = lastAtlasSourceCount;
                 _tileset.AddSource(_currentAtlasSource, lastAtlasSourceCount - 1);
                 RegisterAtlasSource(lastAtlasSourceCount-1, 1, tileId, Vector2I.Zero);
                 
@@ -394,7 +402,7 @@ public class TilesetCreator
                 HandleTileProperties((Array<Dictionary>)props, currentTile);
         }
 
-        _atlasSourceCounter = lastAtlasSourceCount;
+        _atlasSourceCounter = maxLastAtlasSourceCount;
     }
 
     private void HandleAnimation(Array<Dictionary> frames, int tileId)
@@ -957,7 +965,7 @@ public class TilesetCreator
             _terrainCounter++;
         }
     }
-    
+
     private void HandleWangsets(Array<Dictionary> wangsets)
     {
         foreach (var wangset in wangsets)
@@ -1045,3 +1053,4 @@ public class TilesetCreator
         }
     }
 }
+#endif

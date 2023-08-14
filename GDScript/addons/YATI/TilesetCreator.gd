@@ -167,7 +167,8 @@ func create_or_append(tile_set: Dictionary):
 
 		var texture = load_image(tile_set["image"])
 		if not texture:
-			# Can't continue without texture
+			# Can't continue without texture but as source was already added, counter must be incremented
+			_atlas_source_counter += 1
 			return;
 
 		_current_atlas_source.texture = texture
@@ -264,7 +265,7 @@ func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 
 
 func handle_tiles(tiles: Array):
-	var last_atlas_source_count = _atlas_source_counter
+	var max_last_atlas_source_count = _atlas_source_counter
 	for tile in tiles:
 		var tile_id = tile["id"]
 
@@ -272,7 +273,9 @@ func handle_tiles(tiles: Array):
 		if tile.has("image"):
 			# Tile with its own image -> separate atlas source
 			_current_atlas_source = TileSetAtlasSource.new()
-			last_atlas_source_count = _atlas_source_counter + tile_id + 1
+			var last_atlas_source_count = _atlas_source_counter + tile_id + 1
+			if last_atlas_source_count > max_last_atlas_source_count:
+				max_last_atlas_source_count = last_atlas_source_count
 			_tileset.add_source(_current_atlas_source, last_atlas_source_count-1)
 			register_atlas_source(last_atlas_source_count-1, 1, tile_id, Vector2i.ZERO)
 
@@ -321,7 +324,7 @@ func handle_tiles(tiles: Array):
 		if tile.has("properties"):
 			handle_tile_properties(tile["properties"], current_tile)
 	
-	_atlas_source_counter = last_atlas_source_count
+	_atlas_source_counter = max_last_atlas_source_count
 
 
 func handle_animation(frames: Array, tile_id: int) -> void:

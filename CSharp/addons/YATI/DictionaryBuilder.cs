@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#if TOOLS
 using System.Linq;
 using Godot;
 using Godot.Collections;
@@ -86,3 +87,4 @@ public static class DictionaryBuilder
         return null;
     }
 }
+#endif
