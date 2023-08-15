@@ -741,7 +741,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				_godot_type.CBODY: CharacterBody2D.new(),
 				_godot_type.RBODY: RigidBody2D.new(),
 				_godot_type.BODY: StaticBody2D.new(),
-			}.get(_godot_type, null)
+			}.get(godot_type, null)
 			if parent != null:
 				layer_node.remove_child(obj_sprite)
 				layer_node.add_child(parent)
