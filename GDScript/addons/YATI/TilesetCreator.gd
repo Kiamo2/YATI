@@ -48,6 +48,7 @@ var _warning_count = 0
 var _map_tile_size: Vector2i
 var _grid_size: Vector2i
 var _tile_offset: Vector2i
+var _object_alignment
 var _object_groups = null
 var _object_groups_counter: int = 0
 var _tileset_orientation
@@ -153,6 +154,11 @@ func create_or_append(tile_set: Dictionary):
 		_grid_size.x = grid.get("width", _tile_size.x)
 		_grid_size.y = grid.get("height", _tile_size.y)
 
+	if tile_set.has("objectalignment"):
+		_object_alignment = tile_set["objectalignment"]
+	else:
+		_object_alignment = "unspecified"
+
 	if _append:
 		_terrain_counter = 0
 
@@ -230,6 +236,7 @@ func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int
 	atlas_source_item["assignedId"] = assigned_tile_id
 	atlas_source_item["tileOffset"] = tile_offset
 	atlas_source_item["tilesetOrientation"] = _tileset_orientation
+	atlas_source_item["objectAlignment"] = _object_alignment
 	_atlas_sources.push_back(atlas_source_item)
 	
 

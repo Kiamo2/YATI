@@ -26,6 +26,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using Godot;
 using Godot.Collections;
 using Array = Godot.Collections.Array;
@@ -42,6 +43,7 @@ public class TilemapCreator
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
     private const string GodotProperty = "godot_node_type";
+    private const string DefaultAlignment = "unspecified";
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private string _mapOrientation;
@@ -59,6 +61,7 @@ public class TilemapCreator
     private float _tilemapOffsetY;
     private TileSet _tileset;
     private string _currentTilesetOrientation;
+    private string _currentObjectAlignment;
     private Node2D _baseNode;
     private ParallaxBackground _parallaxBackground;
     private ColorRect _background;
@@ -71,7 +74,7 @@ public class TilemapCreator
     private bool _mapLayersToTilemaps;
     private int _tmLayerCounter;
     private readonly Array<int> _firstGids = new ();
-    private Array _atlasSources;
+    private List<Dictionary> _atlasSources;
     private bool _useDefaultFilter;
     private bool _mapWangsetToTerrain;
     private bool _addClassAsMetadata;
@@ -162,7 +165,8 @@ public class TilemapCreator
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
-            _atlasSources = tilesetCreator.GetRegisteredAtlasSources();
+            var unsorted = tilesetCreator.GetRegisteredAtlasSources();
+            _atlasSources = unsorted.OrderBy(x => (int)x["sourceId"]).ToList();
             _objectGroups = tilesetCreator.GetRegisteredObjectGroups();
         }
         // If tileset still null create an empty one
@@ -723,6 +727,23 @@ public class TilemapCreator
         return ret;
     }
 
+    private static void SetSpriteOffset(Sprite2D objSprite, float width, float height, string alignment)
+    {
+        objSprite.Offset = alignment switch
+        {
+            "bottomleft" => new Vector2(width / 2.0f, -height / 2.0f),
+            "bottom" => new Vector2(0.0f, -height / 2.0f),
+            "bottomright" => new Vector2(-width / 2.0f, -height / 2.0f),
+            "left" => new Vector2(width / 2.0f, 0.0f),
+            "center" => new Vector2(0.0f, 0.0f),
+            "right" => new Vector2(-width / 2.0f, 0.0f),
+            "topleft" => new Vector2(width / 2.0f, height / 2.0f),
+            "top" => new Vector2(0.0f, height / 2.0f),
+            "topright" => new Vector2(-width / 2.0f, height / 2.0f),
+            _ => objSprite.Offset
+        };
+    }
+
     private void HandleObject(Dictionary obj, Node layerNode, TileSet tileset, Vector2 offSet)
     {
         var objX = (float)obj.GetValueOrDefault("x", offSet.X);
@@ -827,6 +848,9 @@ public class TilemapCreator
             var sourceId = GetMatchingSourceId(gid);
             var tileOffset = GetTileOffset(gid);
             _currentTilesetOrientation = GetTilesetOrientation(gid);
+            _currentObjectAlignment = GetTilesetAlignment(gid);
+            if (_currentObjectAlignment == DefaultAlignment)
+                _currentObjectAlignment = _mapOrientation == "orthogonal" ? "bottomleft" : "bottom";
             var firstGidId = GetFirstGidIndex(gid);
             if (firstGidId > sourceId)
                 sourceId = firstGidId;
@@ -869,12 +893,7 @@ public class TilemapCreator
                     objHeight -= 1.0f;
                 }
                 objSprite.RegionRect = new Rect2(pos, regionSize);
-                objSprite.Offset = _mapOrientation switch
-                {
-                    "orthogonal" => new Vector2(regionSize.X / 2.0f, -regionSize.Y / 2.0f),
-                    "isometric" => new Vector2(0.0f, -regionSize.Y / 2.0f),
-                    _ => new Vector2(regionSize.X / 2.0f, -regionSize.Y / 2.0f)
-                };
+                SetSpriteOffset(objSprite, regionSize.X, regionSize.Y, _currentObjectAlignment);
                 if (Math.Abs(regionSize.X - (int)objWidth) > 0.01f || Math.Abs(regionSize.Y - (int)objHeight) > 0.01f)
                 {
                     var scaleX = objWidth / regionSize.X;
@@ -885,14 +904,15 @@ public class TilemapCreator
             else
             {
                 // Object is single image tile
-                var gidWidth = gidSource.Texture.GetWidth();
-                var gidHeight = gidSource.Texture.GetHeight();
-                objSprite.Offset = _mapOrientation switch
+                var gidWidth = gidSource.TextureRegionSize.X;
+                var gidHeight = gidSource.TextureRegionSize.Y;
+                SetSpriteOffset(objSprite, gidWidth, gidHeight, _currentObjectAlignment);
+                // Tiled sub rects?
+                if (gidWidth != gidSource.Texture.GetWidth() || gidHeight != gidSource.Texture.GetHeight())
                 {
-                    "orthogonal" => new Vector2(gidSource.Texture.GetWidth() / 2.0f, -gidSource.Texture.GetHeight() / 2.0f),
-                    "isometric" => new Vector2(0.0f, -gidSource.Texture.GetHeight() / 2.0f),
-                    _ => new Vector2(gidSource.Texture.GetWidth() / 2.0f, -gidSource.Texture.GetHeight() / 2.0f)
-                };
+                    objSprite.RegionEnabled = true;
+                    objSprite.RegionRect = new Rect2(gidSource.Margins, gidSource.TextureRegionSize);
+                }
                 if ((gidWidth != (int)objWidth) || (gidHeight != (int)objHeight))
                 {
                     var scaleX = objWidth / gidWidth;
@@ -1584,7 +1604,7 @@ public class TilemapCreator
         var prevSourceId = -1;
         if (_atlasSources == null)
             return -1;
-        foreach (Dictionary src in _atlasSources)
+        foreach (var src in _atlasSources)
         {
             var sourceId = (int)src["sourceId"];
             limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
@@ -1602,7 +1622,7 @@ public class TilemapCreator
         var prevSourceId = -1;
         if (_atlasSources == null)
             return Vector2I.Zero;
-        foreach (Dictionary src in _atlasSources)
+        foreach (var src in _atlasSources)
         {
             var sourceId = (int)src["sourceId"];
             limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
@@ -1620,7 +1640,7 @@ public class TilemapCreator
         var prevSourceId = -1;
         if (_atlasSources == null)
             return _mapOrientation;
-        foreach (Dictionary src in _atlasSources)
+        foreach (var src in _atlasSources)
         {
             var sourceId = (int)src["sourceId"];
             limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
@@ -1632,13 +1652,28 @@ public class TilemapCreator
         return _mapOrientation;
     }
 
+    private string GetTilesetAlignment(int gid)
+    {
+        var limit = 0;
+        var prevSourceId = -1;
+        if (_atlasSources == null)
+            return DefaultAlignment;
+        foreach (var src in _atlasSources)
+        {
+            var sourceId = (int)src["sourceId"];
+            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
+            if (gid <= limit)
+                return (string)src["objectAlignment"];
+            prevSourceId = sourceId;
+        }
+        
+        return DefaultAlignment;
+    }
+
     private int GetNumTilesForSourceId(int sourceId)
     {
-        foreach (Dictionary src in _atlasSources)
-        {
-            if ((int)src["sourceId"] == sourceId)
-                return (int)src["numTiles"];
-        }
+        foreach (var src in _atlasSources.Where(src => (int)src["sourceId"] == sourceId))
+            return (int)src["numTiles"];
 
         return -1;
     }

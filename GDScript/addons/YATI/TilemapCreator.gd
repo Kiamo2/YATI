@@ -31,6 +31,7 @@ const BACKGROUND_COLOR_RECT_NAME = "Background Color"
 const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
 const GODOT_PROPERTY = "godot_node_type"
+const DEFAULT_ALIGNMENT = "unspecified"
 
 var _map_orientation: String
 var _map_width: int = 0
@@ -47,6 +48,7 @@ var _tilemap_offset_x: float = 0.0
 var _tilemap_offset_y: float = 0.0
 var _tileset = null
 var _current_tileset_orientation: String
+var _current_object_alignment: String
 var _base_node = null
 var _parallax_background = null
 var _background = null
@@ -86,6 +88,10 @@ enum _godot_type {
 	INSTANCE,
 	UNKNOWN
 }
+
+
+func custom_compare(a: Dictionary, b: Dictionary):
+	return a["sourceId"] < b["sourceId"]
 
 
 func get_error_count():
@@ -142,6 +148,7 @@ func create(source_file: String):
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
 		_atlas_sources = tileset_creator.get_registered_atlas_sources()
+		_atlas_sources.sort_custom(custom_compare)
 		_object_groups = tileset_creator.get_registered_object_groups()
 	if _tileset == null:
 		# If tileset still null create an empty one
@@ -595,6 +602,20 @@ func get_godot_property(obj: Dictionary):
 	return [ret, property_found]
 
 
+func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignment: String):
+	obj_sprite.offset = {
+		"bottomleft": Vector2(width / 2.0, -height / 2.0),
+		"bottom": Vector2(0.0, -height / 2.0),
+		"bottomright": Vector2(-width / 2.0, -height / 2.0),
+		"left": Vector2(width / 2.0, 0.0),
+		"center": Vector2(0.0, 0.0),
+		"right": Vector2(-width / 2.0, 0.0),
+		"topleft": Vector2(width / 2.0, height / 2.0),
+		"top": Vector2(0.0, height / 2.0),
+		"topright": Vector2(-width / 2.0, height / 2.0),
+	}.get(alignment, Vector2(width / 2.0, -height / 2.0))
+
+
 func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: Vector2) -> void:
 	var obj_x = obj.get("x", offset.x)
 	var obj_y = obj.get("y", offset.y)
@@ -672,6 +693,9 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		var source_id = get_matching_source_id(gid)
 		var tile_offset = get_tile_offset(gid)
 		_current_tileset_orientation = get_tileset_orientation(gid)
+		_current_object_alignment = get_tileset_alignment(gid)
+		if _current_object_alignment == DEFAULT_ALIGNMENT:
+			_current_object_alignment = "bottomleft" if _map_orientation == "orthogonal" else "bottom"
 		var first_gid_id = get_first_gid_index(gid)
 		if first_gid_id > source_id:
 			source_id = first_gid_id
@@ -711,23 +735,21 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				obj_width -= 1.0
 				obj_height -= 1.0
 			obj_sprite.region_rect = Rect2(pos, region_size)
-			obj_sprite.offset = {
-				"orthogonal": Vector2(region_size.x / 2.0, -region_size.y / 2.0),
-				"isometric": Vector2(0.0, -region_size.y / 2.0),
-			}.get(_map_orientation, Vector2(region_size.x / 2.0, -region_size.y / 2.0))
+			set_sprite_offset(obj_sprite, region_size.x, region_size.y, _current_object_alignment)
 			if abs(region_size.x - obj_width) > 0.01 or abs(region_size.y - obj_height) > 0.01:
 				var scale_x: float = float(obj_width) / float(region_size.x)
 				var scale_y: float = float(obj_height) / float(region_size.y)
 				obj_sprite.scale = Vector2(scale_x, scale_y)
 		else:
 			# Object is single image tile
-			var gid_width: float = gid_source.texture.get_width()
-			var gid_height: float = gid_source.texture.get_height()
+			var gid_width: int = gid_source.texture_region_size.x
+			var gid_height: int = gid_source.texture_region_size.y
 			obj_sprite.offset = Vector2(gid_width / 2.0, -gid_height / 2.0)
-			obj_sprite.offset = {
-				"orthogonal": Vector2(gid_width / 2.0, -gid_height / 2.0),
-				"isometric": Vector2(0.0, -gid_height / 2.0),
-			}.get(_map_orientation,  Vector2(gid_width / 2.0, -gid_height / 2.0))
+			set_sprite_offset(obj_sprite, gid_width, gid_height, _current_object_alignment)
+			# Tiled sub rects?
+			if gid_width != gid_source.texture.get_width() or gid_height != gid_source.texture.get_height():
+				obj_sprite.region_enabled = true
+				obj_sprite.region_rect = Rect2(gid_source.margins, gid_source.texture_region_size)
 			if gid_width != obj_width or gid_height != obj_height:
 				var scale_x: float = float(obj_width) / gid_width
 				var scale_y: float = float(obj_height) / gid_height
@@ -1289,6 +1311,20 @@ func get_tileset_orientation(gid: int):
 			return src["tilesetOrientation"]
 		prev_source_id = source_id
 	return _map_orientation
+	
+
+func get_tileset_alignment(gid: int):
+	var limit: int = 0
+	var prev_source_id: int = -1
+	if _atlas_sources == null:
+		return DEFAULT_ALIGNMENT
+	for src in _atlas_sources:
+		var source_id: int = src["sourceId"]
+		limit += src["numTiles"] + source_id - prev_source_id - 1
+		if gid <= limit:
+			return src["objectAlignment"]
+		prev_source_id = source_id
+	return DEFAULT_ALIGNMENT
 	
 
 func get_num_tiles_for_source_id(source_id: int):

@@ -52,12 +52,13 @@ public class TilesetCreator
     private int _navigationLayerCounter = -1;
     private int _occlusionLayerCounter = -1;
     private bool _append;
-    private Array _atlasSources;
+    private Array<Dictionary> _atlasSources;
     private int _errorCount;
     private int _warningCount;
     private Vector2I _mapTileSize;
     private Vector2I _gridSize;
     private Vector2I _tileOffset;
+    private string _objectAlignment;
     private Dictionary _objectGroups;
     private int _objectGroupsCounter;
     private string _tilesetOrientation;
@@ -139,7 +140,7 @@ public class TilesetCreator
         return _tileset;
     }
 
-    public Array GetRegisteredAtlasSources()
+    public Array<Dictionary> GetRegisteredAtlasSources()
     {
         return _atlasSources;
     }
@@ -186,6 +187,11 @@ public class TilesetCreator
             _gridSize.Y = (int)grid.GetValueOrDefault("height", _tileSize.Y);
         }
 
+        if (tileSet.TryGetValue("objectalignment", out var objAlignment))
+            _objectAlignment = (string)objAlignment;
+        else
+            _objectAlignment = "unspecified";
+        
         if (_append)
             _terrainCounter = 0;
 
@@ -273,13 +279,14 @@ public class TilesetCreator
 
     private void RegisterAtlasSource(int sourceId, int numTiles, int assignedTileId, Vector2I tileOffset)
     {
-        _atlasSources ??= new Array();
+        _atlasSources ??= new Array<Dictionary>();
         var atlasSourceItem = new Dictionary();
         atlasSourceItem.Add("sourceId", sourceId);
         atlasSourceItem.Add("numTiles", numTiles);
         atlasSourceItem.Add("assignedId", assignedTileId);
         atlasSourceItem.Add("tileOffset", tileOffset);
         atlasSourceItem.Add("tilesetOrientation", _tilesetOrientation);
+        atlasSourceItem.Add("objectAlignment", _objectAlignment);
         _atlasSources.Add(atlasSourceItem);
     }
 
