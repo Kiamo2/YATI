@@ -55,7 +55,7 @@ public static class DictionaryBuilder
             type = FileType.Json;
         else
         {
-            var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
+            using var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
             var chunk = System.Text.Encoding.UTF8.GetString(file.GetBuffer(12));
             if (chunk.StartsWith("<?xml "))
                 type = FileType.Xml;
@@ -73,7 +73,7 @@ public static class DictionaryBuilder
             case FileType.Json:
             {
                 var json = new Json();
-                var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
+                using var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
                 if (json.Parse(file.GetAsText()) == Error.Ok)
                     return (Dictionary)json.Data;
                 break;
