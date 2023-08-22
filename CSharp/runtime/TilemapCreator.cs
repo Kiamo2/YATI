@@ -20,7 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#if TOOLS
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -32,7 +31,8 @@ using Godot.Collections;
 using Array = Godot.Collections.Array;
 using FileAccess = Godot.FileAccess;
 
-[Tool]
+namespace YATI;
+
 public class TilemapCreator
 {
     private const uint FlippedHorizontallyFlag = 0x80000000;
@@ -2164,4 +2164,3 @@ public class TilemapCreator
         }
     }
 }
-#endif

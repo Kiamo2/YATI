@@ -20,10 +20,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#if TOOLS
 using System.Linq;
 using Godot;
 using Godot.Collections;
+
+namespace YATI;
 
 public static class DictionaryBuilder
 {
@@ -42,7 +43,7 @@ public static class DictionaryBuilder
             checkedFile = sourceFile.GetBaseDir().PathJoin(sourceFile);
             if (!FileAccess.FileExists(checkedFile))
             {
-                GD.PrintErr($"ERROR: File '{sourceFile}' not found. -> Continuing but result may be unusable");
+                // GD.PrintErr($"ERROR: File '{sourceFile}' not found. -> Continuing but result may be unusable");
                 return null;
             }
         }
@@ -86,4 +87,3 @@ public static class DictionaryBuilder
         return null;
     }
 }
-#endif
