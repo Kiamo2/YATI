@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.3] - 2023-08-23
+
+### Fixed
+
+- Fixed issue #18
+- Fixed 'No loader found for resource...' error (was my bad since the very first version).  
+  It's now possible to instantiate a .tmx/.tmj directly by double clicking on it.  
+  Thus copying the resulting .tscn parallel to the .tmx/.tmj is no longer done.  
+  That's now left to Godot's 'Please confirm...' dialog opening upon double clicking a .tmx/.tmj
+
 ## [1.5.2] - 2023-08-22
 
 ### Added

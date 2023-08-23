@@ -7,7 +7,7 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 
 Tested on Windows 10 with Godot 4.1.1 and Tiled 1.10.2 (Tiled maps from older Tiled versions may work too)
 
-Latest version: 1.5.2
+Latest version: 1.5.3
 
 **New since v1.5.2:** Runtime packages are now additionally available.  
 For installation and usage please refer to the [runtime document](Runtime.md)
@@ -16,7 +16,7 @@ For installation and usage please refer to the [runtime document](Runtime.md)
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v1.5.2/v1.5.2-gdscript.zip) or the [CSharp version](../../releases/download/v1.5.2/v1.5.2-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v1.5.3/v1.5.3-gdscript.zip) or the [CSharp version](../../releases/download/v1.5.3/v1.5.3-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
 - **C# version:** Run your project once for building the plugin, otherwise enabling will fail
@@ -62,9 +62,6 @@ I've not yet found anything to change this.
 
 1. Godot may freeze during import, see my recommendation concerning "Use Multiple Threads" in the Usage section.  
 Maybe this is only a problem on Windows though...
-2. Currently an imported map cannot be instanciated by drag&drop ("No loader found for resource: res://.godot/imported/...")<p>
-To get around this problem the resulting .tscn file is additionally copied to where the .tmx/.tmj is located.  
-If it's not at once appearing in the editor browser, simply minimize and maximize the Godot window and it will show up.
 
 ## Support
 

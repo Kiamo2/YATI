@@ -660,6 +660,29 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		if template_dict.has("objects"):
 			for template_obj in template_dict["objects"]:
 				template_obj["template_dir_path"] = template_path.get_base_dir()
+
+				# v1.5.3 Fix according to Carlo M
+				# override and merge properties defined in obj with properties defined in template
+				# since obj may override and define additional properties to those defined in template
+				if obj.has("properties"):
+					if template_obj.has("properties"):
+						# merge obj properties that may have been overridden in the obj instance
+						# and add any additional properties defined in instanced obj that are 
+						# not defined in template
+						for prop in obj["properties"]:
+							var found = false
+							for templ_prop in template_obj["properties"]:
+								if prop.name == templ_prop.name:
+									templ_prop.value = prop.value
+									found = true
+									break
+							if not found:
+								template_obj["properties"].append(prop)
+					else:
+						# template comes without properties, since obj has properties
+						# then merge them into the template
+						template_obj["properties"] = obj.properties
+
 				handle_object(template_obj, layer_node, template_tileset, Vector2(obj_x, obj_y))
 
 	# v1.2: New class 'instance'

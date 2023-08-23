@@ -33,7 +33,7 @@ func _get_recognized_extensions() -> PackedStringArray:
 	return PackedStringArray(["tmx", "tmj"])
 
 func _get_resource_type() -> String:
-	return "Node2D"
+	return "PackedScene"
 
 func _get_save_extension() -> String:
 	return "tscn"
@@ -103,9 +103,10 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 	packed_scene.pack(node2D)
 	# return ResourceSaver.save(packed_scene, source_file.get_basename() + "." + _get_save_extension())
 	var ret = ResourceSaver.save(packed_scene, save_path + "." + _get_save_extension())
-	if ret == OK:
-		var dir = DirAccess.open(source_file.get_basename().get_base_dir())
-		ret = dir.copy(save_path + "." + _get_save_extension(), source_file.get_basename() + "." + _get_save_extension())
+	# v1.5.3: Copying no longer necessary, leave that to Godot's "Please confirm..." dialog box
+	#if ret == OK:
+	#	var dir = DirAccess.open(source_file.get_basename().get_base_dir())
+	#	ret = dir.copy(save_path + "." + _get_save_extension(), source_file.get_basename() + "." + _get_save_extension())
 	if ret == OK:
 		var final_message_string = "Import succeeded."
 		if post_proc_error:

@@ -33,7 +33,7 @@ public partial class Importer: EditorImportPlugin
 
     public override string[] _GetRecognizedExtensions() => new [] { "tmx", "tmj" };
 
-    public override string _GetResourceType() => "Node2D";
+    public override string _GetResourceType() => "PackedScene";
 
     public override string _GetSaveExtension() => "tscn";
 
@@ -117,9 +117,10 @@ public partial class Importer: EditorImportPlugin
         packedScene.Pack(node2D);
         //return ResourceSaver.Save(packedScene, $"{sourceFile.GetBaseName()}.{_GetSaveExtension()}");
         var ret = ResourceSaver.Save(packedScene, $"{savePath}.{_GetSaveExtension()}");
-        if (ret != Error.Ok) return ret;
-        var dir = DirAccess.Open($"{sourceFile.GetBaseName().GetBaseDir()}");
-        ret = dir.Copy($"{savePath}.{_GetSaveExtension()}", $"{sourceFile.GetBaseName()}.{_GetSaveExtension()}");
+        // v1.5.3: Copying no longer necessary, leave that to Godot's "Please confirm..." dialog box
+        //if (ret != Error.Ok) return ret;
+        //var dir = DirAccess.Open($"{sourceFile.GetBaseName().GetBaseDir()}");
+        //ret = dir.Copy($"{savePath}.{_GetSaveExtension()}", $"{sourceFile.GetBaseName()}.{_GetSaveExtension()}");
         if (ret != Error.Ok) return ret;
         var finalMessageString = "Import succeeded.";
         if (postProcError)

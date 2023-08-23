@@ -802,6 +802,39 @@ public class TilemapCreator
                 foreach (var templateObj in (Array<Dictionary>)objs)
                 {
                     templateObj["template_dir_path"] = templatePath.GetBaseDir();
+
+                    // v1.5.3 Fix according to Carlo M (dogezen)
+                    // override and merge properties defined in obj with properties defined in template
+                    // since obj may override and define additional properties to those defined in template
+                    if (obj.TryGetValue("properties", out var objProps))
+                    {
+                        if (templateObj.TryGetValue("properties", out var templateProps))
+                        {
+                            // merge obj properties that may have been overridden in the obj instance
+                            // and add any additional properties defined in instanced obj that are 
+                            // not defined in template
+                            foreach (var prop in (Array<Dictionary>)objProps)
+                            {
+                                var found = false;
+                                foreach (var templateProp in (Array<Dictionary>)templateProps)
+                                {
+                                    if ((string)prop["name"] != (string)templateProp["name"]) continue;
+                                    templateProp["value"] = prop["value"];
+                                    found = true;
+                                    break;
+                                }
+                                if (!found)
+                                    ((Array<Dictionary>)templateProps).Add(prop);
+                            }
+                        }
+                        else
+                        {
+                            // template comes without properties, since obj has properties
+                            // then merge them into the template
+                            templateObj["properties"] = objProps;
+                        }
+                    }
+
                     HandleObject(templateObj, layerNode, templateTileSet, new Vector2(objX, objY));
                 }
             }
