@@ -29,7 +29,8 @@ const FLIPPED_DIAGONALLY_FLAG = 0x20000000
 const BACKGROUND_COLOR_RECT_NAME = "Background Color"
 const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
-const GODOT_PROPERTY = "godot_node_type"
+const GODOT_NODE_TYPE_PROPERTY = "godot_node_type"
+const GODOT_GROUP_PROPERTY = "godot_group"
 const DEFAULT_ALIGNMENT = "unspecified"
 
 var _map_orientation: String
@@ -594,7 +595,7 @@ func get_godot_property(obj: Dictionary):
 			var name: String = property.get("name", "")
 			var type: String = property.get("type", "string")
 			var val: String = str(property.get("value", ""))
-			if name.to_lower() == GODOT_PROPERTY and type == "string":
+			if name.to_lower() == GODOT_NODE_TYPE_PROPERTY and type == "string":
 				property_found = true
 				ret = val
 				break
@@ -638,7 +639,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			print_rich("[color=" + WARNING_COLOR +"] -- Unknown class '" + class_string + "'. -> Assuming Default[/color]")
 			_warning_count += 1
 		elif godot_prop_found and godot_property_string != "":	
-			print_rich("[color=" + WARNING_COLOR +"] -- Unknown " + GODOT_PROPERTY + " '" + godot_property_string + "'. -> Assuming Default[/color]")
+			print_rich("[color=" + WARNING_COLOR +"] -- Unknown " + GODOT_NODE_TYPE_PROPERTY + " '" + godot_property_string + "'. -> Assuming Default[/color]")
 			_warning_count += 1
 		godot_type = _godot_type.BODY
 
@@ -1424,7 +1425,7 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 		var name: String = property.get("name", "")
 		var type: String = property.get("type", "string")
 		var val: String = str(property.get("value", ""))
-		if name == "" or name.to_lower() == GODOT_PROPERTY: continue
+		if name == "" or name.to_lower() == GODOT_NODE_TYPE_PROPERTY: continue
 		if name.begins_with("__") and has_children:
 			var child_prop_dict = {}
 			child_prop_dict["name"] = name.substr(2)
@@ -1434,9 +1435,14 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 			child_props.append(child_prop_dict)
 			for child in target_node.get_children():
 				handle_properties(child, child_props)
-		
+
+		# Node properties
+		if name.to_lower() == GODOT_GROUP_PROPERTY and type == "string":
+			for group in val.split(",", false):
+				target_node.add_to_group(group.strip_edges(), true)
+
 		# CanvasItem properties
-		if name.to_lower() == "modulate" and type == "string":
+		elif name.to_lower() == "modulate" and type == "string":
 			target_node.modulate = Color(val)
 		elif name.to_lower() == "self_modulate" and type == "string":
 			target_node.self_modulate = Color(val)
