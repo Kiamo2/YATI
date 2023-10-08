@@ -42,7 +42,7 @@ public class TilemapCreator
     private const string BackgroundColorRectName = "Background Color";
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
-    private const string GodotProperty = "godot_node_type";
+    private const string GodotNodeTypeProperty = "godot_node_type";
     private const string DefaultAlignment = "unspecified";
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -718,7 +718,7 @@ public class TilemapCreator
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = (string)property.GetValueOrDefault("value", "");
-            if (name.ToLower() != GodotProperty || type != "string") continue;
+            if (name.ToLower() != GodotNodeTypeProperty || type != "string") continue;
             propertyFound = true;
             ret = val;
             break;
@@ -770,7 +770,7 @@ public class TilemapCreator
             }
             else if (godotPropFound && godotPropertyString != "")
             {
-                GD.PrintRich($"[color={WarningColor}] -- Unknown {GodotProperty} '{godotPropertyString}'. -> Assuming Default[/color]");
+                GD.PrintRich($"[color={WarningColor}] -- Unknown {GodotNodeTypeProperty} '{godotPropertyString}'. -> Assuming Default[/color]");
                 _warningCount++;
             }
             godotType = GodotType.Body;
@@ -1798,7 +1798,7 @@ public class TilemapCreator
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = (string)property.GetValueOrDefault("value", "");
-            if (name == "" || name.ToLower() == GodotProperty) continue;
+            if (name == "" || name.ToLower() == GodotNodeTypeProperty) continue;
             if (name.StartsWith("__") && hasChildren)
             {
                 var childPropDict = new Dictionary();
@@ -1812,6 +1812,13 @@ public class TilemapCreator
 
             switch (name.ToLower())
             {
+                // Node properties
+                case "godot_group" when (type == "string"):
+                    foreach (string group in val.Split(','))
+                    {
+                        targetNode.AddToGroup(group.Trim(), true)
+                    }
+                    break;
                 // CanvasItem properties
                 case "modulate" when (type == "string"):
                     ((CanvasItem)targetNode).Modulate = new Color(val);
