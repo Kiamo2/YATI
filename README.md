@@ -5,9 +5,9 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 
 **Please note: This addon is for Godot 4 only and won't work with Godot 3.x**
 
-Tested on Windows 10 with Godot 4.1.1 and Tiled 1.10.2 (Tiled maps from older Tiled versions may work too)
+Tested on Windows 10 with Godot 4.1.2 and Tiled 1.10.2 (Tiled maps from older Tiled versions may work too)
 
-Latest version: 1.5.3
+Latest version: 1.5.4
 
 **New since v1.5.2:** Runtime packages are now additionally available.  
 For installation and usage please refer to the [runtime document](Runtime.md)
@@ -16,16 +16,26 @@ For installation and usage please refer to the [runtime document](Runtime.md)
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v1.5.3/v1.5.3-gdscript.zip) or the [CSharp version](../../releases/download/v1.5.3/v1.5.3-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v1.5.4/v1.5.4-gdscript.zip) or the [CSharp version](../../releases/download/v1.5.4/v1.5.4-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
-- **C# version:** Run your project once for building the plugin, otherwise enabling will fail
+
+>**C# version:** Run your project once for building the plugin, otherwise enabling will fail  
+'Run your project' means 'Press the Play button'. For this to work a main scene must have been configured.`
+
 - Enable the plugin by ticking the enable checkbox
 
 ## Usage
 
-- Place your Tiled map(s) with all its parts (.PNGs/.tsx/.tsj/.tx/.tj/...) somewhere inside your Godot project
-- Please check: Tiled editor should seamlessly work inside your project i.e. all its references must be ok
+- Place your Tiled map(s) with all its parts (.PNGs/.tsx/.tsj/.tx/.tj/...) somewhere inside your Godot project  
+- Please check: Tiled editor should seamlessly work with the maps inside your project i.e. all its references must be ok
+
+> Strictly speaking, only the tiled map files (.tmx/.tmj) and the map resources (.PNGs) *need* to be inside your Godot project so that they can be recognised and imported by Godot.
+Tilesets - if they are not embedded anyway - *can* be outside the Godot project as long as they are correctly referenced in the map file(s).
+The same goes for template files (.tx/.tj) and Tiled project files.  
+However, I doubt this to be very useful, as the PNG files referenced by the tileset must also be inside the project.  
+Thus we'd end up with internal references pointing outwards and external references pointing inwards.
+
 - Once these requirements are all met, (re-)starting the project lets the import run automatically
 - **Important recommendation:** Untick "Use multiple threads" in Project Settings (Advanced) Editor>>Import  
 Otherwise - if you have more than one Tiled map - Godot may freeze (+crash) during import.

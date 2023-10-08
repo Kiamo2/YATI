@@ -158,7 +158,11 @@ Coll.(*): All tile collision objects (except point), ellipse is approximated by 
 Setting these properties affects the Godot settings accordingly.  
 Custom properties which are not in this list or not fitting to the element are added as Meta Data or - if assigned to a tile - as Custom Data.
 
-There is a special custom property `godot_group` which applies to all elements and applies the group to the Node. This property supports multiple groups by comma seperating the values.
+> **Tile** custom properties: The property name and type will refer to a layer in the Godot TileMap's Custom Data Layer array,   
+the property value is assigend to the tile's Custom Data entry which conists only of the layer number and the value.
+
+New in v 1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  
+You can assign more than one group by passing the group names as a comma-separated list.
 
 Remarks:  
 - (*) refers to a string consisting of comma separated values, each value representing an element number to enable.  
@@ -174,6 +178,8 @@ Properties of type 'file' refer to previously saved Godot resources.
 
 | Godot Element       | Godot property                     | Tiled Element (to set property)           | Custom property                         | Type         | Enum value                                                                                                                          |
 |---------------------|------------------------------------|-------------------------------------------|-----------------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| Node                | Godot Group                        | Layer / Object                            | godot_group                             | string (*)   |                                                                                                                                     |
+||
 | TileSet             | Physics Layer n / Collision Layer  | Tileset                                   | collision_layer_n (n is layer number)   | string (*)   |                                                                                                                                     |
 |                     | Physics Layer n / Collision Mask   |                                           | collision_mask_n  (n is layer number)   | string (*)   |                                                                                                                                     |
 |                     | Navigation Layer n / Layers        |                                           | layers_n (n is layer number)            | string (*)   |                                                                                                                                     |

@@ -587,7 +587,7 @@ func get_godot_type(godot_type_string: String):
 	return _godot_type
 
 
-func get_godot_property(obj: Dictionary):
+func get_godot_node_type_property(obj: Dictionary):
 	var ret = ""
 	var property_found = false
 	if obj.has("properties"):
@@ -627,19 +627,19 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	var class_string = obj.get("class", "")
 	if class_string == "":
 		class_string = obj.get("type", "")
-	var search_result = get_godot_property(obj)
-	var godot_property_string = search_result[0]
-	var godot_prop_found = search_result[1]
-	if not godot_prop_found:
-		godot_property_string = class_string
-	var godot_type = get_godot_type(godot_property_string)
+	var search_result = get_godot_node_type_property(obj)
+	var godot_node_type_property_string = search_result[0]
+	var godot_node_type_prop_found = search_result[1]
+	if not godot_node_type_prop_found:
+		godot_node_type_property_string = class_string
+	var godot_type = get_godot_type(godot_node_type_property_string)
 
 	if godot_type == _godot_type.UNKNOWN:
-		if not _add_class_as_metadata and class_string != "" and not godot_prop_found:
+		if not _add_class_as_metadata and class_string != "" and not godot_node_type_prop_found:
 			print_rich("[color=" + WARNING_COLOR +"] -- Unknown class '" + class_string + "'. -> Assuming Default[/color]")
 			_warning_count += 1
-		elif godot_prop_found and godot_property_string != "":	
-			print_rich("[color=" + WARNING_COLOR +"] -- Unknown " + GODOT_NODE_TYPE_PROPERTY + " '" + godot_property_string + "'. -> Assuming Default[/color]")
+		elif godot_node_type_prop_found and godot_node_type_property_string != "":	
+			print_rich("[color=" + WARNING_COLOR +"] -- Unknown " + GODOT_NODE_TYPE_PROPERTY + " '" + godot_node_type_property_string + "'. -> Assuming Default[/color]")
 			_warning_count += 1
 		godot_type = _godot_type.BODY
 
@@ -662,7 +662,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			for template_obj in template_dict["objects"]:
 				template_obj["template_dir_path"] = template_path.get_base_dir()
 
-				# v1.5.3 Fix according to Carlo M
+				# v1.5.3 Fix according to Carlo M (dogezen)
 				# override and merge properties defined in obj with properties defined in template
 				# since obj may override and define additional properties to those defined in template
 				if obj.has("properties"):
@@ -1435,8 +1435,9 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 			child_props.append(child_prop_dict)
 			for child in target_node.get_children():
 				handle_properties(child, child_props)
-
+		
 		# Node properties
+		# v1.5.4: godot_group property
 		if name.to_lower() == GODOT_GROUP_PROPERTY and type == "string":
 			for group in val.split(",", false):
 				target_node.add_to_group(group.strip_edges(), true)

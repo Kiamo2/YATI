@@ -43,6 +43,7 @@ public class TilemapCreator
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
     private const string GodotNodeTypeProperty = "godot_node_type";
+    private const string GodotGroupProperty = "godot_group";
     private const string DefaultAlignment = "unspecified";
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -708,7 +709,7 @@ public class TilemapCreator
         };
     }
 
-    private static string GetGodotProperty(Dictionary obj, out bool propertyFound)
+    private static string GetGodotNodeTypeProperty(Dictionary obj, out bool propertyFound)
     {
         var ret = "";
         propertyFound = false;    
@@ -756,21 +757,21 @@ public class TilemapCreator
         var classString = (string)obj.GetValueOrDefault("class", "");
         if (classString == "")
             classString = (string)obj.GetValueOrDefault("type", "");
-        var godotPropertyString = GetGodotProperty(obj, out var godotPropFound);
-        if (!godotPropFound)
-            godotPropertyString = classString;
-        var godotType = GetGodotType(godotPropertyString);
+        var godotNodeTypePropertyString = GetGodotNodeTypeProperty(obj, out var godotNodeTypePropFound);
+        if (!godotNodeTypePropFound)
+            godotNodeTypePropertyString = classString;
+        var godotType = GetGodotType(godotNodeTypePropertyString);
 
         if (godotType == GodotType.Unknown)
         {
-            if (!_addClassAsMetadata && classString != "" && !godotPropFound)
+            if (!_addClassAsMetadata && classString != "" && !godotNodeTypePropFound)
             {
                 GD.PrintRich($"[color={WarningColor}] -- Unknown class '{classString}'. -> Assuming Default[/color]");
                 _warningCount++;
             }
-            else if (godotPropFound && godotPropertyString != "")
+            else if (godotNodeTypePropFound && godotNodeTypePropertyString != "")
             {
-                GD.PrintRich($"[color={WarningColor}] -- Unknown {GodotNodeTypeProperty} '{godotPropertyString}'. -> Assuming Default[/color]");
+                GD.PrintRich($"[color={WarningColor}] -- Unknown {GodotNodeTypeProperty} '{godotNodeTypePropertyString}'. -> Assuming Default[/color]");
                 _warningCount++;
             }
             godotType = GodotType.Body;
@@ -1813,12 +1814,12 @@ public class TilemapCreator
             switch (name.ToLower())
             {
                 // Node properties
-                case "godot_group" when (type == "string"):
-                    foreach (string group in val.Split(','))
-                    {
-                        targetNode.AddToGroup(group.Trim(), true)
-                    }
+                // v1.5.4: godot_group property
+                case GodotGroupProperty when (type == "string"):
+                    foreach (var group in val.Split(','))
+                        targetNode.AddToGroup(group.Trim(), true);
                     break;
+
                 // CanvasItem properties
                 case "modulate" when (type == "string"):
                     ((CanvasItem)targetNode).Modulate = new Color(val);
