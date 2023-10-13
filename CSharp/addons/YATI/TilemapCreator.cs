@@ -87,6 +87,7 @@ public class TilemapCreator
 
     private int _errorCount;
     private int _warningCount;
+    private Dictionary _customTypeDict = new Dictionary();
 
     private enum GodotType
     {
@@ -122,6 +123,15 @@ public class TilemapCreator
     public void SetUseDefaultFilter(bool value)
     {
         _useDefaultFilter = value;
+    }
+
+    public void SetCustomTypes(Array customTypeArray)
+    {
+        var dict = new Dictionary();
+        foreach (Dictionary customType in customTypeArray)
+            if (customType.TryGetValue("properties", out Variant properties))
+                dict.Add(customType["name"], properties);
+        _customTypeDict = dict;
     }
 
     public void SetAddClassAsMetadata(bool value)
@@ -369,8 +379,13 @@ public class TilemapCreator
                     layerNode.YSortEnabled = true;
 
                 if (layer.TryGetValue("objects", out var objs))
+                {
                     foreach (var obj in (Array<Dictionary>)objs)
+                    {
+                        MergeWithGlobalObjectType(obj);
                         HandleObject(obj, layerNode, _tileset, Vector2.Zero);
+                    }
+                }
 
                 if (layer.TryGetValue("properties", out var props))
                     HandleProperties(layerNode, (Array<Dictionary>)props);
@@ -441,6 +456,21 @@ public class TilemapCreator
                     HandleProperties(textureRect, (Array<Dictionary>)props);
                 
                 break;
+            }
+        }
+    }
+
+    private void MergeWithGlobalObjectType(Dictionary customObject)
+    {
+        if (customObject.TryGetValue("type", out Variant objectType))
+        {
+            if (_customTypeDict.TryGetValue(objectType.AsString(), out Variant globalProp))
+            {
+                var globalPropArray = globalProp.AsGodotArray();
+                if (customObject.ContainsKey("properties"))
+                    customObject["properties"].AsGodotArray().AddRange(globalPropArray);
+                else
+                    customObject.Add("properties", globalPropArray);
             }
         }
     }

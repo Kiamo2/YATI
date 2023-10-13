@@ -51,6 +51,11 @@ public partial class Importer: EditorImportPlugin
             new() { { "name", "use_default_filter" }, { "default_value", false } },
             new() { { "name", "add_class_as_metadata" }, { "default_value", false } },
             new() { { "name", "map_wangset_to_terrain" }, { "default_value", false } },
+            new()
+            {
+                { "name", "custom_types_configuration_path" }, { "default_value", "" },
+                { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.xml,*.json" }
+            },
             new() { { "name", "post_processor" }, { "default_value", "" },
                     { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.cs;C# Script" } },
             new() { { "name", "save_tileset_to" }, { "default_value", "" },
@@ -86,6 +91,12 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetAddClassAsMetadata(true);
         if ((string)options["map_wangset_to_terrain"] == "true")
             tilemapCreator.SetMapWangsetToTerrain(true);
+        if (options.TryGetValue("custom_types_configuration_path", out Variant op))
+        {
+            if (op.AsString() != "")
+                tilemapCreator.SetCustomTypes(ArrayBuilder.GetArray(op.AsString()));
+        }
+
         var node2D = tilemapCreator.Create(sourceFile);
         if (node2D == null)
             return Error.Failed;
