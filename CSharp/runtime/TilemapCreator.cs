@@ -80,6 +80,7 @@ public class TilemapCreator
     private bool _mapWangsetToTerrain;
     private bool _addClassAsMetadata;
     private Dictionary _objectGroups;
+    private CustomTypes _ct;
 
     private float _isoRot;
     private float _isoSkew;
@@ -134,9 +135,21 @@ public class TilemapCreator
         _mapWangsetToTerrain = value;
     }
 
+    public void SetCustomTypes(CustomTypes ct)
+    {
+        _ct = ct;
+    }
     public TileSet GetTileset()
     {
         return _tileset;
+    }
+    private static void RecursivelyChangeOwner(Node node, Node newOwner)
+    {
+        if (node != newOwner)
+            node.Owner = newOwner;
+        if (node.GetChildCount() <= 0) return;
+        foreach (var child in node.GetChildren())
+            RecursivelyChangeOwner(child, newOwner);
     }
 
     public Node2D Create(string sourceFile)
@@ -153,6 +166,7 @@ public class TilemapCreator
         //_parallaxOriginY = (int)baseDictionary.GetValueOrDefault("parallaxoriginy", 0);
         _backgroundColor = (string)baseDictionary.GetValueOrDefault("backgroundcolor", "");
 
+        _ct?.MergeCustomProperties(baseDictionary, "map");
         if (baseDictionary.TryGetValue("tilesets", out var tsVal))
         {
             var tileSets = (Array<Dictionary>)tsVal;
@@ -161,12 +175,15 @@ public class TilemapCreator
             var tilesetCreator = new TilesetCreator();
             tilesetCreator.SetBasePath(sourceFile);
             tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
+            if (_ct != null)
+                tilesetCreator.SetCustomTypes(_ct);
             if (_mapWangsetToTerrain)
                 tilesetCreator.MapWangsetToTerrain();
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
             var unsorted = tilesetCreator.GetRegisteredAtlasSources();
+            if (unsorted != null)
             _atlasSources = unsorted.OrderBy(x => (int)x["sourceId"]).ToList();
             _objectGroups = tilesetCreator.GetRegisteredObjectGroups();
         }
@@ -235,6 +252,7 @@ public class TilemapCreator
         if (_baseNode.GetChildCount() > 1) return _baseNode;
 
         var ret = (Node2D)_baseNode.GetChild(0);
+        RecursivelyChangeOwner(ret, ret);
         if (baseDictionary.TryGetValue("properties", out mapProps))
             HandleProperties(ret, (Array<Dictionary>)mapProps, true);
         ret.Name = _baseName;
@@ -252,6 +270,7 @@ public class TilemapCreator
         _compression = (string)layer.GetValueOrDefault("compression", "");
         var layertype = (string)layer.GetValueOrDefault("type", "tilelayer");
         var tintColor = (string)layer.GetValueOrDefault("tintcolor", "#ffffff");
+        _ct?.MergeCustomProperties(layer, "layer");
 
         // v1.2: Skip layer
         if (GetProperty(layer, "no_import", "bool") == "true")
@@ -754,6 +773,7 @@ public class TilemapCreator
         var objHeight = (float)obj.GetValueOrDefault("height", 0.0f);
         var objVisible = (bool)obj.GetValueOrDefault("visible", true);
         var objName = (string)obj.GetValueOrDefault("name", "");
+        _ct?.MergeCustomProperties(obj, "object");
         var classString = (string)obj.GetValueOrDefault("class", "");
         if (classString == "")
             classString = (string)obj.GetValueOrDefault("type", "");
@@ -1778,7 +1798,7 @@ public class TilemapCreator
                 return int.Parse(val);
             case "color":
             {
-                // If alpha is present it's strangely the first byte, so we have to shift it to the end
+                // If alpha is present it's oddly the first byte, so we have to shift it to the end
                 if (val.Length == 9) val = val[0] + val[3..] + val.Substring(1, 2);
                 return val;
             }

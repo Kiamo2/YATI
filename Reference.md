@@ -40,6 +40,13 @@ Default: `Off`
 
 Switch on the 'old'(prior to version 1.4.0) mapping where Tiled wangsets ('terrain sets') were mapped to Godot terrains to keep the terrain set names.
 
+### Tiled Project File
+
+Default: `None`
+
+Tiled's Custom Types Editor stores its Custom Types in the Tiled Project File (.tiled-project).  
+To import Custom Types to Godot (together with the .tmx) specify the project file.
+
 ### Post Processor
 
 Default: `None`

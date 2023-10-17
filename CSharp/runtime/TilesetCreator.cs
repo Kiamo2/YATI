@@ -63,6 +63,7 @@ public class TilesetCreator
     private int _objectGroupsCounter;
     private string _tilesetOrientation;
     private bool _mapWangsetToTerrain;
+    private CustomTypes _ct;
 
     private enum LayerType
     {
@@ -91,7 +92,12 @@ public class TilesetCreator
     {
         _mapTileSize = mapTileSize;
     }
-    
+
+    public void SetCustomTypes(CustomTypes ct)
+    {
+        _ct = ct;
+    }
+
     public void MapWangsetToTerrain()
     {
         _mapWangsetToTerrain = true;
@@ -115,8 +121,6 @@ public class TilesetCreator
                 _basePathTileset = checkedFile.GetBaseDir();
 
                 tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
-
-                //File.WriteAllText("test".PathJoin(checkedFile.GetFile().GetBaseName() + "_parse.json"), tileSetDict.ToString());
             }
 
             // Possible error condition
@@ -244,6 +248,9 @@ public class TilesetCreator
             else
                 HandleWangsets((Array<Dictionary>)wangsets);
         }
+        
+        _ct?.MergeCustomProperties(tileSet, "tileset");
+        
         if (tileSet.TryGetValue("properties", out var props))
             HandleTilesetProperties((Array<Dictionary>)props);
     }
@@ -405,6 +412,8 @@ public class TilesetCreator
                 HandleAnimation((Array<Dictionary>)animVal, tileId);
             if (tile.TryGetValue("objectgroup", out var objgrp))
                 HandleObjectgroup((Dictionary)objgrp, currentTile);
+
+            _ct?.MergeCustomProperties(tile, "tile");
             if (tile.TryGetValue("properties", out var props))
                 HandleTileProperties((Array<Dictionary>)props, currentTile);
         }
@@ -507,6 +516,8 @@ public class TilesetCreator
                 //_warningCount++;
                 break;
             }
+            
+            _ct?.MergeCustomProperties(obj, "object");
             
             var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]);
             objectBaseCoords = TransposeCoords(objectBaseCoords.X, objectBaseCoords.Y);

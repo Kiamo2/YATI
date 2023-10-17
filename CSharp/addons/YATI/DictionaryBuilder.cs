@@ -25,6 +25,7 @@ using System.Linq;
 using Godot;
 using Godot.Collections;
 
+[Tool]
 public static class DictionaryBuilder
 {
     private enum FileType
@@ -51,7 +52,7 @@ public static class DictionaryBuilder
         var extension = sourceFile.GetFile().GetExtension();
         if (new[] { "tmx", "tsx", "xml", "tx" }.Contains(extension))
             type = FileType.Xml;
-        else if (new[] { "tmj", "tsj", "json", "tj" }.Contains(extension))
+        else if (new[] { "tmj", "tsj", "json", "tj", "tiled-project" }.Contains(extension))
             type = FileType.Json;
         else
         {

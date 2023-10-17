@@ -41,7 +41,7 @@ func get_dictionary(source_file: String):
 	var extension = source_file.get_file().get_extension()
 	if ["tmx", "tsx", "xml", "tx"].find(extension) >= 0:
 		type = FileType.Xml
-	elif ["tmj", "tsj", "json", "tj"].find(extension) >= 0:
+	elif ["tmj", "tsj", "json", "tj", "tiled-project"].find(extension) >= 0:
 		type = FileType.Json
 	else:
 		var file = FileAccess.open(checked_file, FileAccess.READ)

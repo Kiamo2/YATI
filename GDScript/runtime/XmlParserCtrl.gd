@@ -32,10 +32,10 @@ func open(source_file) -> int:
 	_parsed_file_name = source_file
 	return _parser.open(_parsed_file_name)
 
-func next_element() -> String:
+func next_element():
 	var err = parse_on()
 	if err != OK:
-		return ""
+		return null
 	if _parser.get_node_type() == XMLParser.NODE_TEXT:
 		var text = _parser.get_node_data().strip_edges(true, true)
 		if text.length() > 0:
@@ -43,7 +43,7 @@ func next_element() -> String:
 	while _parser.get_node_type() != XMLParser.NODE_ELEMENT and _parser.get_node_type() != XMLParser.NODE_ELEMENT_END:
 		err = parse_on()
 		if err != OK:
-			return ""
+			return null
 	return _parser.get_node_name()
 
 func is_end() -> bool:

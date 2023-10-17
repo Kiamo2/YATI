@@ -23,6 +23,7 @@
 using System;
 using Godot;
 
+[Tool]
 public class PostProcessing
 {
     private Error _error = Error.Ok;

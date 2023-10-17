@@ -27,14 +27,9 @@ using Godot.Collections;
 [Tool]
 public class XmlParserCtrl
 {
-    private readonly XmlParser _parser;
+    private readonly XmlParser _parser = new();
     private string _parsedFileName;
 
-    public XmlParserCtrl()
-    {
-        _parser = new XmlParser();
-    }
-    
     public Error Open(string sourceFile)
     {
         _parsedFileName = sourceFile;
@@ -45,7 +40,7 @@ public class XmlParserCtrl
     {
         var err = ParseOn();
         if (err != Error.Ok)
-            return "";
+            return null;
         if (_parser.GetNodeType() == XmlParser.NodeType.Text)
         {
             var text = _parser.GetNodeData().Trim();

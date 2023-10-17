@@ -70,8 +70,6 @@ public class DictionaryFromXml
             _currentDictionary = dictionaryBookmark;
         }
 
-        //File.WriteAllText("test".PathJoin(sourceFileName.GetFile().GetBaseName() + "_parse.json"), _result.ToString());
-        
         if (err == Error.Ok) return _result;
         GD.PrintErr($"Import aborted with {err} error.");
         return null;

@@ -52,6 +52,8 @@ var _object_groups = null
 var _object_groups_counter: int = 0
 var _tileset_orientation
 var _map_wangset_to_terrain: bool = false
+var _ct: CustomTypes = null
+
 
 enum layer_type {
 	PHYSICS,
@@ -75,6 +77,10 @@ func set_base_path(source_file: String):
 
 func set_map_parameters(map_tile_size: Vector2i):
 	_map_tile_size = map_tile_size
+
+
+func set_custom_types(ct: CustomTypes):
+	_ct = ct
 
 
 func map_wangset_to_terrain():
@@ -201,6 +207,10 @@ func create_or_append(tile_set: Dictionary):
 			handle_wangsets_old_mapping(tile_set["wangsets"])
 		else:
 			handle_wangsets(tile_set["wangsets"])
+
+	if _ct != null:
+		_ct.merge_custom_properties(tile_set, "tileset")
+		
 	if tile_set.has("properties"):
 		handle_tileset_properties(tile_set["properties"])
 
@@ -327,6 +337,10 @@ func handle_tiles(tiles: Array):
 			handle_animation(tile["animation"], tile_id)
 		if tile.has("objectgroup"):
 			handle_objectgroup(tile["objectgroup"], current_tile)
+
+		if _ct != null:
+			_ct.merge_custom_properties(tile, "tile")
+		
 		if tile.has("properties"):
 			handle_tile_properties(tile["properties"], current_tile)
 	
@@ -404,6 +418,9 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 			# _warning_count += 1
 			break
 
+		if _ct != null:
+			_ct.merge_custom_properties(obj, "object")
+		
 		var object_base_coords = Vector2(obj["x"], obj["y"])
 		object_base_coords = transpose_coords(object_base_coords.x, object_base_coords.y)
 		object_base_coords -= Vector2(current_tile.texture_origin)

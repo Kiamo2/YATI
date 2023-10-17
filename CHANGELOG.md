@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2023-10-17
+
+### Added
+
+- Added support for 'Class' Custom Types (by use of new option 'Tiled Project File')
+
+### Fixed
+
+- Fixed two minor issues that could have occurred in rare cases.
+
 ## [1.5.4] - 2023-10-08
 
 ### Added

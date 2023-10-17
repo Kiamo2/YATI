@@ -67,6 +67,7 @@ var _use_default_filter = false
 var _map_wangset_to_terrain = false
 var _add_class_as_metadata = false
 var _object_groups
+var _ct: CustomTypes = null
 
 var _iso_rot: float = 0.0
 var _iso_skew: float = 0.0
@@ -118,9 +119,21 @@ func set_add_class_as_metadata(value: bool):
 func set_map_wangset_to_terrain(value: bool):
 		_map_wangset_to_terrain = value
 	
-	
+
+func set_custom_types(ct: CustomTypes):
+	_ct = ct
+
+
 func get_tileset():
 	return _tileset
+
+
+func recursively_change_owner(node: Node, new_owner: Node):
+	if node != new_owner:
+		node.owner = new_owner
+	if node.get_child_count() <= 0: return
+	for child in node.get_children():
+		recursively_change_owner(child, new_owner)
 
 
 func create(source_file: String):
@@ -136,6 +149,9 @@ func create(source_file: String):
 	_parallax_origin_y = base_dictionary.get("parallaxoriginy", 0)
 	_background_color = base_dictionary.get("backgroundcolor", "")
 
+	if _ct != null:
+		_ct.merge_custom_properties(base_dictionary, "map")
+
 	if base_dictionary.has("tilesets"):
 		var tilesets = base_dictionary["tilesets"]
 		for tileSet in tilesets:
@@ -143,13 +159,16 @@ func create(source_file: String):
 		var tileset_creator = preload("TilesetCreator.gd").new()
 		tileset_creator.set_base_path(source_file)
 		tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
+		if _ct != null:
+			tileset_creator.set_custom_types(_ct)	
 		if _map_wangset_to_terrain:
 			tileset_creator.map_wangset_to_terrain()
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
 		_atlas_sources = tileset_creator.get_registered_atlas_sources()
-		_atlas_sources.sort_custom(custom_compare)
+		if _atlas_sources != null:
+			_atlas_sources.sort_custom(custom_compare)
 		_object_groups = tileset_creator.get_registered_object_groups()
 	if _tileset == null:
 		# If tileset still null create an empty one
@@ -206,6 +225,7 @@ func create(source_file: String):
 	if _base_node.get_child_count() > 1: return _base_node
 
 	var ret = _base_node.get_child(0)
+	recursively_change_owner(ret, ret)
 	if base_dictionary.has("properties"):
 		handle_properties(ret, base_dictionary["properties"], true)
 	ret.name = _base_name
@@ -221,6 +241,9 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 	_compression = layer.get("compression", "")
 	var layer_type = layer.get("type", "tilelayer")
 	var tint_color = layer.get("tintcolor", "#ffffff")
+
+	if _ct != null:
+		_ct.merge_custom_properties(layer, "layer")
 
 	# v1.2: Skip layer
 	if get_property(layer, "no_import", "bool") == "true":
@@ -625,6 +648,10 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	var obj_height = obj.get("height", 0.0)
 	var obj_visible = obj.get("visible", true)
 	var obj_name = obj.get("name", "")
+
+	if _ct != null:
+		_ct.merge_custom_properties(obj, "object")
+
 	var class_string = obj.get("class", "")
 	if class_string == "":
 		class_string = obj.get("type", "")
@@ -1411,7 +1438,7 @@ func get_right_typed_value(type: String, val: String):
 	elif type == "int":
 		return int(val)
 	elif type == "color":
-		# If alpha is present it's strangely the first byte, so we have to shift it to the end
+		# If alpha is present it's oddly the first byte, so we have to shift it to the end
 		if val.length() == 9: val = val[0] + val.substr(3) + val.substr(1,2)
 		return val
 	else:

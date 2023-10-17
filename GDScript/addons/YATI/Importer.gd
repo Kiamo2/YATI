@@ -53,6 +53,7 @@ func _get_import_options(path: String, preset_index: int) -> Array:
 		{ "name": "use_default_filter", "default_value": false },
 		{ "name": "add_class_as_metadata", "default_value": false },
 		{ "name": "map_wangset_to_terrain", "default_value": false },
+		{ "name": "tiled_project_file", "default_value": "", "property_hint": PROPERTY_HINT_FILE, "hint_string": "*.tiled-project;Project File" },
 		{ "name": "post_processor", "default_value": "", "property_hint": PROPERTY_HINT_FILE, "hint_string": "*.gd;GDScript" },
 		{ "name": "save_tileset_to", "default_value": "", "property_hint": PROPERTY_HINT_SAVE_FILE, "hint_string": "*.tres;Resource File" }
 	]
@@ -69,6 +70,7 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		printerr("Import file '" + source_file + "' not found!")
 		return ERR_FILE_NOT_FOUND
 
+	var ct: CustomTypes = null
 	var tilemapCreator = preload("TilemapCreator.gd").new()
 	if options["use_tilemap_layers"] == false:
 		tilemapCreator.set_map_layers_to_tilemaps(true)
@@ -78,6 +80,11 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		tilemapCreator.set_add_class_as_metadata(true)
 	if options["map_wangset_to_terrain"] == true:
 		tilemapCreator.set_map_wangset_to_terrain(true)
+	if options.has("tiled_project_file") and options["tiled_project_file"] != "":
+		ct = preload("CustomTypes.gd").new()
+		ct.load_custom_types(options["tiled_project_file"])
+		tilemapCreator.set_custom_types(ct)
+
 	var node2D = tilemapCreator.create(source_file)
 	if node2D == null:
 		return FAILED
@@ -127,4 +134,6 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		print(final_message_string)
 		if post_proc_error:
 			print("Postprocessing was skipped due to some error.")
+		if ct != null:
+			ct.unload_custom_types()
 	return ret

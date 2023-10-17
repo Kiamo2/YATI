@@ -51,6 +51,8 @@ public partial class Importer: EditorImportPlugin
             new() { { "name", "use_default_filter" }, { "default_value", false } },
             new() { { "name", "add_class_as_metadata" }, { "default_value", false } },
             new() { { "name", "map_wangset_to_terrain" }, { "default_value", false } },
+            new() { { "name", "tiled_project_file" }, { "default_value", "" },
+                    { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.tiled-project;Project File" } },
             new() { { "name", "post_processor" }, { "default_value", "" },
                     { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.cs;C# Script" } },
             new() { { "name", "save_tileset_to" }, { "default_value", "" },
@@ -77,6 +79,7 @@ public partial class Importer: EditorImportPlugin
             return Error.FileNotFound;
         }
 
+        CustomTypes ct = null;
         var tilemapCreator = new TilemapCreator();
         if ((string)options["use_tilemap_layers"] == "false")
             tilemapCreator.SetMapLayersToTilemaps(true);
@@ -86,6 +89,13 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetAddClassAsMetadata(true);
         if ((string)options["map_wangset_to_terrain"] == "true")
             tilemapCreator.SetMapWangsetToTerrain(true);
+        if (options.ContainsKey("tiled_project_file") && (string)options["tiled_project_file"] != "")
+        {
+            ct = new CustomTypes();
+            ct.LoadCustomTypes((string)options["tiled_project_file"]);
+            tilemapCreator.SetCustomTypes(ct);
+        }
+
         var node2D = tilemapCreator.Create(sourceFile);
         if (node2D == null)
             return Error.Failed;
@@ -117,11 +127,11 @@ public partial class Importer: EditorImportPlugin
         packedScene.Pack(node2D);
         //return ResourceSaver.Save(packedScene, $"{sourceFile.GetBaseName()}.{_GetSaveExtension()}");
         var ret = ResourceSaver.Save(packedScene, $"{savePath}.{_GetSaveExtension()}");
+        if (ret != Error.Ok) return ret;
         // v1.5.3: Copying no longer necessary, leave that to Godot's "Please confirm..." dialog box
-        //if (ret != Error.Ok) return ret;
         //var dir = DirAccess.Open($"{sourceFile.GetBaseName().GetBaseDir()}");
         //ret = dir.Copy($"{savePath}.{_GetSaveExtension()}", $"{sourceFile.GetBaseName()}.{_GetSaveExtension()}");
-        if (ret != Error.Ok) return ret;
+        //if (ret != Error.Ok) return ret;
         var finalMessageString = "Import succeeded.";
         if (postProcError)
             finalMessageString = "Import finished.";
@@ -145,6 +155,7 @@ public partial class Importer: EditorImportPlugin
         GD.Print(finalMessageString);
         if (postProcError)
             GD.Print("Postprocessing was skipped due to some error.");
+        ct?.UnloadCustomTypes();
         return ret;
     }
 }
