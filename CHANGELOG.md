@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for 'Class' Custom Types (by use of new option 'Tiled Project File')
+- Added support for Tiled's Custom Types (by use of new option 'Tiled Project File')
 
 ### Fixed
 
