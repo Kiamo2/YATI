@@ -1,0 +1,189 @@
+[
+    {
+        "id": 7,
+        "name": "BuildMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Solid",
+            "Segemnts"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 12,
+        "name": "CenterOfMassMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Auto",
+            "Custom"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 1,
+        "name": "ClipChildren",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Disabled",
+            "Clip Only",
+            "Clip+Draw"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 4,
+        "name": "CollisionVisibilityMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Default",
+            "Force Show",
+            "Force Hide"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 13,
+        "name": "ContinousCD",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Disabled",
+            "Cast Ray",
+            "Cast Shape"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 15,
+        "name": "DampMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Combine",
+            "Replace"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 9,
+        "name": "DampSpaceOverride",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Disabled",
+            "Combine",
+            "Combine-Replace",
+            "Replace",
+            "Replace-Combine"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 6,
+        "name": "DisableMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Remove",
+            "Make Static",
+            "Keep Alive"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 14,
+        "name": "FreezeMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Static",
+            "Kinematic"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 8,
+        "name": "GravitySpaceOverride",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Disabled",
+            "Combine",
+            "Combine-Replace",
+            "Replace",
+            "Replace-Combine"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 10,
+        "name": "MotionMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Grounded",
+            "Floating"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 5,
+        "name": "NavigationVisibilityMode",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Default",
+            "Force Show",
+            "Force Hide"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 11,
+        "name": "PlatformOnLeave",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Add Velocity",
+            "Add Upward Velocity",
+            "Do Nothing"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 2,
+        "name": "TextureFilter",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Inherit",
+            "Nearest",
+            "Linear",
+            "Nearest Mipmap",
+            "Linear Mipmap",
+            "Nearest Mipmap Anisotropic",
+            "Linear Mipmap Anisotropic"
+        ],
+        "valuesAsFlags": false
+    },
+    {
+        "id": 3,
+        "name": "TextureRepeat",
+        "storageType": "int",
+        "type": "enum",
+        "values": [
+            "Inherit",
+            "Nearest",
+            "Linear",
+            "Nearest Mipmap",
+            "Linear Mipmap",
+            "Nearest Mipmap Anisotropic",
+            "Linear Mipmap Anisotropic"
+        ],
+        "valuesAsFlags": false
+    }
+]

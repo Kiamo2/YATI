@@ -29,23 +29,25 @@ To ensure that looks are the same as in Tiled, all layer texture filters are set
 Setting this option to `On` leaves all texture filters as they are by default ('inherited').
 
 ### Add Class as Metadata
+###### (new since version 1.5.0)
 
 Default: `Off`
 
 If enabled the content of the Tiled class field is added to the metadata of the corresponding Godot elment.
 
 ### Map Wangset to Terrain
+###### (new since version 1.4.0)
 
 Default: `Off`
 
-Switch on the 'old'(prior to version 1.4.0) mapping where Tiled wangsets ('terrain sets') were mapped to Godot terrains to keep the terrain set names.
+Switch on the 'old' (prior to version 1.4.0) mapping where Tiled wangsets ('terrain sets') were mapped to Godot terrains to keep the terrain set names.
 
 ### Tiled Project File
+###### (new since version 1.6.0)
 
 Default: `None`
 
-Tiled's Custom Types Editor stores its Custom Types in the Tiled Project File (.tiled-project).  
-To import Custom Types to Godot (together with the .tmx) specify the project file.
+Enable the use of Tiled's Custom Types by specifying the Tiled project file (.tiled-project).
 
 ### Post Processor
 
@@ -168,8 +170,10 @@ Custom properties which are not in this list or not fitting to the element are a
 > **Tile** custom properties: The property name and type will refer to a layer in the Godot TileMap's Custom Data Layer array,   
 the property value is assigend to the tile's Custom Data entry which conists only of the layer number and the value.
 
-New in v 1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  
+New in v1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  
 You can assign more than one group by passing the group names as a comma-separated list.
+
+New for v1.6.0: You can download [this file](./supplemental/godot_enums.json) containing several Godot enums and import it using the Custom Type Editor
 
 Remarks:  
 - (*) refers to a string consisting of comma separated values, each value representing an element number to enable.  

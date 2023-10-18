@@ -27,8 +27,10 @@ The addon is available in GDScript as well as in C# for the Mono version of Godo
 
 ## Usage
 
-- Place your Tiled map(s) with all its parts (.PNGs/.tsx/.tsj/.tx/.tj/...) somewhere inside your Godot project  
-- Please check: Tiled editor should seamlessly work with the maps inside your project i.e. all its references must be ok
+- Place your Tiled map(s) with all its parts (.PNGs/.tsx/.tsj/.tx/.tj/...) somewhere inside your Godot project.    
+  If you do this by copying a full Tiled project from elsewhere please ensure that its folder structure is preserved.  
+  (Otherwise, the references stored in the maps and tilesets may be incorrect and errors will occur)
+- Please check: Tiled editor should seamlessly work with all maps *inside* your project i.e. all its references must be ok
 
 > Strictly speaking, only the tiled map files (.tmx/.tmj) and the map resources (.PNGs) *need* to be inside your Godot project so that they can be recognised and imported by Godot.
 Tilesets - if they are not embedded anyway - *can* be outside the Godot project as long as they are correctly referenced in the map file(s).
