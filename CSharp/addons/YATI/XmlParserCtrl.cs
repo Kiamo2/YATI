@@ -24,6 +24,8 @@
 using Godot;
 using Godot.Collections;
 
+namespace YATI;
+
 [Tool]
 public class XmlParserCtrl
 {

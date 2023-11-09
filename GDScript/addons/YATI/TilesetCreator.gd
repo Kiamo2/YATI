@@ -54,6 +54,7 @@ var _object_groups_counter: int = 0
 var _tileset_orientation
 var _map_wangset_to_terrain: bool = false
 var _ct: CustomTypes = null
+var _current_first_gid = -1
 
 
 enum layer_type {
@@ -97,18 +98,20 @@ func create_from_dictionary_array(tileSets: Array):
  
 			# Catch the AutoMap Rules tileset (is Tiled internal)
 			if checked_file.begins_with(":/automap"):
-				return _tileset # This is no error skip it
+				continue # This is no error skip it
  
 			if not FileAccess.file_exists(checked_file):
 				checked_file = _base_path_map.path_join(checked_file)
 			_base_path_tileset = checked_file.get_base_dir()
  
 			tile_set_dict = preload("DictionaryBuilder.gd").new().get_dictionary(checked_file)
+			if tile_set_dict != null and tile_set.has("firstgid"):
+				tile_set_dict["firstgid"] = tile_set["firstgid"]
 	
 		# Possible error condition
 		if tile_set_dict == null:
 			_error_count += 1
-			return null
+			continue
 	
 		create_or_append(tile_set_dict)
 		_append = true
@@ -153,6 +156,9 @@ func create_or_append(tile_set: Dictionary):
 		_tile_offset = Vector2i(to["x"], to["y"])
 	else:
 		_tile_offset = Vector2i.ZERO
+
+	_current_first_gid = tile_set.get("firstgid", -1)
+
 	if tile_set.has("grid"):
 		var grid = tile_set["grid"]
 		if grid.has("orientation"):
@@ -247,6 +253,7 @@ func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int
 	atlas_source_item["tileOffset"] = tile_offset
 	atlas_source_item["tilesetOrientation"] = _tileset_orientation
 	atlas_source_item["objectAlignment"] = _object_alignment
+	atlas_source_item["firstGid"] = _current_first_gid
 	_atlas_sources.push_back(atlas_source_item)
 	
 

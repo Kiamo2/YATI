@@ -32,6 +32,8 @@ using Godot.Collections;
 using Array = Godot.Collections.Array;
 using FileAccess = Godot.FileAccess;
 
+namespace YATI;
+
 [Tool]
 public class TilemapCreator
 {
@@ -643,12 +645,9 @@ public class TilemapCreator
             var cellCoords = new Vector2I(cellCounter % mapWidth + offsetX, cellCounter / mapWidth + offsetY);
 
             var sourceId = GetMatchingSourceId(gid);
-            var tileOffset = GetTileOffset(gid);
-            var firstGidId = GetFirstGidIndex(gid);
-            if (firstGidId > sourceId)
-                sourceId = firstGidId;
             // Should not be the case, but who knows...
             if (sourceId < 0) continue;
+            var tileOffset = GetTileOffset(gid);
 
             TileSetAtlasSource atlasSource;
             if (_tileset.HasSource(sourceId))
@@ -905,21 +904,25 @@ public class TilemapCreator
             intId &= 0xFFFFFFFF;
             var flippedH = (intId & FlippedHorizontallyFlag) > 0;
             var flippedV = (intId & FlippedVerticallyFlag) > 0;
-            //var flippedD = (intId & FlippedDiagonallyFlag) > 0;
             var gid = (int)(intId & 0x0FFFFFFF);
-
+            
             var sourceId = GetMatchingSourceId(gid);
+            // Should not be the case, but who knows...
+            if (sourceId < 0) return;
+
             var tileOffset = GetTileOffset(gid);
             _currentTilesetOrientation = GetTilesetOrientation(gid);
             _currentObjectAlignment = GetTilesetAlignment(gid);
             if (_currentObjectAlignment == DefaultAlignment)
                 _currentObjectAlignment = _mapOrientation == "orthogonal" ? "bottomleft" : "bottom";
-            var firstGidId = GetFirstGidIndex(gid);
-            if (firstGidId > sourceId)
-                sourceId = firstGidId;
-            // Should not be the case, but who knows...
-            if (sourceId < 0) return;
         
+            if (!tileset.HasSource(sourceId))
+            {
+                GD.PrintErr($"Could not get AtlasSource with id {sourceId}. -> Skipped");
+                _errorCount++;
+                return;
+            }
+
             var gidSource = (TileSetAtlasSource)tileset.GetSource(sourceId);
             var objSprite = new Sprite2D();
             layerNode.AddChild(objSprite);
@@ -1660,77 +1663,60 @@ public class TilemapCreator
 
         return gidIndex;
     }
-    
-    private int GetMatchingSourceId(int gid)
+
+    private int GetAtlasSourceIndex(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
+        var idx = -1;
         if (_atlasSources == null)
             return -1;
         foreach (var src in _atlasSources)
         {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return sourceId;
-            prevSourceId = sourceId;
+            idx++;
+            var firstGid = (int)src["firstGid"];
+            var effectiveGid = gid - firstGid + 1;
+            var assignedId = (int)src["assignedId"];
+            if (assignedId < 0)
+            {
+                var limit = (int)src["numTiles"];
+                if (effectiveGid <= limit && firstGid == _firstGids[GetFirstGidIndex(gid)])
+                    return idx;
+            }
+            else if (effectiveGid == (assignedId + 1)) 
+                return idx;
         }
-
         return -1;
+    }
+
+    private int GetMatchingSourceId(int gid)
+    {
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
+            return -1;
+        return (int)_atlasSources[idx]["sourceId"];
     }
 
     private Vector2I GetTileOffset(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
-        if (_atlasSources == null)
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
             return Vector2I.Zero;
-        foreach (var src in _atlasSources)
-        {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return (Vector2I)src["tileOffset"];
-            prevSourceId = sourceId;
-        }
-        
-        return Vector2I.Zero;
+        return (Vector2I)_atlasSources[idx]["tileOffset"];
     }
 
     private string GetTilesetOrientation(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
-        if (_atlasSources == null)
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
             return _mapOrientation;
-        foreach (var src in _atlasSources)
-        {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return (string)src["tilesetOrientation"];
-            prevSourceId = sourceId;
-        }
-        
-        return _mapOrientation;
+        return (string)_atlasSources[idx]["tilesetOrientation"];
     }
 
     private string GetTilesetAlignment(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
-        if (_atlasSources == null)
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
             return DefaultAlignment;
-        foreach (var src in _atlasSources)
-        {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return (string)src["objectAlignment"];
-            prevSourceId = sourceId;
-        }
-        
-        return DefaultAlignment;
+        return (string)_atlasSources[idx]["objectAlignment"];
     }
 
     private int GetNumTilesForSourceId(int sourceId)

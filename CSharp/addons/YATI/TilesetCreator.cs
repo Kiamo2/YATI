@@ -29,6 +29,8 @@ using FileAccess = Godot.FileAccess;
 using System;
 using System.Globalization;
 
+namespace YATI;
+
 [Tool]
 public class TilesetCreator
 {
@@ -64,6 +66,7 @@ public class TilesetCreator
     private string _tilesetOrientation;
     private bool _mapWangsetToTerrain;
     private CustomTypes _ct;
+    private int _currentFirstGid = -1;
 
     private enum LayerType
     {
@@ -114,20 +117,22 @@ public class TilesetCreator
                 
                 // Catch the AutoMap Rules tileset (is Tiled internal)
                 if (checkedFile.StartsWith(":/automap"))
-                    return _tileset; // This is no error just skip it
+                    continue; // This is no error just skip it
                 
                 if (!FileAccess.FileExists(checkedFile))
                     checkedFile = _basePathMap.PathJoin(checkedFile);
                 _basePathTileset = checkedFile.GetBaseDir();
 
                 tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
+                if (tileSetDict != null && tileSet.TryGetValue("firstgid", out var firstGid))
+                    tileSetDict["firstgid"] = firstGid;
             }
 
             // Possible error condition
             if (tileSetDict == null)
             {
                 _errorCount++;
-                return null;
+                continue;
             }
 
             CreateOrAppend(tileSetDict);
@@ -182,6 +187,8 @@ public class TilesetCreator
         }
         else
             _tileOffset = Vector2I.Zero;
+
+        _currentFirstGid = tileSet.TryGetValue("firstgid", out var firstgid) ? (int)firstgid : -1;
 
         if (tileSet.TryGetValue("grid", out var gridVal))
         {
@@ -295,6 +302,7 @@ public class TilesetCreator
         atlasSourceItem.Add("tileOffset", tileOffset);
         atlasSourceItem.Add("tilesetOrientation", _tilesetOrientation);
         atlasSourceItem.Add("objectAlignment", _objectAlignment);
+        atlasSourceItem.Add("firstGid", _currentFirstGid);
         _atlasSources.Add(atlasSourceItem);
     }
 
@@ -413,7 +421,7 @@ public class TilesetCreator
                 HandleAnimation((Array<Dictionary>)animVal, tileId);
             if (tile.TryGetValue("objectgroup", out var objgrp))
                 HandleObjectgroup((Dictionary)objgrp, currentTile);
-            
+
             _ct?.MergeCustomProperties(tile, "tile");
             if (tile.TryGetValue("properties", out var props))
                 HandleTileProperties((Array<Dictionary>)props, currentTile);

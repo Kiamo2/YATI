@@ -26,6 +26,8 @@ using System.Linq;
 using Godot;
 using Godot.Collections;
 
+namespace YATI;
+
 [Tool]
 public class CustomTypes
 {

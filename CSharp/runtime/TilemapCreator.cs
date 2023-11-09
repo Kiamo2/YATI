@@ -139,10 +139,12 @@ public class TilemapCreator
     {
         _ct = ct;
     }
+
     public TileSet GetTileset()
     {
         return _tileset;
     }
+
     private static void RecursivelyChangeOwner(Node node, Node newOwner)
     {
         if (node != newOwner)
@@ -167,6 +169,7 @@ public class TilemapCreator
         _backgroundColor = (string)baseDictionary.GetValueOrDefault("backgroundcolor", "");
 
         _ct?.MergeCustomProperties(baseDictionary, "map");
+
         if (baseDictionary.TryGetValue("tilesets", out var tsVal))
         {
             var tileSets = (Array<Dictionary>)tsVal;
@@ -184,7 +187,7 @@ public class TilemapCreator
             _warningCount = tilesetCreator.GetWarningCount();
             var unsorted = tilesetCreator.GetRegisteredAtlasSources();
             if (unsorted != null)
-            _atlasSources = unsorted.OrderBy(x => (int)x["sourceId"]).ToList();
+                _atlasSources = unsorted.OrderBy(x => (int)x["sourceId"]).ToList();
             _objectGroups = tilesetCreator.GetRegisteredObjectGroups();
         }
         // If tileset still null create an empty one
@@ -258,7 +261,7 @@ public class TilemapCreator
         ret.Name = _baseName;
         return ret;
     }
-
+    
     private void HandleLayer(Dictionary layer, Node parent)
     {
         //var layerId = (int)layer["id"];
@@ -270,6 +273,7 @@ public class TilemapCreator
         _compression = (string)layer.GetValueOrDefault("compression", "");
         var layertype = (string)layer.GetValueOrDefault("type", "tilelayer");
         var tintColor = (string)layer.GetValueOrDefault("tintcolor", "#ffffff");
+
         _ct?.MergeCustomProperties(layer, "layer");
 
         // v1.2: Skip layer
@@ -639,12 +643,9 @@ public class TilemapCreator
             var cellCoords = new Vector2I(cellCounter % mapWidth + offsetX, cellCounter / mapWidth + offsetY);
 
             var sourceId = GetMatchingSourceId(gid);
-            var tileOffset = GetTileOffset(gid);
-            var firstGidId = GetFirstGidIndex(gid);
-            if (firstGidId > sourceId)
-                sourceId = firstGidId;
             // Should not be the case, but who knows...
             if (sourceId < 0) continue;
+            var tileOffset = GetTileOffset(gid);
 
             TileSetAtlasSource atlasSource;
             if (_tileset.HasSource(sourceId))
@@ -773,7 +774,9 @@ public class TilemapCreator
         var objHeight = (float)obj.GetValueOrDefault("height", 0.0f);
         var objVisible = (bool)obj.GetValueOrDefault("visible", true);
         var objName = (string)obj.GetValueOrDefault("name", "");
+
         _ct?.MergeCustomProperties(obj, "object");
+
         var classString = (string)obj.GetValueOrDefault("class", "");
         if (classString == "")
             classString = (string)obj.GetValueOrDefault("type", "");
@@ -823,7 +826,7 @@ public class TilemapCreator
                 foreach (var templateObj in (Array<Dictionary>)objs)
                 {
                     templateObj["template_dir_path"] = templatePath.GetBaseDir();
-
+                    
                     // v1.5.3 Fix according to Carlo M (dogezen)
                     // override and merge properties defined in obj with properties defined in template
                     // since obj may override and define additional properties to those defined in template
@@ -899,21 +902,25 @@ public class TilemapCreator
             intId &= 0xFFFFFFFF;
             var flippedH = (intId & FlippedHorizontallyFlag) > 0;
             var flippedV = (intId & FlippedVerticallyFlag) > 0;
-            //var flippedD = (intId & FlippedDiagonallyFlag) > 0;
             var gid = (int)(intId & 0x0FFFFFFF);
-
+            
             var sourceId = GetMatchingSourceId(gid);
+            // Should not be the case, but who knows...
+            if (sourceId < 0) return;
+
             var tileOffset = GetTileOffset(gid);
             _currentTilesetOrientation = GetTilesetOrientation(gid);
             _currentObjectAlignment = GetTilesetAlignment(gid);
             if (_currentObjectAlignment == DefaultAlignment)
                 _currentObjectAlignment = _mapOrientation == "orthogonal" ? "bottomleft" : "bottom";
-            var firstGidId = GetFirstGidIndex(gid);
-            if (firstGidId > sourceId)
-                sourceId = firstGidId;
-            // Should not be the case, but who knows...
-            if (sourceId < 0) return;
         
+            if (!tileset.HasSource(sourceId))
+            {
+                GD.PrintErr($"Could not get AtlasSource with id {sourceId}. -> Skipped");
+                _errorCount++;
+                return;
+            }
+
             var gidSource = (TileSetAtlasSource)tileset.GetSource(sourceId);
             var objSprite = new Sprite2D();
             layerNode.AddChild(objSprite);
@@ -1654,77 +1661,60 @@ public class TilemapCreator
 
         return gidIndex;
     }
-    
-    private int GetMatchingSourceId(int gid)
+
+    private int GetAtlasSourceIndex(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
+        var idx = -1;
         if (_atlasSources == null)
             return -1;
         foreach (var src in _atlasSources)
         {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return sourceId;
-            prevSourceId = sourceId;
+            idx++;
+            var firstGid = (int)src["firstGid"];
+            var effectiveGid = gid - firstGid + 1;
+            var assignedId = (int)src["assignedId"];
+            if (assignedId < 0)
+            {
+                var limit = (int)src["numTiles"];
+                if (effectiveGid <= limit && firstGid == _firstGids[GetFirstGidIndex(gid)])
+                    return idx;
+            }
+            else if (effectiveGid == (assignedId + 1)) 
+                return idx;
         }
-
         return -1;
+    }
+
+    private int GetMatchingSourceId(int gid)
+    {
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
+            return -1;
+        return (int)_atlasSources[idx]["sourceId"];
     }
 
     private Vector2I GetTileOffset(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
-        if (_atlasSources == null)
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
             return Vector2I.Zero;
-        foreach (var src in _atlasSources)
-        {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return (Vector2I)src["tileOffset"];
-            prevSourceId = sourceId;
-        }
-        
-        return Vector2I.Zero;
+        return (Vector2I)_atlasSources[idx]["tileOffset"];
     }
 
     private string GetTilesetOrientation(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
-        if (_atlasSources == null)
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
             return _mapOrientation;
-        foreach (var src in _atlasSources)
-        {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return (string)src["tilesetOrientation"];
-            prevSourceId = sourceId;
-        }
-        
-        return _mapOrientation;
+        return (string)_atlasSources[idx]["tilesetOrientation"];
     }
 
     private string GetTilesetAlignment(int gid)
     {
-        var limit = 0;
-        var prevSourceId = -1;
-        if (_atlasSources == null)
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
             return DefaultAlignment;
-        foreach (var src in _atlasSources)
-        {
-            var sourceId = (int)src["sourceId"];
-            limit += (int)src["numTiles"] + sourceId - prevSourceId - 1;
-            if (gid <= limit)
-                return (string)src["objectAlignment"];
-            prevSourceId = sourceId;
-        }
-        
-        return DefaultAlignment;
+        return (string)_atlasSources[idx]["objectAlignment"];
     }
 
     private int GetNumTilesForSourceId(int sourceId)

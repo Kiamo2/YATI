@@ -533,12 +533,10 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		var cell_coords = Vector2(cell_counter % map_width + offset_x, cell_counter / map_width + offset_y)
 
 		var source_id = get_matching_source_id(gid)
-		var tile_offset = get_tile_offset(gid)
-		var first_gid_id = get_first_gid_index(gid)
-		if first_gid_id > source_id:
-			source_id = first_gid_id
 		# Should not be the case, but who knows...
 		if source_id < 0: continue
+
+		var tile_offset = get_tile_offset(gid)
 
 		var atlas_source
 		if _tileset.has_source(source_id):
@@ -745,17 +743,20 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		var gid: int = int_id & 0x0FFFFFFF
 
 		var source_id = get_matching_source_id(gid)
+		# Should not be the case, but who knows...
+		if source_id < 0: return
+
 		var tile_offset = get_tile_offset(gid)
 		_current_tileset_orientation = get_tileset_orientation(gid)
 		_current_object_alignment = get_tileset_alignment(gid)
 		if _current_object_alignment == DEFAULT_ALIGNMENT:
 			_current_object_alignment = "bottomleft" if _map_orientation == "orthogonal" else "bottom"
-		var first_gid_id = get_first_gid_index(gid)
-		if first_gid_id > source_id:
-			source_id = first_gid_id
-		# Should not be the case, but who knows...
-		if source_id < 0: return
 
+		if not tileset.has_source(source_id):
+			printerr("Could not get AtlasSource with id " + source_id + ". -> Skipped")
+			_error_count += 1
+			return
+	
 		var gid_source = tileset.get_source(source_id)
 		var obj_sprite = Sprite2D.new()
 		layer_node.add_child(obj_sprite)
@@ -1325,61 +1326,52 @@ func get_first_gid_index(gid: int):
 	return gid_index
 
 
-func get_matching_source_id(gid: int):
-	var limit: int = 0
-	var prev_source_id: int = -1
+func get_atlas_source_index(gid: int):
+	var idx = -1
 	if _atlas_sources == null:
 		return -1
 	for src in _atlas_sources:
-		var source_id: int = src["sourceId"]
-		limit += src["numTiles"] + source_id - prev_source_id - 1
-		if gid <= limit:
-			return source_id
-		prev_source_id = source_id
+		idx += 1
+		var first_gid: int = src["firstGid"]
+		var effective_gid = gid - first_gid + 1
+		var assigned_id: int = src["assignedId"]
+		if assigned_id < 0:
+			var limit: int = src["numTiles"]
+			if effective_gid <= limit and first_gid == _first_gids[get_first_gid_index(gid)]:
+				return idx
+		elif effective_gid == (assigned_id + 1):
+			return idx
+		
 	return -1
-
-
+	
+	
+func get_matching_source_id(gid: int):
+	var idx = get_atlas_source_index(gid)
+	if idx < 0:
+		return -1
+	return _atlas_sources[idx]["sourceId"]
+	
+	
 func get_tile_offset(gid: int):
-	var limit: int = 0
-	var prev_source_id: int = -1
-	if _atlas_sources == null:
+	var idx = get_atlas_source_index(gid)
+	if idx < 0:
 		return Vector2i.ZERO
-	for src in _atlas_sources:
-		var source_id: int = src["sourceId"]
-		limit += src["numTiles"] + source_id - prev_source_id - 1
-		if gid <= limit:
-			return src["tileOffset"]
-		prev_source_id = source_id
-	return Vector2i.ZERO
+	return _atlas_sources[idx]["tileOffset"]
+		
 	
-
 func get_tileset_orientation(gid: int):
-	var limit: int = 0
-	var prev_source_id: int = -1
-	if _atlas_sources == null:
+	var idx = get_atlas_source_index(gid)
+	if idx < 0:
 		return _map_orientation
-	for src in _atlas_sources:
-		var source_id: int = src["sourceId"]
-		limit += src["numTiles"] + source_id - prev_source_id - 1
-		if gid <= limit:
-			return src["tilesetOrientation"]
-		prev_source_id = source_id
-	return _map_orientation
+	return _atlas_sources[idx]["tilesetOrientation"]
+		
 	
-
 func get_tileset_alignment(gid: int):
-	var limit: int = 0
-	var prev_source_id: int = -1
-	if _atlas_sources == null:
+	var idx = get_atlas_source_index(gid)
+	if idx < 0:
 		return DEFAULT_ALIGNMENT
-	for src in _atlas_sources:
-		var source_id: int = src["sourceId"]
-		limit += src["numTiles"] + source_id - prev_source_id - 1
-		if gid <= limit:
-			return src["objectAlignment"]
-		prev_source_id = source_id
-	return DEFAULT_ALIGNMENT
-	
+	return _atlas_sources[idx]["objectAlignment"]	
+
 
 func get_num_tiles_for_source_id(source_id: int):
 	for src in _atlas_sources:

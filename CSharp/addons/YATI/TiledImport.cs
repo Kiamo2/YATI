@@ -23,6 +23,8 @@
 #if TOOLS
 using Godot;
 
+namespace YATI;
+
 [Tool]
 public partial class TiledImport : EditorPlugin
 {

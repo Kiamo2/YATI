@@ -23,6 +23,8 @@
 using System;
 using Godot;
 
+namespace YATI;
+
 [Tool]
 public class PostProcessing
 {
