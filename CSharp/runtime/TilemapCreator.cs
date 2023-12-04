@@ -79,6 +79,7 @@ public class TilemapCreator
     private bool _useDefaultFilter;
     private bool _mapWangsetToTerrain;
     private bool _addClassAsMetadata;
+    private bool _addIdAsMetadata;
     private Dictionary _objectGroups;
     private CustomTypes _ct;
 
@@ -128,6 +129,11 @@ public class TilemapCreator
     public void SetAddClassAsMetadata(bool value)
     {
         _addClassAsMetadata = value;
+    }
+
+    public void SetAddIdAsMetadata(bool value)
+    {
+        _addIdAsMetadata = value;
     }
 
     public void SetMapWangsetToTerrain(bool value)
@@ -597,8 +603,14 @@ public class TilemapCreator
                 i++;
             }
             var navigationPolygon = new NavigationPolygon();
-            navigationPolygon.AddOutline(ptsNew);
-            navigationPolygon.MakePolygonsFromOutlines();
+            //navigationPolygon.AddOutline(ptsNew);
+            //navigationPolygon.MakePolygonsFromOutlines();
+            // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
+            navigationPolygon.Vertices = ptsNew;
+            var polygon = new int[navigationPolygon.Vertices.Length];
+            for (var idx = 0; idx < navigationPolygon.Vertices.Length; idx++)
+                polygon[idx] = idx;
+            navigationPolygon.AddPolygon(polygon);
             targetData.SetNavigationPolygon(layerId, navigationPolygon);
         }
 
@@ -767,6 +779,7 @@ public class TilemapCreator
 
     private void HandleObject(Dictionary obj, Node layerNode, TileSet tileset, Vector2 offSet)
     {
+        var objId = (int)obj.GetValueOrDefault("id", 0);
         var objX = (float)obj.GetValueOrDefault("x", offSet.X);
         var objY = (float)obj.GetValueOrDefault("y", offSet.Y);
         var objRot = (float)obj.GetValueOrDefault("rotation", 0.0f);
@@ -1020,6 +1033,8 @@ public class TilemapCreator
 
             if (_addClassAsMetadata && classString != "")
                 objSprite.SetMeta("class", classString);
+            if (_addIdAsMetadata && objId != 0)
+                objSprite.SetMeta("id", objId);
             if (obj.TryGetValue("properties", out var props2))
                 HandleProperties(objSprite, (Array<Dictionary>)props2);
         }
@@ -1085,6 +1100,8 @@ public class TilemapCreator
                 marker.Visible = objVisible;
                 if (_addClassAsMetadata && classString != "")
                     marker.SetMeta("class", classString);
+                if (_addIdAsMetadata && objId != 0)
+                    marker.SetMeta("id", objId);
                 if (obj.TryGetValue("properties", out var props))
                     HandleProperties(marker, (Array<Dictionary>)props);
             }
@@ -1120,6 +1137,8 @@ public class TilemapCreator
                         polygonShape.RotationDegrees = objRot;
                         if (_addClassAsMetadata && classString != "")
                             co.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            co.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(co, (Array<Dictionary>)props);
                         break;
@@ -1136,10 +1155,19 @@ public class TilemapCreator
 
                         var navPoly = new NavigationPolygon();
                         navRegion.NavigationPolygon = navPoly;
-                        navPoly.AddOutline(PolygonFromArray((Array<Dictionary>)obj["polygon"]));
-                        navPoly.MakePolygonsFromOutlines();
+                        //navPoly.AddOutline(PolygonFromArray((Array<Dictionary>)obj["polygon"]));
+                        //navPoly.MakePolygonsFromOutlines();
+                        // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
+                        navPoly.Vertices = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
+                        var polygon = new int[navPoly.Vertices.Length];
+                        for (var idx = 0; idx < navPoly.Vertices.Length; idx++)
+                            polygon[idx] = idx;
+                        navPoly.AddPolygon(polygon);
+                        
                         if (_addClassAsMetadata && classString != "")
                             navRegion.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            navRegion.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(navRegion, (Array<Dictionary>)props);
                         break;
@@ -1159,6 +1187,8 @@ public class TilemapCreator
                         occPoly.Polygon = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
                         if (_addClassAsMetadata && classString != "")
                             lightOcc.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            lightOcc.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(lightOcc, (Array<Dictionary>)props);
                         break;
@@ -1175,6 +1205,8 @@ public class TilemapCreator
                         polygon.Polygon = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
                         if (_addClassAsMetadata && classString != "")
                             polygon.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            polygon.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(polygon, (Array<Dictionary>)props);
                         break;
@@ -1200,6 +1232,8 @@ public class TilemapCreator
 
                         if (_addClassAsMetadata && classString != "")
                             line.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            line.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(line, (Array<Dictionary>)props);
                         break;
@@ -1221,6 +1255,8 @@ public class TilemapCreator
 
                         if (_addClassAsMetadata && classString != "")
                             path.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            path.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(path, (Array<Dictionary>)props);
                         break;
@@ -1263,6 +1299,8 @@ public class TilemapCreator
 
                         if (_addClassAsMetadata && classString != "")
                             co.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            co.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(co, (Array<Dictionary>)props);
                         break;
@@ -1333,6 +1371,8 @@ public class TilemapCreator
                         collisionShape.RotationDegrees = objRot;
                         if (_addClassAsMetadata && classString != "")
                             co.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            co.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(co, (Array<Dictionary>)props);
                         break;
@@ -1353,10 +1393,18 @@ public class TilemapCreator
 
                         var navPoly = new NavigationPolygon();
                         navRegion.NavigationPolygon = navPoly;
-                        navPoly.AddOutline(PolygonFromRectangle(objWidth, objHeight));
-                        navPoly.MakePolygonsFromOutlines();
+                        //navPoly.AddOutline(PolygonFromRectangle(objWidth, objHeight));
+                        //navPoly.MakePolygonsFromOutlines();
+                        // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
+                        navPoly.Vertices = PolygonFromRectangle(objWidth, objHeight);
+                        var polygon = new int[navPoly.Vertices.Length];
+                        for (var idx = 0; idx < navPoly.Vertices.Length; idx++)
+                            polygon[idx] = idx;
+                        navPoly.AddPolygon(polygon);
                         if (_addClassAsMetadata && classString != "")
                             navRegion.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            navRegion.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(navRegion, (Array<Dictionary>)props);
                         break;
@@ -1380,6 +1428,8 @@ public class TilemapCreator
                         occPoly.Polygon = PolygonFromRectangle(objWidth, objHeight);
                         if (_addClassAsMetadata && classString != "")
                             lightOcc.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            lightOcc.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(lightOcc, (Array<Dictionary>)props);
                         break;
@@ -1401,6 +1451,8 @@ public class TilemapCreator
                         
                         if (_addClassAsMetadata && classString != "")
                             polygon.SetMeta("class", classString);
+                        if (_addIdAsMetadata && objId != 0)
+                            polygon.SetMeta("id", objId);
                         if (obj.TryGetValue("properties", out var props))
                             HandleProperties(polygon, (Array<Dictionary>)props);
                         break;

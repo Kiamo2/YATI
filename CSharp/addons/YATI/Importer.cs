@@ -52,6 +52,7 @@ public partial class Importer: EditorImportPlugin
             new() { { "name", "use_tilemap_layers" }, { "default_value", false } },
             new() { { "name", "use_default_filter" }, { "default_value", false } },
             new() { { "name", "add_class_as_metadata" }, { "default_value", false } },
+            new() { { "name", "add_id_as_metadata" }, { "default_value", false } },
             new() { { "name", "map_wangset_to_terrain" }, { "default_value", false } },
             new() { { "name", "tiled_project_file" }, { "default_value", "" },
                     { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.tiled-project;Project File" } },
@@ -89,6 +90,8 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetUseDefaultFilter(true);
         if ((string)options["add_class_as_metadata"] == "true")
             tilemapCreator.SetAddClassAsMetadata(true);
+        if ((string)options["add_id_as_metadata"] == "true")
+            tilemapCreator.SetAddIdAsMetadata(true);
         if ((string)options["map_wangset_to_terrain"] == "true")
             tilemapCreator.SetMapWangsetToTerrain(true);
         if (options.ContainsKey("tiled_project_file") && (string)options["tiled_project_file"] != "")

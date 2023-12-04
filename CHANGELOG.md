@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.2] - 2023-12-04
+
+### Added
+
+- Added another option 'add_id_as_metadata' working similar like 'add_class_as_metadata'.  
+If enabled the Tiled object id is added to the corresponding Godot element as meta data.  
+This was requested in issue #32.
+
+### Fixed
+
+- Revised the creation of navigation polygons to avoid 'Deprecated...' messages in Godot 4.2.  
+
 ## [1.6.1] - 2023-11-09
 
 ### Fixed

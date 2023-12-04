@@ -5,9 +5,9 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 
 **Please note: This addon is for Godot 4 only and won't work with Godot 3.x**
 
-Tested on Windows 10 with Godot 4.1.3 and Tiled 1.10.2 (Tiled maps from older Tiled versions may work too)
+Tested on Windows 10 with Godot 4.2 and Tiled 1.10.2 (Tiled maps from older Tiled versions may work too)
 
-Latest version: 1.6.1
+Latest version: 1.6.2
 
 **New since v1.5.2:** Runtime packages are now additionally available.  
 For installation and usage please refer to the [runtime document](Runtime.md)
@@ -16,7 +16,7 @@ For installation and usage please refer to the [runtime document](Runtime.md)
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v1.6.1/v1.6.1-gdscript.zip) or the [CSharp version](../../releases/download/v1.6.1/v1.6.1-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v1.6.2/v1.6.2-gdscript.zip) or the [CSharp version](../../releases/download/v1.6.2/v1.6.2-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
 
@@ -78,7 +78,7 @@ Maybe this is only a problem on Windows though...
 ## Support
 
 Support is active i.e. if issues should arise I'll do my best to resolve them.<br>
-If you would like to sponsor the project I'd be pleased if you [buy me a coffee](https://www.buymeacoffee.com/kiamo2).
+If you would like to sponsor the project I'd be thrilled if you [buy me a coffee](https://www.buymeacoffee.com/kiamo2).
 
 ## License
 [MIT License](LICENSE). Copyright (c) 2023 Roland Helmerichs.

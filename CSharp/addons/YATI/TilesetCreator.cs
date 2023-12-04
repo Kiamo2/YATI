@@ -583,8 +583,14 @@ public class TilesetCreator
             if (nav >= 0)
             {
                 var navP = new NavigationPolygon();
-                navP.AddOutline(polygon);
-                navP.MakePolygonsFromOutlines();
+                //navP.AddOutline(polygon);
+                //navP.MakePolygonsFromOutlines();
+                // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
+                navP.Vertices = polygon;
+                var pg = new int[navP.Vertices.Length];
+                for (var idx = 0; idx < navP.Vertices.Length; idx++)
+                    pg[idx] = idx;
+                navP.AddPolygon(pg);
                 EnsureLayerExisting(LayerType.Navigation, nav);
                 currentTile.SetNavigationPolygon(nav, navP);
             }

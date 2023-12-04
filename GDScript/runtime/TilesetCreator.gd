@@ -470,8 +470,15 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		var nav = get_layer_number_for_special_property(obj, "navigation_layer")
 		if nav >= 0:
 			var nav_p = NavigationPolygon.new()
-			nav_p.add_outline(polygon)
-			nav_p.make_polygons_from_outlines()
+			#nav_p.add_outline(polygon)
+			#nav_p.make_polygons_from_outlines()
+			# Replaced in 4.2 deprecated function make_polygons_from_outlines
+			nav_p.vertices = polygon
+			var pg = PackedInt32Array()
+			for idx in range(nav_p.vertices.size()):
+				pg.push_back(idx)
+			nav_p.add_polygon(pg)
+
 			ensure_layer_existing(layer_type.NAVIGATION, nav)
 			current_tile.set_navigation_polygon(nav, nav_p)
 

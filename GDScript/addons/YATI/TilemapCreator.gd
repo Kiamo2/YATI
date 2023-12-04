@@ -66,6 +66,7 @@ var _atlas_sources = null
 var _use_default_filter = false
 var _map_wangset_to_terrain = false
 var _add_class_as_metadata = false
+var _add_id_as_metadata = false
 var _object_groups
 var _ct: CustomTypes = null
 
@@ -115,6 +116,10 @@ func set_use_default_filter(value: bool):
 func set_add_class_as_metadata(value: bool):
 	_add_class_as_metadata = value
 
+
+func set_add_id_as_metadata(value: bool):
+	_add_id_as_metadata = value
+	
 
 func set_map_wangset_to_terrain(value: bool):
 		_map_wangset_to_terrain = value
@@ -493,8 +498,14 @@ func create_polygons_on_alternative_tiles(source_data: TileData, target_data: Ti
 			pts_new[i] -= Vector2(target_data.texture_origin)
 			i += 1
 		var navigation_polygon = NavigationPolygon.new()
-		navigation_polygon.add_outline(pts_new)
-		navigation_polygon.make_polygons_from_outlines()
+		#navigation_polygon.add_outline(pts_new)
+		#navigation_polygon.make_polygons_from_outlines()
+		# Replaced in 4.2 deprecated function make_polygons_from_outlines
+		navigation_polygon.vertices = pts_new
+		var polygon = PackedInt32Array()
+		for idx in range(navigation_polygon.vertices.size()):
+			polygon.push_back(idx)
+		navigation_polygon.add_polygon(polygon)
 		target_data.set_navigation_polygon(layer_id, navigation_polygon)
 	var occlusion_layers_count = _tileset.get_occlusion_layers_count()
 	for layer_id in range(occlusion_layers_count):
@@ -639,6 +650,7 @@ func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignm
 
 
 func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: Vector2) -> void:
+	var obj_id = obj.get("id", 0)
 	var obj_x = obj.get("x", offset.x)
 	var obj_y = obj.get("y", offset.y)
 	var obj_rot = obj.get("rotation", 0.0)
@@ -838,6 +850,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 		if _add_class_as_metadata and class_string != "":
 			obj_sprite.set_meta("class", class_string)
+		if _add_id_as_metadata and obj_id != 0:
+			obj_sprite.set_meta("id", obj_id)
 		if obj.has("properties"):
 			handle_properties(obj_sprite, obj["properties"])
 
@@ -893,6 +907,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			marker.visible = obj_visible
 			if _add_class_as_metadata and class_string != "":
 				marker.set_meta("class", class_string)
+			if _add_id_as_metadata and obj_id != 0:
+				marker.set_meta("id", obj_id)		
 			if obj.has("properties"):
 				handle_properties(marker, obj["properties"])
 		elif obj.has("polygon"):
@@ -918,6 +934,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				polygon_shape.rotation_degrees = obj_rot
 				if _add_class_as_metadata and class_string != "":
 					co.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					co.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
 			elif godot_type == _godot_type.NAVIGATION:
@@ -930,10 +948,19 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				nav_region.visible = obj_visible
 				var nav_poly = NavigationPolygon.new()
 				nav_region.navigation_polygon = nav_poly
-				nav_poly.add_outline(polygon_from_array(obj["polygon"]))
-				nav_poly.make_polygons_from_outlines()
+				#nav_poly.add_outline(polygon_from_array(obj["polygon"]))
+				#nav_poly.make_polygons_from_outlines()
+				# Replaced in 4.2 deprecated function make_polygons_from_outlines
+				nav_poly.vertices = polygon_from_array(obj["polygon"])
+				var polygon = PackedInt32Array()
+				for idx in range(nav_poly.vertices.size()):
+					polygon.push_back(idx)
+				nav_poly.add_polygon(polygon)
+
 				if _add_class_as_metadata and class_string != "":
 					nav_region.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					nav_region.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(nav_region, obj["properties"])
 			elif godot_type == _godot_type.OCCLUDER:
@@ -949,6 +976,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				occ_poly.polygon = polygon_from_array(obj["polygon"])
 				if _add_class_as_metadata and class_string != "":
 					light_occ.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					light_occ.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(light_occ, obj["properties"])
 			elif godot_type == _godot_type.POLYGON:
@@ -962,6 +991,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				polygon.polygon = polygon_from_array(obj["polygon"])
 				if _add_class_as_metadata and class_string != "":
 					polygon.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					polygon.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(polygon, obj["properties"])	
 		elif obj.has("polyline"):
@@ -977,6 +1008,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				line.points = polygon_from_array(obj["polyline"])
 				if _add_class_as_metadata and class_string != "":
 					line.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					line.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(line, obj["properties"])
 			elif godot_type == _godot_type.PATH:
@@ -993,6 +1026,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				path.curve = curve
 				if _add_class_as_metadata and class_string != "":
 					path.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					path.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(path, obj["properties"])
 			else:
@@ -1022,6 +1057,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					collision_shape.name = "Segment Shape"
 				if _add_class_as_metadata and class_string != "":
 					co.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					co.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
 		else:
@@ -1073,6 +1110,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				collision_shape.visible = obj_visible
 				if _add_class_as_metadata and class_string != "":
 					co.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					co.set_meta("id", obj_id)
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
 			elif godot_type == _godot_type.NAVIGATION:
@@ -1089,10 +1128,19 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					nav_region.visible = obj_visible
 					var nav_poly = NavigationPolygon.new()
 					nav_region.navigation_polygon = nav_poly
-					nav_poly.add_outline(polygon_from_rectangle(obj_width, obj_height))
-					nav_poly.make_polygons_from_outlines()
+					#nav_poly.add_outline(polygon_from_rectangle(obj_width, obj_height))
+					#nav_poly.make_polygons_from_outlines()
+					# Replaced in 4.2 deprecated function make_polygons_from_outlines
+					nav_poly.vertices = polygon_from_rectangle(obj_width, obj_height)
+					var polygon = PackedInt32Array()
+					for idx in range(nav_poly.vertices.size()):
+						polygon.push_back(idx)
+					nav_poly.add_polygon(polygon)
+
 					if _add_class_as_metadata and class_string != "":
 						nav_region.set_meta("class", class_string)
+					if _add_id_as_metadata and obj_id != 0:
+						nav_region.set_meta("id", obj_id)		
 					if obj.has("properties"):
 						handle_properties(nav_region, obj["properties"])
 			elif godot_type == _godot_type.OCCLUDER:
@@ -1112,6 +1160,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					occ_poly.polygon = polygon_from_rectangle(obj_width, obj_height)
 					if _add_class_as_metadata and class_string != "":
 						light_occ.set_meta("class", class_string)
+					if _add_id_as_metadata and obj_id != 0:
+						light_occ.set_meta("id", obj_id)
 					if obj.has("properties"):
 						handle_properties(light_occ, obj["properties"])
 			elif godot_type == _godot_type.POLYGON:
@@ -1129,6 +1179,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					polygon.polygon = polygon_from_rectangle(obj_width, obj_height)
 					if _add_class_as_metadata and class_string != "":
 						polygon.set_meta("class", class_string)
+					if _add_id_as_metadata and obj_id != 0:
+						polygon.set_meta("id", obj_id)		
 					if obj.has("properties"):
 						handle_properties(polygon, obj["properties"])	
 
