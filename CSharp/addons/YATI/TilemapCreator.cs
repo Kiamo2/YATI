@@ -605,7 +605,7 @@ public class TilemapCreator
                 i++;
             }
             var navigationPolygon = new NavigationPolygon();
-            //navigationPolygon.AddOutline(ptsNew);
+            navigationPolygon.AddOutline(ptsNew);
             //navigationPolygon.MakePolygonsFromOutlines();
             // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
             navigationPolygon.Vertices = ptsNew;
@@ -1157,10 +1157,11 @@ public class TilemapCreator
 
                         var navPoly = new NavigationPolygon();
                         navRegion.NavigationPolygon = navPoly;
-                        //navPoly.AddOutline(PolygonFromArray((Array<Dictionary>)obj["polygon"]));
+                        var pg = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
+                        navPoly.AddOutline(pg);
                         //navPoly.MakePolygonsFromOutlines();
                         // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
-                        navPoly.Vertices = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
+                        navPoly.Vertices = pg;
                         var polygon = new int[navPoly.Vertices.Length];
                         for (var idx = 0; idx < navPoly.Vertices.Length; idx++)
                             polygon[idx] = idx;
@@ -1395,10 +1396,11 @@ public class TilemapCreator
 
                         var navPoly = new NavigationPolygon();
                         navRegion.NavigationPolygon = navPoly;
-                        //navPoly.AddOutline(PolygonFromRectangle(objWidth, objHeight));
+                        var pg = PolygonFromRectangle(objWidth, objHeight);
+                        navPoly.AddOutline(pg);
                         //navPoly.MakePolygonsFromOutlines();
                         // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
-                        navPoly.Vertices = PolygonFromRectangle(objWidth, objHeight);
+                        navPoly.Vertices = pg;
                         var polygon = new int[navPoly.Vertices.Length];
                         for (var idx = 0; idx < navPoly.Vertices.Length; idx++)
                             polygon[idx] = idx;

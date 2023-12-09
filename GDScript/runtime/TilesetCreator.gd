@@ -29,7 +29,6 @@ var _tileset = null
 var _current_atlas_source = null
 var _current_max_x = 0
 var _current_max_y = 0
-var _atlas_source_counter: int = 0
 var _base_path_map = ""
 var _base_path_tileset = ""
 var _terrain_sets_counter: int = -1
@@ -175,7 +174,7 @@ func create_or_append(tile_set: Dictionary):
 
 	if "image" in tile_set:
 		_current_atlas_source = TileSetAtlasSource.new()
-		_tileset.add_source(_current_atlas_source, _atlas_source_counter)
+		var added_source_id: int = _tileset.add_source(_current_atlas_source)
 		_current_atlas_source.texture_region_size = _tile_size
 		if tile_set.has("margin"):
 			_current_atlas_source.margins = Vector2i(tile_set["margin"], tile_set["margin"])
@@ -184,8 +183,7 @@ func create_or_append(tile_set: Dictionary):
 
 		var texture = load_image(tile_set["image"])
 		if not texture:
-			# Can't continue without texture but as source was already added, counter must be incremented
-			_atlas_source_counter += 1
+			# Can't continue without texture
 			return;
 
 		_current_atlas_source.texture = texture
@@ -200,11 +198,10 @@ func create_or_append(tile_set: Dictionary):
 			_columns = image_width / _tile_size.x
 			_tile_count = _columns * image_height / _tile_size.x
 	
-		register_atlas_source(_atlas_source_counter, _tile_count, -1, _tile_offset)
+		register_atlas_source(added_source_id, _tile_count, -1, _tile_offset)
 		var atlas_grid_size = _current_atlas_source.get_atlas_grid_size()
 		_current_max_x = atlas_grid_size.x - 1
 		_current_max_y = atlas_grid_size.y - 1
-		_atlas_source_counter += 1
 
 	if tile_set.has("tiles"):
 		handle_tiles(tile_set["tiles"])
@@ -288,7 +285,6 @@ func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 
 
 func handle_tiles(tiles: Array):
-	var max_last_atlas_source_count = _atlas_source_counter
 	for tile in tiles:
 		var tile_id = tile["id"]
 
@@ -296,11 +292,8 @@ func handle_tiles(tiles: Array):
 		if tile.has("image"):
 			# Tile with its own image -> separate atlas source
 			_current_atlas_source = TileSetAtlasSource.new()
-			var last_atlas_source_count = _atlas_source_counter + tile_id + 1
-			if last_atlas_source_count > max_last_atlas_source_count:
-				max_last_atlas_source_count = last_atlas_source_count
-			_tileset.add_source(_current_atlas_source, last_atlas_source_count-1)
-			register_atlas_source(last_atlas_source_count-1, 1, tile_id, Vector2i.ZERO)
+			var added_source_id = _tileset.add_source(_current_atlas_source)
+			register_atlas_source(added_source_id, 1, tile_id, Vector2i.ZERO)
 
 			var texture_path = tile["image"]
 			_current_atlas_source.texture = load_image(texture_path)
@@ -351,8 +344,6 @@ func handle_tiles(tiles: Array):
 		if tile.has("properties"):
 			handle_tile_properties(tile["properties"], current_tile)
 	
-	_atlas_source_counter = max_last_atlas_source_count
-
 
 func handle_animation(frames: Array, tile_id: int) -> void:
 	var frame_count: int = 0
@@ -470,7 +461,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		var nav = get_layer_number_for_special_property(obj, "navigation_layer")
 		if nav >= 0:
 			var nav_p = NavigationPolygon.new()
-			#nav_p.add_outline(polygon)
+			nav_p.add_outline(polygon)
 			#nav_p.make_polygons_from_outlines()
 			# Replaced in 4.2 deprecated function make_polygons_from_outlines
 			nav_p.vertices = polygon

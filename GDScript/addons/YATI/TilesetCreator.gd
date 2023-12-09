@@ -175,7 +175,7 @@ func create_or_append(tile_set: Dictionary):
 
 	if "image" in tile_set:
 		_current_atlas_source = TileSetAtlasSource.new()
-		var _added_source_id: int = _tileset.add_source(_current_atlas_source)
+		var added_source_id: int = _tileset.add_source(_current_atlas_source)
 		_current_atlas_source.texture_region_size = _tile_size
 		if tile_set.has("margin"):
 			_current_atlas_source.margins = Vector2i(tile_set["margin"], tile_set["margin"])
@@ -199,7 +199,7 @@ func create_or_append(tile_set: Dictionary):
 			_columns = image_width / _tile_size.x
 			_tile_count = _columns * image_height / _tile_size.x
 	
-		register_atlas_source(_added_source_id, _tile_count, -1, _tile_offset)
+		register_atlas_source(added_source_id, _tile_count, -1, _tile_offset)
 		var atlas_grid_size = _current_atlas_source.get_atlas_grid_size()
 		_current_max_x = atlas_grid_size.x - 1
 		_current_max_y = atlas_grid_size.y - 1
@@ -293,8 +293,8 @@ func handle_tiles(tiles: Array):
 		if tile.has("image"):
 			# Tile with its own image -> separate atlas source
 			_current_atlas_source = TileSetAtlasSource.new()
-			var _added_source_id = _tileset.add_source(_current_atlas_source)
-			register_atlas_source(_added_source_id, 1, tile_id, Vector2i.ZERO)
+			var added_source_id = _tileset.add_source(_current_atlas_source)
+			register_atlas_source(added_source_id, 1, tile_id, Vector2i.ZERO)
 
 			var texture_path = tile["image"]
 			_current_atlas_source.texture = load_image(texture_path)
@@ -462,7 +462,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		var nav = get_layer_number_for_special_property(obj, "navigation_layer")
 		if nav >= 0:
 			var nav_p = NavigationPolygon.new()
-			#nav_p.add_outline(polygon)
+			nav_p.add_outline(polygon)
 			#nav_p.make_polygons_from_outlines()
 			# Replaced in 4.2 deprecated function make_polygons_from_outlines
 			nav_p.vertices = polygon

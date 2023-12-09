@@ -42,7 +42,6 @@ public class TilesetCreator
     private TileSetAtlasSource _currentAtlasSource;
     private int _currentMaxX;
     private int _currentMaxY;
-    private int _atlasSourceCounter;
     private string _basePathMap;
     private string _basePathTileset;
     private int _terrainSetsCounter = -1;
@@ -210,7 +209,7 @@ public class TilesetCreator
         if (tileSet.TryGetValue("image", out var imagePath))
         {
             _currentAtlasSource = new TileSetAtlasSource();
-            _tileset.AddSource(_currentAtlasSource, _atlasSourceCounter);
+            var addedSourceId = _tileset.AddSource(_currentAtlasSource);
             _currentAtlasSource.TextureRegionSize = _tileSize;
             if (tileSet.ContainsKey("margin"))
                 _currentAtlasSource.Margins = new Vector2I((int)tileSet["margin"], (int)tileSet["margin"]);
@@ -219,11 +218,8 @@ public class TilesetCreator
             
             var texture = LoadImage((string)imagePath);
             if (texture == null)
-            {
-                // Can't continue without texture but as source was already added, counter must be incremented
-                _atlasSourceCounter++;
+                // Can't continue without texture
                 return;
-            }
 
             _currentAtlasSource.Texture = texture;
  
@@ -240,11 +236,10 @@ public class TilesetCreator
                 _columns = imagewidth / _tileSize.X;
                 _tileCount = _columns * imageheight / _tileSize.X;
             }
-            RegisterAtlasSource(_atlasSourceCounter, _tileCount, -1, _tileOffset);
+            RegisterAtlasSource(addedSourceId, _tileCount, -1, _tileOffset);
             var atlasGridSize = _currentAtlasSource.GetAtlasGridSize();
             _currentMaxX = atlasGridSize.X - 1;
             _currentMaxY = atlasGridSize.Y - 1;
-            _atlasSourceCounter++;
         }
         
         if (tileSet.TryGetValue("tiles", out var tiles))
@@ -346,7 +341,6 @@ public class TilesetCreator
 
     private void HandleTiles(Array<Dictionary> tiles)
     {
-        var maxLastAtlasSourceCount = _atlasSourceCounter;
         foreach (var tile in tiles)
         {
             var tileId = (int)tile["id"];
@@ -356,11 +350,8 @@ public class TilesetCreator
             {
                 // Tile with it's own image -> separate atlas source
                 _currentAtlasSource = new TileSetAtlasSource();
-                var lastAtlasSourceCount = _atlasSourceCounter + tileId + 1;
-                if (lastAtlasSourceCount > maxLastAtlasSourceCount)
-                    maxLastAtlasSourceCount = lastAtlasSourceCount;
-                _tileset.AddSource(_currentAtlasSource, lastAtlasSourceCount - 1);
-                RegisterAtlasSource(lastAtlasSourceCount-1, 1, tileId, Vector2I.Zero);
+                var addedSourceId = _tileset.AddSource(_currentAtlasSource);
+                RegisterAtlasSource(addedSourceId, 1, tileId, Vector2I.Zero);
                 
                 var texturePath = (string)tile["image"];
                 _currentAtlasSource.Texture = LoadImage(texturePath);
@@ -407,10 +398,10 @@ public class TilesetCreator
             if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
             {
                 var diffX = _tileSize.X - _mapTileSize.X;
-                if (diffX % 2 > 0)
+                if (diffX % 2 != 0)
                     diffX -= 1;
                 var diffY = _tileSize.Y - _mapTileSize.Y;
-                if (diffY % 2 > 0)
+                if (diffY % 2 != 0)
                     diffY += 1;
                 currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - _tileOffset;
             }
@@ -426,8 +417,6 @@ public class TilesetCreator
             if (tile.TryGetValue("properties", out var props))
                 HandleTileProperties((Array<Dictionary>)props, currentTile);
         }
-
-        _atlasSourceCounter = maxLastAtlasSourceCount;
     }
 
     private void HandleAnimation(Array<Dictionary> frames, int tileId)
@@ -583,7 +572,7 @@ public class TilesetCreator
             if (nav >= 0)
             {
                 var navP = new NavigationPolygon();
-                //navP.AddOutline(polygon);
+                navP.AddOutline(polygon);
                 //navP.MakePolygonsFromOutlines();
                 // Replaced in 4.2 deprecated function MakePolygonsFromOutlines
                 navP.Vertices = polygon;

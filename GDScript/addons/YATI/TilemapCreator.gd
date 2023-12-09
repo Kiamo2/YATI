@@ -498,7 +498,7 @@ func create_polygons_on_alternative_tiles(source_data: TileData, target_data: Ti
 			pts_new[i] -= Vector2(target_data.texture_origin)
 			i += 1
 		var navigation_polygon = NavigationPolygon.new()
-		#navigation_polygon.add_outline(pts_new)
+		navigation_polygon.add_outline(pts_new)
 		#navigation_polygon.make_polygons_from_outlines()
 		# Replaced in 4.2 deprecated function make_polygons_from_outlines
 		navigation_polygon.vertices = pts_new
@@ -948,10 +948,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				nav_region.visible = obj_visible
 				var nav_poly = NavigationPolygon.new()
 				nav_region.navigation_polygon = nav_poly
-				#nav_poly.add_outline(polygon_from_array(obj["polygon"]))
+				var pg = polygon_from_array(obj["polygon"])
+				nav_poly.add_outline(pg)
 				#nav_poly.make_polygons_from_outlines()
 				# Replaced in 4.2 deprecated function make_polygons_from_outlines
-				nav_poly.vertices = polygon_from_array(obj["polygon"])
+				nav_poly.vertices = pg
 				var polygon = PackedInt32Array()
 				for idx in range(nav_poly.vertices.size()):
 					polygon.push_back(idx)
@@ -1128,10 +1129,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					nav_region.visible = obj_visible
 					var nav_poly = NavigationPolygon.new()
 					nav_region.navigation_polygon = nav_poly
-					#nav_poly.add_outline(polygon_from_rectangle(obj_width, obj_height))
+					var pg = polygon_from_rectangle(obj_width, obj_height)
+					nav_poly.add_outline(pg)
 					#nav_poly.make_polygons_from_outlines()
 					# Replaced in 4.2 deprecated function make_polygons_from_outlines
-					nav_poly.vertices = polygon_from_rectangle(obj_width, obj_height)
+					nav_poly.vertices = pg
 					var polygon = PackedInt32Array()
 					for idx in range(nav_poly.vertices.size()):
 						polygon.push_back(idx)

@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.3] - 2023-12-09
+
+### Fixed
+
+- Merged lmReef's pull request (issue #33) and added the C# version.   
+This fixes an issue with using different tilesets that use the same tile IDs
+- Navigation polygons still seem to need an outline (was revise in v1.6.2). This is now fixed.
+
 ## [1.6.2] - 2023-12-04
 
 ### Added
