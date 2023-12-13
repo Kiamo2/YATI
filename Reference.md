@@ -185,7 +185,10 @@ Example for a collision layer property (name+value), where layers 1,3,5,6,7 on p
 Properties with "n is layer number": if number appendix is missing, layer 0 is assumed  
 i.e. "collision_layer" is equivalent to "collision_layer_0"
 
-Properties of type 'file' refer to previously saved Godot resources.
+Properties of type 'file' refer to previously saved Godot resources e.g. 'material'.  
+By specifing the property and setting its value to the resource file path the resource will be loaded.  
+**Please note:** The numerous resource-specific properties, e.g. for materials, can only be set by loading previously saved resources.  
+This seems to be convenient as providing all of these properties would greatly inflate the already extensive list.
 
 | Godot Element       | Godot property                     | Tiled Element (to set property)           | Custom property                         | Type         | Enum value                                                                                                                          |
 |---------------------|------------------------------------|-------------------------------------------|-----------------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------|
