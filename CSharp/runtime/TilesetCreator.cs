@@ -1,4 +1,4 @@
-﻿// MIT License
+// MIT License
 //
 // Copyright (c) 2023 Roland Helmerichs
 //
@@ -532,7 +532,7 @@ public class TilesetCreator
             var cosA = (float)Math.Cos(rot * Math.PI / 180.0f);
 
             Vector2[] polygon;
-            if (obj.TryGetValue("polygon", out var pts))
+            if (obj.TryGetValue("polygon", out var pts) || obj.TryGetValue("polyline", out pts))
             {
                 var polygonPoints = (Array<Dictionary>)pts;
                 polygon = new Vector2[polygonPoints.Count];
