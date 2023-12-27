@@ -435,8 +435,8 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		var cos_a = cos(rot * PI / 180.0)
 
 		var polygon
-		if obj.has("polygon"):
-			var polygon_points = obj["polygon"] as Array
+		if obj.has("polygon") or obj.has("polyline"):
+			var polygon_points = (obj["polygon"] if obj.has("polygon") else obj["polyline"]) as Array
 			polygon = []
 			for pt in polygon_points:
 				var p_coord = transpose_coords(pt["x"], pt["y"])
