@@ -1556,6 +1556,8 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 		# TileMap properties
 		elif name.to_lower() == "cell_quadrant_size" and type == "int" and target_node is TileMap:
 			target_node.cell_quadrant_size = int(val)
+		elif name.to_lower() == "rendering_quadrant_size" and type == "int" and target_node is TileMap:
+			target_node.rendering_quadrant_size = int(val)
 		elif name.to_lower() == "collision_animatable" and type == "bool" and target_node is TileMap:
 			target_node.collision_animatable = val.to_lower() == "true"
 		elif name.to_lower() == "collision_visibility_mode" and type == "int" and target_node is TileMap:

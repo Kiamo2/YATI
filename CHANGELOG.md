@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.4] - 2023-12-27
+
+### Added
+
+- In Godot 4.2 TileMap property 'cell_quadrant_size' was renamed to 'rendering_quadrant_size'.  
+The list of custom properies was updated accordingly and the new name can be used.
+
+### Fixed
+
+- Merged mark-rafter's pull request (issue #36).   
+  This fixes an issue if collision polygons on tiles are created as polylines
+
 ## [1.6.3] - 2023-12-09
 
 ### Fixed

@@ -336,7 +336,7 @@ func handle_tiles(tiles: Array):
 		if tile.has("animation"):
 			handle_animation(tile["animation"], tile_id)
 		if tile.has("objectgroup"):
-			handle_objectgroup(tile["objectgroup"], current_tile)
+			handle_objectgroup(tile["objectgroup"], current_tile, tile_id)
 
 		if _ct != null:
 			_ct.merge_custom_properties(tile, "tile")
@@ -397,7 +397,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 			break
 
 
-func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
+func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_id: int):
 
 	# v1.2:
 	_object_groups_counter += 1
@@ -434,8 +434,12 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData):
 		var cos_a = cos(rot * PI / 180.0)
 
 		var polygon
-		if obj.has("polygon"):
-			var polygon_points = obj["polygon"] as Array
+		if obj.has("polygon") or obj.has("polyline"):
+			var polygon_points = (obj["polygon"] if obj.has("polygon") else obj["polyline"]) as Array
+			if polygon_points.size() < 3:
+				print_rich("[color="+WARNING_COLOR+"] -- Skipped invalid polygon on tile " + str(tile_id) + " (less than 3 points)[/color]")
+				_warning_count += 1
+				break
 			polygon = []
 			for pt in polygon_points:
 				var p_coord = transpose_coords(pt["x"], pt["y"])

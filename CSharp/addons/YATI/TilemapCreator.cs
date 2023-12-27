@@ -1942,6 +1942,9 @@ public class TilemapCreator
                 case "cell_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
                     ((TileMap)targetNode).CellQuadrantSize = int.Parse(val);
                     break;
+                case "rendering_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
+                    ((TileMap)targetNode).RenderingQuadrantSize = int.Parse(val);
+                    break;
                 case "collision_animatable" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
                     ((TileMap)targetNode).CollisionAnimatable = bool.Parse(val);
                     break;

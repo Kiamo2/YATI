@@ -1,4 +1,4 @@
-// MIT License
+﻿// MIT License
 //
 // Copyright (c) 2023 Roland Helmerichs
 //
@@ -409,7 +409,7 @@ public class TilesetCreator
             if (tile.TryGetValue("animation", out var animVal))
                 HandleAnimation((Array<Dictionary>)animVal, tileId);
             if (tile.TryGetValue("objectgroup", out var objgrp))
-                HandleObjectgroup((Dictionary)objgrp, currentTile);
+                HandleObjectgroup((Dictionary)objgrp, currentTile, tileId);
 
             _ct?.MergeCustomProperties(tile, "tile");
             if (tile.TryGetValue("properties", out var props))
@@ -489,7 +489,7 @@ public class TilesetCreator
         }        
     }
 
-    private void HandleObjectgroup(Dictionary objectGroup, TileData currentTile)
+    private void HandleObjectgroup(Dictionary objectGroup, TileData currentTile, int tileId)
     {
         // v1.2
         _objectGroupsCounter++;
@@ -535,6 +535,12 @@ public class TilesetCreator
             if (obj.TryGetValue("polygon", out var pts) || obj.TryGetValue("polyline", out pts))
             {
                 var polygonPoints = (Array<Dictionary>)pts;
+                if (polygonPoints.Count < 3)
+                {
+                    GD.PrintRich($"[color={WarningColor}] -- Skipped invalid polygon on tile {tileId} (less than 3 points)[/color]");
+                    _warningCount++;
+                    break;
+                }
                 polygon = new Vector2[polygonPoints.Count];
                 var i = 0;
                 foreach (var pt in polygonPoints)
