@@ -53,6 +53,7 @@ func _get_import_options(path: String, preset_index: int) -> Array:
 		{ "name": "use_default_filter", "default_value": false },
 		{ "name": "add_class_as_metadata", "default_value": false },
 		{ "name": "add_id_as_metadata", "default_value": false },
+		{ "name": "no_alternative_tiles", "default_value": false },
 		{ "name": "map_wangset_to_terrain", "default_value": false },
 		{ "name": "tiled_project_file", "default_value": "", "property_hint": PROPERTY_HINT_FILE, "hint_string": "*.tiled-project;Project File" },
 		{ "name": "post_processor", "default_value": "", "property_hint": PROPERTY_HINT_FILE, "hint_string": "*.gd;GDScript" },
@@ -81,6 +82,8 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		tilemapCreator.set_add_class_as_metadata(true)
 	if options["add_id_as_metadata"] == true:
 		tilemapCreator.set_add_id_as_metadata(true)
+	if options["no_alternative_tiles"] == true:
+		tilemapCreator.set_no_alternative_tiles(true)
 	if options["map_wangset_to_terrain"] == true:
 		tilemapCreator.set_map_wangset_to_terrain(true)
 	if options.has("tiled_project_file") and options["tiled_project_file"] != "":

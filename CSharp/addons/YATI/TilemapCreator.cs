@@ -82,6 +82,7 @@ public class TilemapCreator
     private bool _mapWangsetToTerrain;
     private bool _addClassAsMetadata;
     private bool _addIdAsMetadata;
+    private bool _dontUseAlternativeTiles;
     private Dictionary _objectGroups;
     private CustomTypes _ct;
 
@@ -91,6 +92,7 @@ public class TilemapCreator
 
     private int _errorCount;
     private int _warningCount;
+    private int _godotVersion;
 
     private enum GodotType
     {
@@ -138,6 +140,11 @@ public class TilemapCreator
         _addIdAsMetadata = value;
     }
 
+    public void SetNoAlternativeTiles(bool value)
+    {
+        _dontUseAlternativeTiles = value;
+    }
+    
     public void SetMapWangsetToTerrain(bool value)
     {
         _mapWangsetToTerrain = value;
@@ -164,6 +171,7 @@ public class TilemapCreator
 
     public Node2D Create(string sourceFile)
     {
+        _godotVersion = (int)Engine.GetVersionInfo()["hex"];
         _basePath = sourceFile.GetBaseDir();
         var baseDictionary = DictionaryBuilder.GetDictionary(sourceFile);
         _mapOrientation = (string)baseDictionary.GetValueOrDefault("orientation", "orthogonal");
@@ -693,28 +701,40 @@ public class TilemapCreator
             var altId = 0;
             if (flippedH || flippedV || flippedD)
             {
-                altId = (flippedH ? 1 : 0) + (flippedV ? 2 : 0) + (flippedD ? 4 : 0);
-                if (!atlasSource.HasAlternativeTile(atlasCoords, altId))
+                if (_dontUseAlternativeTiles && _godotVersion >= 0x40200)
                 {
-                    atlasSource.CreateAlternativeTile(atlasCoords, altId);
-                    var tileData = atlasSource.GetTileData(atlasCoords, altId);
-                    tileData.FlipH = flippedH;
-                    tileData.FlipV = flippedV;
-                    tileData.Transpose = flippedD;
-                    var tileSize = atlasSource.TextureRegionSize;
+                    if (flippedH)
+                        altId |= (int)TileSetAtlasSource.TransformFlipH;
+                    if (flippedV)
+                        altId |= (int)TileSetAtlasSource.TransformFlipV;
                     if (flippedD)
-                        tileSize = new Vector2I(tileSize.Y, tileSize.X);
-                    if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                        altId |= (int)TileSetAtlasSource.TransformTranspose;
+                }
+                else
+                {
+                    altId = (flippedH ? 1 : 0) + (flippedV ? 2 : 0) + (flippedD ? 4 : 0);
+                    if (!atlasSource.HasAlternativeTile(atlasCoords, altId))
                     {
-                        var diffX = tileSize.X - _mapTileWidth;
-                        if (diffX % 2 != 0) 
-                            diffX -= 1;
-                        var diffY = tileSize.Y - _mapTileHeight;
-                        if (diffY % 2 != 0)
-                            diffY += 1;
-                        tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
+                        atlasSource.CreateAlternativeTile(atlasCoords, altId);
+                        var tileData = atlasSource.GetTileData(atlasCoords, altId);
+                        tileData.FlipH = flippedH;
+                        tileData.FlipV = flippedV;
+                        tileData.Transpose = flippedD;
+                        var tileSize = atlasSource.TextureRegionSize;
+                        if (flippedD)
+                            tileSize = new Vector2I(tileSize.Y, tileSize.X);
+                        if (tileSize.X != _mapTileWidth || tileSize.Y != _mapTileHeight)
+                        {
+                            var diffX = tileSize.X - _mapTileWidth;
+                            if (diffX % 2 != 0) 
+                                diffX -= 1;
+                            var diffY = tileSize.Y - _mapTileHeight;
+                            if (diffY % 2 != 0)
+                                diffY += 1;
+                            tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
+                        }
+                        CreatePolygonsOnAlternativeTiles(atlasSource.GetTileData(atlasCoords, 0), tileData, altId);
                     }
-                    CreatePolygonsOnAlternativeTiles(atlasSource.GetTileData(atlasCoords, 0), tileData, altId);
                 }
             }
             _tilemap.SetCell(_tmLayerCounter, cellCoords, sourceId, atlasCoords, altId);
@@ -1940,7 +1960,10 @@ public class TilemapCreator
 
                 // TileMap properties
                 case "cell_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    ((TileMap)targetNode).CellQuadrantSize = int.Parse(val);
+                    if (_godotVersion < 0x40200)
+                        ((TileMap)targetNode).CellQuadrantSize = int.Parse(val);
+                    else
+                        ((TileMap)targetNode).RenderingQuadrantSize = int.Parse(val);
                     break;
                 case "rendering_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
                     ((TileMap)targetNode).RenderingQuadrantSize = int.Parse(val);

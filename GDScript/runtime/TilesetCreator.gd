@@ -404,7 +404,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 	register_object_group(_object_groups_counter, object_group)
 	current_tile.set_custom_data(CUSTOM_DATA_INTERNAL, _object_groups_counter)
 	
-	var polygon_index = -1
+	var polygon_indices = {}
 	var objects = object_group["objects"] as Array
 	for obj in objects:
 		if obj.has("point") and obj["point"]:
@@ -489,7 +489,8 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 		if phys < 0 and nav < 0 and occ < 0:
 			phys = 0
 		if phys < 0: continue
-		polygon_index += 1
+		var polygon_index = polygon_indices.get(phys, 0)
+		polygon_indices[phys] = polygon_index + 1
 		ensure_layer_existing(layer_type.PHYSICS, phys)
 		current_tile.add_collision_polygon(phys)
 		current_tile.set_collision_polygon_points(phys, polygon_index, polygon)

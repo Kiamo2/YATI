@@ -498,8 +498,8 @@ public class TilesetCreator
         RegisterObjectGroup(_objectGroupsCounter, objectGroup);
         currentTile.SetCustomData(CustomDataInternal, _objectGroupsCounter);
         
-        var polygonIndex = -1;
         var objects = (Array<Dictionary>)objectGroup["objects"];
+        var polygonIndices = new Dictionary();
         foreach (var obj in objects)
         {
             if (obj.ContainsKey("point") && (bool)obj["point"])
@@ -604,7 +604,8 @@ public class TilesetCreator
             if (phys < 0 && nav < 0 && occ < 0)
                 phys = 0;
             if (phys < 0) continue;
-            polygonIndex++;
+            var polygonIndex = (int)polygonIndices.GetValueOrDefault(phys, 0);
+            polygonIndices[phys] = polygonIndex + 1;
             EnsureLayerExisting(LayerType.Physics, phys);
             currentTile.AddCollisionPolygon(phys);
             currentTile.SetCollisionPolygonPoints(phys, polygonIndex, polygon);

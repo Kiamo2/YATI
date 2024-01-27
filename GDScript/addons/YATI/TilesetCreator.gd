@@ -405,7 +405,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 	register_object_group(_object_groups_counter, object_group)
 	current_tile.set_custom_data(CUSTOM_DATA_INTERNAL, _object_groups_counter)
 	
-	var polygon_index = {}
+	var polygon_indices = {}
 	var objects = object_group["objects"] as Array
 	for obj in objects:
 		if obj.has("point") and obj["point"]:
@@ -490,13 +490,11 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 		if phys < 0 and nav < 0 and occ < 0:
 			phys = 0
 		if phys < 0: continue
-		if phys in polygon_index:
-			polygon_index[phys] += 1
-		else:
-			polygon_index[phys] = 0
+		var polygon_index = polygon_indices.get(phys, 0)
+		polygon_indices[phys] = polygon_index + 1
 		ensure_layer_existing(layer_type.PHYSICS, phys)
 		current_tile.add_collision_polygon(phys)
-		current_tile.set_collision_polygon_points(phys, polygon_index[phys], polygon)
+		current_tile.set_collision_polygon_points(phys, polygon_index, polygon)
 		if not obj.has("properties"): continue
 		for property in obj["properties"]:
 			var name = property.get("name", "")
@@ -504,9 +502,9 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 			var val = property.get("value", "")
 			if name == "": continue
 			if name.to_lower() == "one_way" and type == "bool":
-				current_tile.set_collision_polygon_one_way(phys, polygon_index[phys], val.to_lower() == "true")
+				current_tile.set_collision_polygon_one_way(phys, polygon_index, val.to_lower() == "true")
 			elif name.to_lower() == "one_way_margin" and type == "int":
-				current_tile.set_collision_polygon_one_way_margin(phys, polygon_index[phys], int(val))
+				current_tile.set_collision_polygon_one_way_margin(phys, polygon_index, int(val))
 
 
 func transpose_coords(x: float, y: float):

@@ -35,6 +35,23 @@ Default: `Off`
 
 If enabled the content of the Tiled class field is added to the metadata of the corresponding Godot elment.
 
+### Add Id as Metadata
+###### (new since version 1.6.2)
+
+Default: `Off`
+
+If enabled the Tiled object id is added to the metadata of the corresponding Godot elment.
+
+### No Alternative Tiles
+###### (new since version 1.6.5)
+
+Default: `Off`
+
+If enabled any flipped/rotated tiles are no longer created as alternative tiles.  
+An enhancement in Godot 4.2 makes this possible.  
+*Please note: Rotated non-sqare tiles may appear wrongly placed if this option is `On`.  
+This currently can't be avoided due to Godot specifics.*
+
 ### Map Wangset to Terrain
 ###### (new since version 1.4.0)
 

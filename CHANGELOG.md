@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.5] - 2024-01-27
+
+### Added
+
+- Added new option 'no_alternative_tiles'.  
+  If enabled any flipped/rotated tiles are no longer created as alternative tiles.  
+  An enhancement in Godot 4.2 makes this possible.  
+  *Please note: Rotated non-sqare tiles may appear wrongly placed if this option is `On`.  
+  This currently can't be avoided due to Godot specifics.*
+
+### Fixed
+
+- Fixed issue #37 and merged Lertsenem's pull request (issue #38, his GDScript fix for #37).
+
 ## [1.6.4] - 2023-12-27
 
 ### Added

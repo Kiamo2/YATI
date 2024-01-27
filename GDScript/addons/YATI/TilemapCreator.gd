@@ -67,6 +67,7 @@ var _use_default_filter = false
 var _map_wangset_to_terrain = false
 var _add_class_as_metadata = false
 var _add_id_as_metadata = false
+var _dont_use_alternative_tiles = false
 var _object_groups
 var _ct: CustomTypes = null
 
@@ -76,6 +77,7 @@ var _iso_scale: Vector2
 
 var _error_count = 0
 var _warning_count = 0
+var _godot_version: int
 
 enum _godot_type {
 	EMPTY,
@@ -121,6 +123,10 @@ func set_add_id_as_metadata(value: bool):
 	_add_id_as_metadata = value
 	
 
+func set_no_alternative_tiles(value: bool):
+	_dont_use_alternative_tiles = value
+
+
 func set_map_wangset_to_terrain(value: bool):
 		_map_wangset_to_terrain = value
 	
@@ -142,6 +148,7 @@ func recursively_change_owner(node: Node, new_owner: Node):
 
 
 func create(source_file: String):
+	_godot_version = Engine.get_version_info()["hex"]
 	_base_path = source_file.get_base_dir()
 	var base_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(source_file)
 	_map_orientation = base_dictionary.get("orientation", "othogonal")
@@ -578,25 +585,33 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 
 		var alt_id = 0
 		if flipped_h or flipped_v or flipped_d:
-			alt_id = (1 if flipped_h else 0) + (2 if flipped_v else 0) + (4 if flipped_d else 0)
-			if not atlas_source.has_alternative_tile(atlas_coords, alt_id):
-				atlas_source.create_alternative_tile(atlas_coords, alt_id)
-				var tile_data = atlas_source.get_tile_data(atlas_coords, alt_id)
-				tile_data.flip_h = flipped_h
-				tile_data.flip_v = flipped_v
-				tile_data.transpose = flipped_d
-				var tile_size = atlas_source.texture_region_size
+			if _dont_use_alternative_tiles and _godot_version >= 0x40200:
+				if flipped_h:
+					alt_id |= TileSetAtlasSource.TRANSFORM_FLIP_H
+				if flipped_v:
+					alt_id |= TileSetAtlasSource.TRANSFORM_FLIP_V
 				if flipped_d:
-					tile_size = Vector2i(tile_size.y, tile_size.x)
-				if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
-					var diff_x = tile_size.x - _map_tile_width
-					if diff_x % 2 != 0:
-						diff_x -= 1
-					var diff_y = tile_size.y - _map_tile_height
-					if diff_y % 2 != 0:
-						diff_y += 1
-					tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
-				create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
+					alt_id |= TileSetAtlasSource.TRANSFORM_TRANSPOSE
+			else:
+				alt_id = (1 if flipped_h else 0) + (2 if flipped_v else 0) + (4 if flipped_d else 0)
+				if not atlas_source.has_alternative_tile(atlas_coords, alt_id):
+					atlas_source.create_alternative_tile(atlas_coords, alt_id)
+					var tile_data = atlas_source.get_tile_data(atlas_coords, alt_id)
+					tile_data.flip_h = flipped_h
+					tile_data.flip_v = flipped_v
+					tile_data.transpose = flipped_d
+					var tile_size = atlas_source.texture_region_size
+					if flipped_d:
+						tile_size = Vector2i(tile_size.y, tile_size.x)
+					if tile_size.x != _map_tile_width or tile_size.y != _map_tile_height:
+						var diff_x = tile_size.x - _map_tile_width
+						if diff_x % 2 != 0:
+							diff_x -= 1
+						var diff_y = tile_size.y - _map_tile_height
+						if diff_y % 2 != 0:
+							diff_y += 1
+						tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
+					create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
 		
 		_tilemap.set_cell(_tm_layer_counter, cell_coords, source_id, atlas_coords, alt_id)
 
@@ -1555,7 +1570,10 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 	
 		# TileMap properties
 		elif name.to_lower() == "cell_quadrant_size" and type == "int" and target_node is TileMap:
-			target_node.cell_quadrant_size = int(val)
+			if _godot_version < 0x40200:
+				target_node.cell_quadrant_size = int(val)
+			else:
+				target_node.rendering_quadrant_size = int(val)
 		elif name.to_lower() == "rendering_quadrant_size" and type == "int" and target_node is TileMap:
 			target_node.rendering_quadrant_size = int(val)
 		elif name.to_lower() == "collision_animatable" and type == "bool" and target_node is TileMap:
