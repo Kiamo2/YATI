@@ -1530,6 +1530,10 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 			for group in val.split(",", false):
 				target_node.add_to_group(group.strip_edges(), true)
 
+		# v1.6.x: script resource and property
+		if name.to_lower() == "script" and type == "file":
+			target_node.set_script(load(val))
+
 		# CanvasItem properties
 		elif name.to_lower() == "modulate" and type == "string":
 			target_node.modulate = Color(val)

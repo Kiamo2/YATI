@@ -1904,6 +1904,11 @@ public class TilemapCreator
                         targetNode.AddToGroup(group.Trim(), true);
                     break;
 
+                // v1.6.x: script resource and property
+                case "script" when (type == "file"):
+                    targetNode.SetScript((Script)ResourceLoader.Load(val, "Script"));
+                    break;
+
                 // CanvasItem properties
                 case "modulate" when (type == "string"):
                     ((CanvasItem)targetNode).Modulate = new Color(val);
