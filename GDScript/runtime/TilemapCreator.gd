@@ -31,7 +31,7 @@ const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
 const GODOT_NODE_TYPE_PROPERTY = "godot_node_type"
 const GODOT_GROUP_PROPERTY = "godot_group"
-GODOT_SCRIPT_PROPERTY = "godot_script"
+const GODOT_SCRIPT_PROPERTY = "godot_script"
 const DEFAULT_ALIGNMENT = "unspecified"
 
 var _map_orientation: String
