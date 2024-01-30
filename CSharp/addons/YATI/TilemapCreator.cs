@@ -46,6 +46,7 @@ public class TilemapCreator
     private const string CustomDataInternal = "__internal__";
     private const string GodotNodeTypeProperty = "godot_node_type";
     private const string GodotGroupProperty = "godot_group";
+    private const string GodotScriptProperty = "godot_script";
     private const string DefaultAlignment = "unspecified";
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
@@ -1907,7 +1908,7 @@ public class TilemapCreator
                     break;
 
                 // v1.6.x: script resource and property
-                case "script" when (type == "file"):
+                case GodotScriptProperty when (type == "file"):
                     targetNode.SetScript((Script)ResourceLoader.Load(val, "Script"));
                     break;
 

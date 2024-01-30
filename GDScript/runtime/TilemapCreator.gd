@@ -31,6 +31,7 @@ const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
 const GODOT_NODE_TYPE_PROPERTY = "godot_node_type"
 const GODOT_GROUP_PROPERTY = "godot_group"
+GODOT_SCRIPT_PROPERTY = "godot_script"
 const DEFAULT_ALIGNMENT = "unspecified"
 
 var _map_orientation: String
@@ -1531,7 +1532,7 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 				target_node.add_to_group(group.strip_edges(), true)
 
 		# v1.6.x: script resource and property
-		if name.to_lower() == "script" and type == "file":
+		if name.to_lower() == GODOT_SCRIPT_PROPERTY and type == "file":
 			target_node.set_script(load(val))
 
 		# CanvasItem properties
