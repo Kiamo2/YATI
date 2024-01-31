@@ -1907,7 +1907,7 @@ public class TilemapCreator
                         targetNode.AddToGroup(group.Trim(), true);
                     break;
 
-                // v1.6.x: script resource and property
+                // v1.6.6: script resource and godot_script property
                 case GodotScriptProperty when (type == "file"):
                     targetNode.SetScript((Script)ResourceLoader.Load(val, "Script"));
                     break;

@@ -192,6 +192,9 @@ You can assign more than one group by passing the group names as a comma-separat
 
 New for v1.6.0: You can download [this file](./supplemental/godot_enums.json) containing several Godot enums and import it using the Custom Type Editor
 
+New in v1.6.6: A special custom property `godot_script` to specify a node script.  
+
+
 Remarks:  
 - (*) refers to a string consisting of comma separated values, each value representing an element number to enable.  
 Example for a collision layer property (name+value), where layers 1,3,5,6,7 on physics layer 0 are to enable:  
@@ -202,14 +205,15 @@ Example for a collision layer property (name+value), where layers 1,3,5,6,7 on p
 Properties with "n is layer number": if number appendix is missing, layer 0 is assumed  
 i.e. "collision_layer" is equivalent to "collision_layer_0"
 
-Properties of type 'file' refer to previously saved Godot resources e.g. 'material'.  
+Properties of type 'file' refer to previously saved Godot resources e.g. 'material' or a script file.  
 By specifing the property and setting its value to the resource file path the resource will be loaded.  
 **Please note:** The numerous resource-specific properties, e.g. for materials, can only be set by loading previously saved resources.  
 This seems to be convenient as providing all of these properties would greatly inflate the already extensive list.
 
 | Godot Element       | Godot property                     | Tiled Element (to set property)           | Custom property                         | Type         | Enum value                                                                                                                          |
 |---------------------|------------------------------------|-------------------------------------------|-----------------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------|
-| Node                | Godot Group                        | Layer / Object                            | godot_group                             | string (*)   |                                                                                                                                     |
+| Node                | Group(s)                           | Layer / Object                            | godot_group                             | string (*)   |                                                                                                                                     |
+| Node                | Script                             | Layer / Object                            | godot_script                            | file         |                                                                                                                                     |
 ||
 | TileSet             | Physics Layer n / Collision Layer  | Tileset                                   | collision_layer_n (n is layer number)   | string (*)   |                                                                                                                                     |
 |                     | Physics Layer n / Collision Mask   |                                           | collision_mask_n  (n is layer number)   | string (*)   |                                                                                                                                     |

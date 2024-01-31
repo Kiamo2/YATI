@@ -1531,7 +1531,7 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 			for group in val.split(",", false):
 				target_node.add_to_group(group.strip_edges(), true)
 
-		# v1.6.x: script resource and property
+		# v1.6.6: script resource and godot_script property
 		if name.to_lower() == GODOT_SCRIPT_PROPERTY and type == "file":
 			target_node.set_script(load(val))
 
