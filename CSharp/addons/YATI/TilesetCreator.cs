@@ -161,7 +161,7 @@ public class TilesetCreator
     private void CreateOrAppend(Dictionary tileSet)
     {
         // Catch the AutoMap Rules tileset (is Tiled internal)
-        if (tileSet.ContainsKey("name") && ((string)tileSet["name"] == "AutoMap Rules"))
+        if (tileSet.ContainsKey("name") && (string)tileSet["name"] == "AutoMap Rules")
             return; // This is no error just skip it
 
         if (!_append)
@@ -559,8 +559,8 @@ public class TilesetCreator
                 polygon = new Vector2[4];
                 polygon[0] = Vector2.Zero;
                 polygon[1].X = polygon[0].X;
-                polygon[1].Y = polygon[0].Y + (float)obj["height"];
-                polygon[2].X = polygon[0].X + (float)obj["width"];
+                polygon[1].Y = polygon[0].Y + (float)obj.GetValueOrDefault("height", 0.0f);
+                polygon[2].X = polygon[0].X + (float)obj.GetValueOrDefault("width", 0.0f);
                 polygon[2].Y = polygon[1].Y;
                 polygon[3].X = polygon[2].X;
                 polygon[3].Y = polygon[0].Y;
