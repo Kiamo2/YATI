@@ -134,7 +134,7 @@ func get_registered_object_groups():
 
 func create_or_append(tile_set: Dictionary):
 	# Catch the AutoMap Rules tileset (is Tiled internal)
-	if tile_set.has("name") and tile_set["name"] == "AutoMap Rules":
+	if tile_set.has("name") and is_instance_of(tile_set["name"], TYPE_STRING) and tile_set["name"] == "AutoMap Rules":
 		return # This is no error just skip it
 
 	if not _append:
