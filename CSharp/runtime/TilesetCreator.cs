@@ -159,7 +159,7 @@ public class TilesetCreator
     private void CreateOrAppend(Dictionary tileSet)
     {
         // Catch the AutoMap Rules tileset (is Tiled internal)
-        if (tileSet.ContainsKey("name") && (tileSet["name"] is string) && ((string)tileSet["name"] == "AutoMap Rules"))
+        if (tileSet.ContainsKey("name") && ((string)tileSet["name"] == "AutoMap Rules"))
             return; // This is no error just skip it
 
         if (!_append)
