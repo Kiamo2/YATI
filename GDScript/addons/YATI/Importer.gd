@@ -87,7 +87,7 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 	if options["map_wangset_to_terrain"] == true:
 		tilemapCreator.set_map_wangset_to_terrain(true)
 	if options.has("tiled_project_file") and options["tiled_project_file"] != "":
-		ct = preload("CustomTypes.gd").new()
+		ct = CustomTypes.new()
 		ct.load_custom_types(options["tiled_project_file"])
 		tilemapCreator.set_custom_types(ct)
 
