@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.8] - 2024-08-18
+
+### Added
+
+- Added support for 'godot_atlas_id' custom property which can be used to force specific atlas ids.
+  This was implemented on behalf of issue #48.
+
+### Fixed
+
+- Merged Nebelun's pull request which fixes an (GDScript only) issue concerning custom types loading.  
+  Thank you Nebelun!
+- Fixed issue #49
+- Fixed issue #50
+
 ## [1.6.7] - 2024-03-26
 
 ### Fixed

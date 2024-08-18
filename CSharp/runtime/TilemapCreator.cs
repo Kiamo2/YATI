@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2023 Roland Helmerichs
+// Copyright (c) 2024 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -922,6 +922,10 @@ public class TilemapCreator
                 ((Node2D)instance).Position = TransposeCoords(objX, objY);
                 ((Node2D)instance).RotationDegrees = objRot;
                 ((Node2D)instance).Visible = objVisible;
+                if (_addClassAsMetadata && classString != "")
+                    instance.SetMeta("class", classString);
+                if (_addIdAsMetadata && objId != 0)
+                    instance.SetMeta("id", objId);
                 if (obj.TryGetValue("properties", out var props))
                     HandleProperties(instance, (Array<Dictionary>)props);
             }
@@ -1049,6 +1053,48 @@ public class TilemapCreator
                 }
             }
 
+            var metaList = td.GetMetaList();
+            foreach (var metaName in metaList)
+            {
+                var metaVal = td.GetMeta(metaName);
+                var metaType = metaVal.VariantType;
+                var propDict = new Dictionary();
+                propDict.Add("name", metaName);
+                var propType = metaType switch
+                {
+                    Variant.Type.Bool => "bool",
+                    Variant.Type.Int => "int",
+                    Variant.Type.String => "string",
+                    Variant.Type.Float => "float",
+                    Variant.Type.Color => "color",
+                    _ => "string"
+                };
+                // Type "file" assumed and thus forced for these properties 
+                if (((string)metaName).ToLower() is "godot_script" or "material" or "physics_material_override")
+                    propType = "file";
+                
+                propDict.Add("type", propType);
+                propDict.Add("value", metaVal);
+                
+                if (obj.TryGetValue("properties", out var props2))
+                {
+                    // Add property only if not already contained in properties
+                    var found = false;
+                    foreach (var prop in (Array<Dictionary>)props2)
+                    {
+                        if (string.Equals((string)prop["name"], metaName, StringComparison.CurrentCultureIgnoreCase))
+                            found = true;
+                    }
+                    if (!found)
+                        ((Array<Dictionary>)props2).Add(propDict);
+                }
+                else
+                {
+                    var props = new Array<Dictionary> { propDict };
+                    obj.Add("properties", props);
+                }
+            }
+
             objSprite.FlipH = flippedH;
             objSprite.FlipV = flippedV;
 
@@ -1056,8 +1102,8 @@ public class TilemapCreator
                 objSprite.SetMeta("class", classString);
             if (_addIdAsMetadata && objId != 0)
                 objSprite.SetMeta("id", objId);
-            if (obj.TryGetValue("properties", out var props2))
-                HandleProperties(objSprite, (Array<Dictionary>)props2);
+            if (obj.TryGetValue("properties", out var props3))
+                HandleProperties(objSprite, (Array<Dictionary>)props3);
         }
         else if (obj.TryGetValue("text", out var txtVal))
         {
@@ -1666,8 +1712,8 @@ public class TilemapCreator
     private static string GetProperty(Dictionary obj, string propertyName, string propertyType)
     {
         const string ret = "";
-        if (!obj.ContainsKey("properties")) return ret;
-        foreach (var property in (Array<Dictionary>)obj["properties"])
+        if (!obj.TryGetValue("properties", out var value)) return ret;
+        foreach (var property in (Array<Dictionary>)value)
         {
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
@@ -1905,7 +1951,7 @@ public class TilemapCreator
                         targetNode.AddToGroup(group.Trim(), true);
                     break;
 
-                // v1.6.x: script resource and property
+                // v1.6.6: script resource and godot_script property
                 case GodotScriptProperty when (type == "file"):
                     targetNode.SetScript((Script)ResourceLoader.Load(val, "Script"));
                     break;

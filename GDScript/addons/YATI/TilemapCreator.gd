@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023 Roland Helmerichs
+# Copyright (c) 2024 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -759,6 +759,10 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			instance.position = transpose_coords(obj_x, obj_y)
 			instance.rotation_degrees = obj_rot
 			instance.visible = obj_visible
+			if _add_class_as_metadata and class_string != "":
+				instance.set_meta("class", class_string)
+			if _add_id_as_metadata and obj_id != 0:
+				instance.set_meta("id", obj_id)
 			if obj.has("properties"):
 				handle_properties(instance, obj["properties"])
 		return
@@ -861,6 +865,37 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				if obj.has("properties"):
 					handle_properties(parent, obj["properties"])
 			
+		var meta_list = td.get_meta_list()
+		for meta_name in meta_list:
+			var meta_val = td.get_meta(meta_name)
+			var meta_type = typeof(meta_val)
+			var prop_dict = {}
+			prop_dict["name"] = meta_name
+			var prop_type = {
+				TYPE_BOOL: "bool",
+				TYPE_INT: "int",
+				TYPE_STRING: "string",
+				TYPE_FLOAT: "float",
+				TYPE_COLOR: "color"
+			}.get(meta_type, "string")
+			# Type "file" assumed and thus forced for these properties
+			if meta_name.to_lower() in ["godot_script", "material", "physics_material_override"]:
+				prop_type = "file"
+
+			prop_dict["type"] = prop_type
+			prop_dict["value"] = meta_val
+
+			if obj.has("properties"):
+				# Add property only if not already contained in properties
+				var found = false
+				for prop in obj["properties"]:
+					if prop["name"].to_lower() == meta_name.to_lower():
+						found = true
+				if not found:
+					obj["properties"].append(prop_dict)
+			else:
+				obj["properties"] = [prop_dict]
+
 		obj_sprite.flip_h = flippedH
 		obj_sprite.flip_v = flippedV
 
