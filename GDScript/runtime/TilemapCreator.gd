@@ -851,6 +851,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				_godot_type.BODY: StaticBody2D.new(),
 			}.get(godot_type, null)
 			if parent != null:
+				obj_sprite.owner = null
 				layer_node.remove_child(obj_sprite)
 				layer_node.add_child(parent)
 				parent.owner = _base_node
@@ -860,6 +861,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				obj_sprite.position = Vector2.ZERO
 				obj_sprite.rotation_degrees = 0.0
 				parent.add_child(obj_sprite)
+				obj_sprite.owner = _base_node
 				add_collision_shapes(parent, get_object_group(idx), obj_width, obj_height, flippedH, flippedV, obj_sprite.scale)
 				if obj.has("properties"):
 					handle_properties(parent, obj["properties"])

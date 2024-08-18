@@ -1038,6 +1038,7 @@ public class TilemapCreator
                 };
                 if (parent != null)
                 {
+                    objSprite.Owner = null;
                     layerNode.RemoveChild(objSprite);
                     layerNode.AddChild(parent);
                     parent.Owner = _baseNode;
@@ -1047,6 +1048,7 @@ public class TilemapCreator
                     objSprite.Position = Vector2.Zero;
                     objSprite.RotationDegrees = 0;
                     parent.AddChild(objSprite);
+                    objSprite.Owner = _baseNode;
                     AddCollisionShapes(parent, GetObjectGroup(idx), objWidth, objHeight, flippedH, flippedV, objSprite.Scale);
                     if (obj.TryGetValue("properties", out var props))
                         HandleProperties(parent, (Array<Dictionary>)props);
