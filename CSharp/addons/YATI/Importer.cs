@@ -49,7 +49,6 @@ public partial class Importer: EditorImportPlugin
     {
         return new Array<Dictionary>()
         {
-            new() { { "name", "use_tilemap_layers" }, { "default_value", false } },
             new() { { "name", "use_default_filter" }, { "default_value", false } },
             new() { { "name", "add_class_as_metadata" }, { "default_value", false } },
             new() { { "name", "add_id_as_metadata" }, { "default_value", false } },
@@ -85,8 +84,6 @@ public partial class Importer: EditorImportPlugin
 
         CustomTypes ct = null;
         var tilemapCreator = new TilemapCreator();
-        if ((string)options["use_tilemap_layers"] == "false")
-            tilemapCreator.SetMapLayersToTilemaps(true);
         if ((string)options["use_default_filter"] == "true")
             tilemapCreator.SetUseDefaultFilter(true);
         if ((string)options["add_class_as_metadata"] == "true")

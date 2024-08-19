@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2024-08-19
+
+### Added
+
+- Added support for the new TileMapLayer in Godot 4.3  
+  This required incompatible changes i.e. version 2.0.0 will not work with Godot 4.2.x or older
+
 ## [1.6.8] - 2024-08-18
 
 ### Added

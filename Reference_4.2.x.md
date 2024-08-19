@@ -12,6 +12,15 @@
   
 ## Options
 
+### Use Tilemap Layers
+
+Default: `Off`
+
+In Godot 4 a tilemap can have layers. So it's possible to generate one tilemap with several layers instead of several tilemaps.  
+Whoever prefers this behaviour (I don't) can switch on this option.  
+Only adjacent tilemaps are combined into one with layers.  
+Please note: Godot tilemap layers don't have offsets so if you have tile layers with offsets combining them into one Godot tilemap will end up looking wrong.
+
 ### Use Default Filter
 
 Default: `Off`
@@ -119,54 +128,54 @@ Property value is the assigned layer number.
 **Names:** The Tiled element name entry is mapped to the Godot element name.  
 If the Tiled name entry is empty a default Godot element name is created to avoid cryptic looking names.
 
-| Tiled Element              | Class or <br> godot_node_type | Property (type)        | Godot Element                             |
-|----------------------------|-------------------------------|------------------------|-------------------------------------------|
-| Tile layer                 |                               |                        | TileMapLayer                              |
-| Object layer               |                               |                        | Node2D                                    |
-| Group layer                |                               |                        | (Parent) Node2D                           |
-| Image layer                |                               |                        | TextureRect                               |
+| Tiled Element              | Class or <br> godot_node_type | Property (type)        | Godot Element                         |
+|----------------------------|-------------------------------|------------------------|---------------------------------------|
+| Tile layer                 |                               |                        | TileMap                               |
+| Object layer               |                               |                        | Node2D                                |
+| Group layer                |                               |                        | (Parent) Node2D                       |
+| Image layer                |                               |                        | TextureRect                           |
 ||
-| Tileset (tileset image)    |                               |                        | Atlas                                     |
-| Tileset (image collection) |                               |                        | One atlas per image                       |
-| Terrain Set ("wangset")    |                               |                        | Terrain Set                               |
-| Terrain ("color")          |                               |                        | Terrain                                   |
+| Tileset (tileset image)    |                               |                        | Atlas                                 |
+| Tileset (image collection) |                               |                        | One atlas per image                   |
+| Terrain Set ("wangset")    |                               |                        | Terrain Set                           |
+| Terrain ("color")          |                               |                        | Terrain                               |
 ||
-| Tile Collision polygon     |                               | physics_layer (int)    | Physics layer polygon                     |
-|                            |                               | navigation_layer (int) | Navigation layer polygon                  |
-|                            |                               | occlusion_layer (int)  | Occlusion layer polygon                   |
-| Tile Collision rectangle   |                               | physics_layer (int)    | Physics layer polygon                     |
-|                            |                               | navigation_layer (int) | Navigation layer polygon                  |
-|                            |                               | occlusion_layer (int)  | Occlusion layer polygon                   |
-| Tile collision ellipse     |                               |                        | n/a                                       |
-| Tile animation             |                               |                        | Tile animation (limited)                  |
+| Tile Collision polygon     |                               | physics_layer (int)    | Physics layer polygon                 |
+|                            |                               | navigation_layer (int) | Navigation layer polygon              |
+|                            |                               | occlusion_layer (int)  | Occlusion layer polygon               |
+| Tile Collision rectangle   |                               | physics_layer (int)    | Physics layer polygon                 |
+|                            |                               | navigation_layer (int) | Navigation layer polygon              |
+|                            |                               | occlusion_layer (int)  | Occlusion layer polygon               |
+| Tile collision ellipse     |                               |                        | n/a                                   |
+| Tile animation             |                               |                        | Tile animation (limited)              |
 ||
-| Tile object                |                               |                        | Sprite2D                                  |
-|                            | area                          |                        | Area2D + Sprite2d + Coll.(*)              |
-|                            | staticbody                    |                        | StaticBody2D + Sprite2D + Coll.(*)        |
-|                            | characterbody                 |                        | CharacterBody2D + Sprite2D + Coll.(*)     |
-|                            | rigidbody                     |                        | RigidBody2D + Sprite2D + Coll.(*)         |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Polygon object             | (staticbody)                  |                        | StaticBody2D + CollisionPolygon2D         |
-|                            | area                          |                        | Area2D + CollisionPolygon2D               |
-|                            | navigation                    |                        | NavigationRegion2D                        |
-|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D      |
-|                            | polygon                       |                        | Polygon2D                                 |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
+| Tile object                |                               |                        | Sprite2D                              |
+|                            | area                          |                        | Area2D + Sprite2d + Coll.(*)          |
+|                            | staticbody                    |                        | StaticBody2D + Sprite2D + Coll.(*)    |
+|                            | characterbody                 |                        | CharacterBody2D + Sprite2D + Coll.(*) |
+|                            | rigidbody                     |                        | RigidBody2D + Sprite2D + Coll.(*)     |
+|                            | instance                      | res_path (file)        | Instantiated scene                    |
+| Polygon object             | (staticbody)                  |                        | StaticBody2D + CollisionPolygon2D     |
+|                            | area                          |                        | Area2D + CollisionPolygon2D           |
+|                            | navigation                    |                        | NavigationRegion2D                    |
+|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D  |
+|                            | polygon                       |                        | Polygon2D                             |
+|                            | instance                      | res_path (file)        | Instantiated scene                    |
 | Rectangle object           | (staticbody)                  |                        | StaticBody2D + Rectangle CollisionShape2D |
-|                            | area                          |                        | Area2D + Rectangle CollisionShape2D       |
-|                            | navigation                    |                        | NavigationRegion2D                        |
-|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D      |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Ellipse object             | (staticbody)                  |                        | StaticBody2D + Capsule CollisionShape2D   |
-|                            | area                          |                        | Area2D + Capsule CollisionShape2D         |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Polyline object            | (staticbody)                  |                        | StaticBody2D + Segment CollisionShape2D   |
-|                            | area                          |                        | Area2D + Segment CollisionShape2D         |
-|                            | line                          |                        | Line2D                                    |
-|                            | path                          |                        | Path2D                                    |
-| Point object               |                               |                        | Marker2D                                  |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Text object                |                               |                        | Label                                     |
+|                            | area                          |                        | Area2D + Rectangle CollisionShape2D   |
+|                            | navigation                    |                        | NavigationRegion2D                    |
+|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D  |
+|                            | instance                      | res_path (file)        | Instantiated scene                    |
+| Ellipse object             | (staticbody)                  |                        | StaticBody2D + Capsule CollisionShape2D |
+|                            | area                          |                        | Area2D + Capsule CollisionShape2D     |
+|                            | instance                      | res_path (file)        | Instantiated scene                    |
+| Polyline object            | (staticbody)                  |                        | StaticBody2D + Segment CollisionShape2D |
+|                            | area                          |                        | Area2D + Segment CollisionShape2D     |
+|                            | line                          |                        | Line2D                                |
+|                            | path                          |                        | Path2D                                |
+| Point object               |                               |                        | Marker2D                              |
+|                            | instance                      | res_path (file)        | Instantiated scene                    |
+| Text object                |                               |                        | Label                                 |
 
 Coll.(*): All tile collision objects (except point), ellipse is approximated by capsule
 
@@ -208,14 +217,14 @@ This seems to be convenient as providing all of these properties would greatly i
 |---------------------|------------------------------------|-------------------------------------------|-----------------------------------------|--------------|-------------------------------------------------------------------------------------------------------------------------------------|
 | Node                | Group(s)                           | Layer / Object                            | godot_group                             | string (*)   |                                                                                                                                     |
 | Node                | Script                             | Layer / Object                            | godot_script                            | file         |                                                                                                                                     |
-|                     |
+||
 | TileSet             | Physics Layer n / Collision Layer  | Tileset                                   | collision_layer_n (n is layer number)   | string (*)   |                                                                                                                                     |
 |                     | Physics Layer n / Collision Mask   |                                           | collision_mask_n  (n is layer number)   | string (*)   |                                                                                                                                     |
 |                     | Navigation Layer n / Layers        |                                           | layers_n (n is layer number)            | string (*)   |                                                                                                                                     |
 |                     | UV Clipping                        |                                           | uv_clipping                             | bool         |                                                                                                                                     |
 |                     | Occlusion Layer n / Light Mask     |                                           | light_mask_n (n is layer number)        | string (*)   |                                                                                                                                     |
 |                     | Occlusion Layer n / SDF Collision  |                                           | sdf_collision_n (n is layer number)     | bool         |                                                                                                                                     |
-|                     |
+||
 | Base Tile           | Texture Origin                     | Tile                                      | texture_origin_x                        | int          |                                                                                                                                     |
 |                     |                                    |                                           | texture_origin_y                        | int          |                                                                                                                                     |
 |                     | Modulate                           |                                           | modulate                                | string (col) |                                                                                                                                     |
@@ -230,7 +239,7 @@ This seems to be convenient as providing all of these properties would greatly i
 |                     | One Way                            | Collision Polygon or Rectangle            | one_way                                 | bool         |                                                                                                                                     |
 |                     | One Way Margin                     | Collision Polygon or Rectangle            | one_way_margin                          | int          |                                                                                                                                     |
 |                     | Navigation Layer Polygon           | Collision Polygon or Rectangle            | navigation_layer                        | int          |                                                                                                                                     |
-|                     |
+||
 | CanvasItem          | Modulate                           | Layer / Object                            | modulate                                | string (col) |                                                                                                                                     |
 |                     | Self Modulate                      |                                           | self_modulate                           | string (col) |                                                                                                                                     |
 |                     | Show Behind Parent                 |                                           | show_behind_parent                      | bool         |                                                                                                                                     |
@@ -245,33 +254,32 @@ This seems to be convenient as providing all of these properties would greatly i
 |                     | Texture Repeat                     |                                           | texture_repeat                          | int (enum)   | 0: Inherit, 1: Nearest, 2: Linear, 3: Nearest Mipmap, 4: Linear Mipmap, 5: Nearest Mipmap Anisotropic, 6: Linear Mipmap Anisotropic |
 |                     | Material                           |                                           | material                                | file         |                                                                                                                                     |
 |                     | Use Parent Material                |                                           | use_parent_material                     | bool         |                                                                                                                                     |
-|                     |
-| TileMapLayer        | Y Sort Origin                      | Tile layer                                | y_sort_origin                           | int          |                                                                                                                                     |
-|                     | X Draw Order Reversed              |                                           | x_draw_order_reversed                   | bool         |                                                                                                                                     |
-|                     | Rendering Quadrant Size            |                                           | rendering_quadrant_size                 | int          |                                                                                                                                     |
-|                     | Collision Enabled                  |                                           | collision_enabled                       | bool         |                                                                                                                                     |
-|                     | Use Kinematic Bodies               |                                           | use_kinematic_bodies                    | bool         |                                                                                                                                     |
+||
+| TileMap             | Rendering Quadrant Size            | Tile layer                                | rendering_quadrant_size                 | int          |                                                                                                                                     |
+|                     | Collision Animatable               |                                           | collision_animatable                    | bool         |                                                                                                                                     |
 |                     | Collision Visibility Mode          |                                           | collision_visibility_mode               | int (enum)   | 0: Default, 1: Force Show, 2: Force Hide                                                                                            |
-|                     | Navigation Enabled                 |                                           | navigation_enabled                      | bool         |                                                                                                                                     |
 |                     | Navigation Visibility Mode         |                                           | navigation_visibility_mode              | int (enum)   | 0: Default, 1: Force Show, 2: Force Hide                                                                                            |
-|                     |
+||
+| TileMap Layer       | Z Index                            | Tile layer                                | z_index or layer_z_index                | int          |                                                                                                                                     |
+|                     | Y Sort Origin                      |                                           | y_sort_origin                           | int          |                                                                                                                                     |
+||
 | CollisionObject2D   | Disable Mode                       | Objects with class "area" or "<.. >body"  | disable_mode                            | int (enum)   | 0: Remove, 1: Make Static, 2: Keep Active                                                                                           |
 |                     | Collision Layer                    |                                           | collision_layer                         | string (*)   |                                                                                                                                     |
 |                     | Collision Mask                     |                                           | collision_mask                          | string (*)   |                                                                                                                                     |
 |                     | Collision Priority                 |                                           | collision_priority                      | float        |                                                                                                                                     |
 |                     | Input Pickable                     |                                           | input_pickable                          | bool         |                                                                                                                                     |
-|                     |
+||
 | CollisionPolygon2D  | Build Mode                         | Polygon with class "staticbody" or "area" | build_mode                              | int (enum)   | 0: Solids, 1: Segments                                                                                                              |
 | (both Polgon+Shape) | Disabled                           | Objects with class "staticbody" or "area" | disabled                                | bool         |                                                                                                                                     |
 | (both Polgon+Shape) | One Way Collision                  |                                           | one_way_collision                       | bool         |                                                                                                                                     |
 | (both Polgon+Shape) | One Way Collision Margin           |                                           | one_way_collision_margin                | float        |                                                                                                                                     |
 | CollisionShape2D    | Debug Color                        |                                           | debug_color                             | string (col) |                                                                                                                                     |
-|                     |
+||
 | StaticBody2D        | Physics Material Override          | Objects with class "staticbody"           | physics_material_override               | file         |                                                                                                                                     |
 |                     | Constant Linear Velocity           |                                           | constant_linear_velocity_x              | float        |                                                                                                                                     |
 |                     |                                    |                                           | constant_linear_velocity_y              | float        |                                                                                                                                     |
 |                     | Constant Angular Velocity          |                                           | constant_angular_velocity               | float        |                                                                                                                                     |
-|                     |
+||
 | Area2D              | Monitoring                         | Objects with class "area"                 | monitoring                              | bool         |                                                                                                                                     |
 |                     | Monitorable                        |                                           | monitorable                             | bool         |                                                                                                                                     |
 |                     | Priority                           |                                           | priority                                | float        |                                                                                                                                     |
@@ -287,7 +295,7 @@ This seems to be convenient as providing all of these properties would greatly i
 |                     | Linear Damp                        | `Remark: if space_override not disabled`  | gravity                                 | float        |                                                                                                                                     |
 |                     | Angular Damp Space Override        |                                           | angular_damp_space_override             | int (enum)   | 0: Disabled, 1: Combine, 2: Combine-Replace, 3: Replace, 4: Replace-Combine                                                         |
 |                     | Angular Damp                       | `Remark: if space_override not disabled`  | gravity                                 | float        |                                                                                                                                     |
-|                     |
+||
 | CharacterBody2D     | Motion Mode                        | Tile objects with class "characterbody"   | motion_mode                             | int (enum)   | 0: Grounded, 1: Floating                                                                                                            |
 |                     | Up Direction                       | `Remark: if motion mode 'Grounded'`       | up_direction_x                          | float        |                                                                                                                                     |
 |                     |                                    |                                           | up_direction_y                          | float        |                                                                                                                                     |
@@ -305,7 +313,7 @@ This seems to be convenient as providing all of these properties would greatly i
 |                     | (Collision) Collision Layer        |                                           | collision_layer                         | string (*)   |                                                                                                                                     |
 |                     | (Collision) Collision Mask         |                                           | collision_mask                          | string (*)   |                                                                                                                                     |
 |                     | (Collision) Priority               |                                           | collision_priority                      | float        |                                                                                                                                     |
-|                     |
+||
 | RigidBody2D         | Mass                               | Tile objects with class "rigidbody"       | mass                                    | float        |                                                                                                                                     |
 |                     | Inertia                            |                                           | inertia                                 | float        |                                                                                                                                     |
 |                     | Center of Mass Mode                |                                           | center_of_mass_mode                     | int (enum)   | 0: Auto, 1: Custom                                                                                                                  |
@@ -330,15 +338,15 @@ This seems to be convenient as providing all of these properties would greatly i
 |                     | Constant Force                     |                                           | constant_force_x                        | float        |                                                                                                                                     |
 |                     |                                    |                                           | constant_force_y                        | float        |                                                                                                                                     |
 |                     | Constant Torque                    |                                           | constant_torque                         | float        |                                                                                                                                     |
-|                     |
+||
 | NavigationRegion2D  | Enabled                            | Objects with class "navigation"           | enabled                                 | bool         |                                                                                                                                     |
 |                     | Navigation Layers                  |                                           | navigation_layers                       | string (*)   |                                                                                                                                     |
 |                     | Enter Cost                         |                                           | enter_cost                              | float        |                                                                                                                                     |
 |                     | Travel Cost                        |                                           | travel_cost                             | float        |                                                                                                                                     |
-|                     |
+||
 | LightOccluder2D     | SDF Collision                      | Objects with class "occluder"             | sdf_collision                           | bool         |                                                                                                                                     |
 |                     | Occluder Light Mask                |                                           | occluder_light_mask                     | string (*)   |                                                                                                                                     |
-|                     |
+||
 | Polygon2D           | Color                              | Objects with class "polygon"              | color                                   | string (col) |                                                                                                                                     |
 | Line2D              | Width                              | Objects with class "line"                 | width                                   | float        |                                                                                                                                     |
 |                     | Default Color                      |                                           | default_color                           | string (col) |                                                                                                                                     |

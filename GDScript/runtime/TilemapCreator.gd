@@ -44,9 +44,7 @@ var _parallax_origin_x: int = 0
 var _parallax_origin_y: int = 0
 var _background_color = ""
 
-var _tilemap = null
-var _tilemap_offset_x: float = 0.0
-var _tilemap_offset_y: float = 0.0
+var _tilemap_layer = null
 var _tileset = null
 var _current_tileset_orientation: String
 var _current_object_alignment: String
@@ -59,8 +57,6 @@ var _base_path = ""
 var _base_name = ""
 var _encoding = ""
 var _compression = ""
-var _map_layers_to_tilemaps = false
-var _tm_layer_counter: int = 0
 var _first_gids = []
 var _atlas_sources = null
 var _use_default_filter = false
@@ -106,10 +102,6 @@ func get_error_count():
 func get_warning_count():
 	return _warning_count
 	
-
-func set_map_layers_to_tilemaps(value: bool):
-	_map_layers_to_tilemaps = value
-
 
 func set_use_default_filter(value: bool):
 	_use_default_filter = value
@@ -203,8 +195,6 @@ func create(source_file: String):
 			_tileset.tile_layout = TileSet.TILE_LAYOUT_STACKED if stagger_index == "odd" else TileSet.TILE_LAYOUT_STACKED_OFFSET
 			_tileset.tile_offset_axis = TileSet.TILE_OFFSET_AXIS_VERTICAL if stagger_axis == "x" else TileSet.TILE_OFFSET_AXIS_HORIZONTAL
 	
-	_tm_layer_counter = 0
-
 	_base_node = Node2D.new()
 	_base_name = source_file.get_file().get_basename()
 	_base_node.name = _base_name
@@ -261,57 +251,25 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 	if get_property(layer, "no_import", "bool") == "true":
 		return
 
-	if layer_type != "tilelayer" and not _map_layers_to_tilemaps:
-		_tilemap = null
-		_tm_layer_counter = 0
-
 	if layer_type == "tilelayer":
 		if _map_orientation == "isometric":
 			layer_offset_x += _map_tile_width * (_map_height / 2.0 - 0.5)
 		var layer_name = str(layer["name"])
-		if _map_layers_to_tilemaps:
-			_tilemap = TileMap.new()
-			if layer_name != "":
-				_tilemap.name = layer_name
-			_tilemap.visible = layer_visible
-			if layer_offset_x > 0 or layer_offset_y > 0:
-				_tilemap.position = Vector2(layer_offset_x, layer_offset_y)
-			if layer_opacity < 1.0 or tint_color != "#ffffff":
-				_tilemap.modulate = Color(tint_color, layer_opacity)
-			_tilemap.tile_set = _tileset
-			handle_parallaxes(parent, _tilemap, layer)
-			if _map_orientation == "isometric" or _map_orientation == "staggered":
-				_tilemap.y_sort_enabled = true
-				_tilemap.set_layer_y_sort_enabled(0, true)
-		else:
-			if _tilemap == null:
-				_tilemap = TileMap.new()
-				if layer_name != "":
-					_tilemap.name = layer_name
-				_tilemap.remove_layer(0)
-				handle_parallaxes(parent, _tilemap, layer)
-				_tilemap_offset_x = layer_offset_x
-				_tilemap_offset_y = layer_offset_y
-				_tilemap.position = Vector2(layer_offset_x, layer_offset_y)
-				if _map_orientation == "isometric" or _map_orientation == "staggered":
-					_tilemap.y_sort_enabled = true
-			elif layer_name != "":
-				_tilemap.name += "|" + layer_name
-			if _tilemap.tile_set == null:
-				_tilemap.tile_set = _tileset 
-			_tilemap.add_layer(_tm_layer_counter)
-			_tilemap.set_layer_name(_tm_layer_counter, layer_name)
-			_tilemap.set_layer_enabled(_tm_layer_counter, layer_visible)
-			if _map_orientation == "isometric" or _map_orientation == "staggered":
-				_tilemap.set_layer_y_sort_enabled(_tm_layer_counter, true)
-			if abs(layer_offset_x -_tilemap_offset_x) > 0.01 or abs(layer_offset_y - _tilemap_offset_y) > 0.01:
-				print_rich("[color="+WARNING_COLOR+"]Godot 4 has no tilemap layer offsets -> switch off 'use_tilemap_layers'[/color]")
-				_warning_count += 1
-			if layer_opacity < 1.0 or tint_color != "#ffffff":
-				_tilemap.set_layer_modulate(_tm_layer_counter, Color(tint_color, layer_opacity))
+		_tilemap_layer = TileMapLayer.new()
+		if layer_name != "":
+			_tilemap_layer.name = layer_name
+		_tilemap_layer.visible = layer_visible
+		if layer_offset_x > 0 or layer_offset_y > 0:
+			_tilemap_layer.position = Vector2(layer_offset_x, layer_offset_y)
+		if layer_opacity < 1.0 or tint_color != "#ffffff":
+			_tilemap_layer.modulate = Color(tint_color, layer_opacity)
+		_tilemap_layer.tile_set = _tileset
+		handle_parallaxes(parent, _tilemap_layer, layer)
+		if _map_orientation == "isometric" or _map_orientation == "staggered":
+			_tilemap_layer.y_sort_enabled = true
 
 		if not _use_default_filter:
-			_tilemap.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			_tilemap_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		
 		if _infinite and layer.has("chunks"):
 			# Chunks
@@ -331,10 +289,7 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 				create_map_from_data(data, 0, 0, _map_width)
 
 		if layer.has("properties"):
-			handle_properties(_tilemap, layer["properties"])
-
-		if not _map_layers_to_tilemaps:
-			_tm_layer_counter += 1
+			handle_properties(_tilemap_layer, layer["properties"])
 
 	elif layer_type == "objectgroup":
 		var layer_node = Node2D.new()
@@ -430,10 +385,10 @@ func handle_parallaxes(parent: Node, layer_node: Node, layer_dict: Dictionary):
 		parallax_node.name = px_name + " (PL)" if px_name != "" else "ParallaxLayer"
 		parallax_node.motion_scale = Vector2(par_x, par_y)
 		parallax_node.add_child(layer_node)
-		layer_node.owner = _base_node
 	else:
 		parent.add_child(layer_node)
-		layer_node.owner = _base_node
+
+	layer_node.owner = _base_node
 
 
 func handle_data(data, map_size):
@@ -615,7 +570,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 						tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
 					create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
 		
-		_tilemap.set_cell(_tm_layer_counter, cell_coords, source_id, atlas_coords, alt_id)
+		_tilemap_layer.set_cell(cell_coords, source_id, atlas_coords, alt_id)
 
 
 func get_godot_type(godot_type_string: String):
@@ -1590,7 +1545,7 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 			target_node.light_mask = get_bitmask_integer_from_string(val, 20)
 		elif name.to_lower() == "visibility_layer" and type == "string":
 			target_node.visibility_layer = get_bitmask_integer_from_string(val, 20)	
-		elif name.to_lower() == "z_index" and type == "int" and (not target_node is TileMap or map_properties):
+		elif name.to_lower() == "z_index" and type == "int" and (not target_node is TileMapLayer or map_properties):
 			target_node.z_index = int(val)
 		elif name.to_lower() == "canvas_z_index" and type == "int":
 			target_node.z_index = int(val)
@@ -1598,8 +1553,8 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 			target_node.z_as_relative = val.to_lower() == "true"
 		elif name.to_lower() == "y_sort_enabled" and type == "bool":
 			target_node.y_sort_enabled = val.to_lower() == "true"
-			if target_node is TileMap:
-				target_node.set_layer_y_sort_enabled(_tm_layer_counter, val.to_lower() == "true")
+			if target_node is TileMapLayer:
+				target_node.y_sort_enabled = val.to_lower() == "true"
 		elif name.to_lower() == "texture_filter" and type == "int":
 			if int(val) < CanvasItem.TEXTURE_FILTER_MAX:
 				target_node.texture_filter = int(val)
@@ -1611,33 +1566,25 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 		elif name.to_lower() == "use_parent_material" and type == "bool":
 			target_node.use_parent_material = val.to_lower() == "true"
 	
-		# TileMap properties
-		elif name.to_lower() == "cell_quadrant_size" and type == "int" and target_node is TileMap:
-			if _godot_version < 0x40200:
-				target_node.cell_quadrant_size = int(val)
-			else:
-				target_node.rendering_quadrant_size = int(val)
-		elif name.to_lower() == "rendering_quadrant_size" and type == "int" and target_node is TileMap:
+		# TileMapLayer properties
+		elif name.to_lower() == "y_sort_origin" and type == "int" and target_node is TileMapLayer:
+			target_node.y_sort_origin = int(val)
+		elif name.to_lower() == "x_draw_order_reversed" and type == "bool" and target_node is TileMapLayer:
+			target_node.x_draw_order_reversed = val.to_lower() == "true"
+		elif name.to_lower() == "rendering_quadrant_size" and type == "int" and target_node is TileMapLayer:
 			target_node.rendering_quadrant_size = int(val)
-		elif name.to_lower() == "collision_animatable" and type == "bool" and target_node is TileMap:
-			target_node.collision_animatable = val.to_lower() == "true"
-		elif name.to_lower() == "collision_visibility_mode" and type == "int" and target_node is TileMap:
+		elif name.to_lower() == "collision_enabled" and type == "bool" and target_node is TileMapLayer:
+			target_node.collision_enabled = val.to_lower() == "true"
+		elif name.to_lower() == "use_kinematic_bodies" and type == "bool" and target_node is TileMapLayer:
+			target_node.use_kinematic_bodies = val.to_lower() == "true"
+		elif name.to_lower() == "collision_visibility_mode" and type == "int" and target_node is TileMapLayer:
 			if int(val) < 3:
 				target_node.collision_visibility_mode = int(val)
-		elif name.to_lower() == "navigation_visibility_mode" and type == "int" and target_node is TileMap:
+		elif name.to_lower() == "navigation_enabled" and type == "bool" and target_node is TileMapLayer:
+			target_node.navigation_enabled = val.to_lower() == "true"
+		elif name.to_lower() == "navigation_visibility_mode" and type == "int" and target_node is TileMapLayer:
 			if int(val) < 3:
 				target_node.navigation_visibility_mode = int(val)
-
-		# TileMap layer properties
-		elif name.to_lower() == "layer_z_index" and type == "int" and target_node is TileMap:
-			target_node.z_index = int(val)
-		elif name.to_lower() == "z_index" and type == "int" and target_node is TileMap:
-			if _map_layers_to_tilemaps:
-				target_node.z_index = int(val)
-			else:
-				target_node.set_layer_z_index(_tm_layer_counter, int(val))
-		elif name.to_lower() == "y_sort_origin" and type == "int" and target_node is TileMap:
-			target_node.set_layer_y_sort_origin(_tm_layer_counter, int(val))
 		
 		# CollisionObject2D properties
 		elif name.to_lower() == "disable_mode" and type == "int" and target_node is CollisionObject2D:

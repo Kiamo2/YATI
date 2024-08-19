@@ -58,9 +58,7 @@ public class TilemapCreator
     //private int _parallaxOriginY;
     private string _backgroundColor;
     
-    private TileMap _tilemap;
-    private float _tilemapOffsetX;
-    private float _tilemapOffsetY;
+    private TileMapLayer _tilemapLayer;
     private TileSet _tileset;
     private string _currentTilesetOrientation;
     private string _currentObjectAlignment;
@@ -73,8 +71,6 @@ public class TilemapCreator
     private string _baseName;
     private string _encoding;
     private string _compression;
-    private bool _mapLayersToTilemaps;
-    private int _tmLayerCounter;
     private readonly Array<int> _firstGids = new ();
     private List<Dictionary> _atlasSources;
     private bool _useDefaultFilter;
@@ -119,11 +115,6 @@ public class TilemapCreator
         return _warningCount;
     }
     
-    public void SetMapLayersToTilemaps(bool value)
-    {
-        _mapLayersToTilemaps = value;
-    }
-
     public void SetUseDefaultFilter(bool value)
     {
         _useDefaultFilter = value;
@@ -234,8 +225,6 @@ public class TilemapCreator
             }
         }
         
-        _tmLayerCounter = 0;
-        
         _baseNode = new Node2D();
         _baseName = sourceFile.GetFile().GetBaseName();
         _baseNode.Name = _baseName;
@@ -295,12 +284,6 @@ public class TilemapCreator
         if (GetProperty(layer, "no_import", "bool") == "true")
             return;
 
-        if (layertype != "tilelayer" && !_mapLayersToTilemaps)
-        {
-            _tilemap = null;
-            _tmLayerCounter = 0;
-        }
-
         switch (layertype)
         {
             case "tilelayer":
@@ -308,56 +291,21 @@ public class TilemapCreator
                 if (_mapOrientation == "isometric")
                     layerOffsetX += _mapTileWidth * (_mapHeight / 2.0f - 0.5f);
                 var layerName = (string)layer["name"];
-                if (_mapLayersToTilemaps)
-                {
-                    _tilemap = new TileMap();
-                    if (layerName != "")
-                        _tilemap.Name = layerName;
-                    _tilemap.Visible = layerVisible;
-                    _tilemap.Position = new Vector2(layerOffsetX, layerOffsetY);
-                    if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
-                        _tilemap.Modulate = new Color(tintColor, layerOpacity);
-                    _tilemap.TileSet = _tileset;
-                    HandleParallaxes(parent, _tilemap, layer);
-                    if (_mapOrientation is "isometric" or "staggered")
-                    {
-                        _tilemap.YSortEnabled = true;
-                        _tilemap.SetLayerYSortEnabled(0, true);
-                    }
-                }
-                else
-                {
-                    if (_tilemap == null)
-                    {
-                        _tilemap = new TileMap();
-                        if (layerName != "")
-                            _tilemap.Name = layerName;
-                        _tilemap.RemoveLayer(0);
-                        HandleParallaxes(parent, _tilemap, layer);
-                        _tilemapOffsetX = layerOffsetX;
-                        _tilemapOffsetY = layerOffsetY;
-                        _tilemap.Position = new Vector2(layerOffsetX, layerOffsetY);
-                        if (_mapOrientation is "isometric" or "staggered")
-                            _tilemap.YSortEnabled = true;
-                    }
-                    else if (layerName != "")
-                        _tilemap.Name += "|" + layerName;
-                    _tilemap.TileSet ??= _tileset;
-                    _tilemap.AddLayer(_tmLayerCounter);
-                    _tilemap.SetLayerName(_tmLayerCounter, layerName);
-                    _tilemap.SetLayerEnabled(_tmLayerCounter, layerVisible);
-                    if (_mapOrientation is "isometric" or "staggered")
-                        _tilemap.SetLayerYSortEnabled(_tmLayerCounter, true);
-                    if (Math.Abs(layerOffsetX - _tilemapOffsetX) > 0.01f || Math.Abs(layerOffsetY - _tilemapOffsetY) > 0.01f)
-                    {
-                        GD.PrintRich($"[color={WarningColor}]Godot 4 has no tilemap layer offsets -> switch off 'use_tilemap_layers'[/color]");
-                        _warningCount++;
-                    }
-                    if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
-                        _tilemap.SetLayerModulate(_tmLayerCounter, new Color(tintColor, layerOpacity));
-                }
+
+                _tilemapLayer = new TileMapLayer();
+                if (layerName != "")
+                    _tilemapLayer.Name = layerName;
+                _tilemapLayer.Visible = layerVisible;
+                _tilemapLayer.Position = new Vector2(layerOffsetX, layerOffsetY);
+                if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                    _tilemapLayer.Modulate = new Color(tintColor, layerOpacity);
+                _tilemapLayer.TileSet = _tileset;
+                HandleParallaxes(parent, _tilemapLayer, layer);
+                if (_mapOrientation is "isometric" or "staggered")
+                    _tilemapLayer.YSortEnabled = true;
+                
                 if (!_useDefaultFilter)
-                    _tilemap.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
+                    _tilemapLayer.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
 
                 if (_infinite && layer.TryGetValue("chunks", out var chunks))
                 {
@@ -381,11 +329,8 @@ public class TilemapCreator
                 }
 
                 if (layer.TryGetValue("properties", out var props))
-                    HandleProperties(_tilemap, (Array<Dictionary>)props);
+                    HandleProperties(_tilemapLayer, (Array<Dictionary>)props);
               
-                if (!_mapLayersToTilemaps)
-                    _tmLayerCounter++;
-
                 break;
             }
             case "objectgroup":
@@ -507,13 +452,11 @@ public class TilemapCreator
             parallaxNode.Name = (pxName != "") ? pxName + " (PL)" : "ParallaxLayer";
             parallaxNode.MotionScale = new Vector2(parX, parY);
             parallaxNode.AddChild(layerNode);
-            layerNode.Owner = _baseNode;
         }
         else
-        {
             parent.AddChild(layerNode);
-            layerNode.Owner = _baseNode;
-        }
+
+        layerNode.Owner = _baseNode;
     }
     
     private Array<uint> HandleData(Variant data)
@@ -741,7 +684,7 @@ public class TilemapCreator
                     }
                 }
             }
-            _tilemap.SetCell(_tmLayerCounter, cellCoords, sourceId, atlasCoords, altId);
+            _tilemapLayer.SetCell(cellCoords, sourceId, atlasCoords, altId);
         }
     }
 
@@ -1962,7 +1905,7 @@ public class TilemapCreator
                 case GodotScriptProperty when (type == "file"):
                     targetNode.SetScript((Script)ResourceLoader.Load(val, "Script"));
                     break;
-
+                
                 // CanvasItem properties
                 case "modulate" when (type == "string"):
                     ((CanvasItem)targetNode).Modulate = new Color(val);
@@ -1986,7 +1929,7 @@ public class TilemapCreator
                 case "visibility_layer" when (type == "string"):
                     ((CanvasItem)targetNode).VisibilityLayer = GetBitmaskIntegerFromString(val, 20);
                     break;
-                case "z_index" when (type == "int") && (!targetNodeClass.IsAssignableTo(typeof(TileMap)) || mapProperties):
+                case "z_index" when (type == "int") && (!targetNodeClass.IsAssignableTo(typeof(TileMapLayer)) || mapProperties):
                     ((CanvasItem)targetNode).ZIndex = int.Parse(val);
                     break;
                 case "canvas_z_index" when (type == "int"):
@@ -1997,8 +1940,8 @@ public class TilemapCreator
                     break;
                 case "y_sort_enabled" when (type == "bool"):
                     ((CanvasItem)targetNode).YSortEnabled = bool.Parse(val);
-                    if (targetNodeClass.IsAssignableTo(typeof(TileMap)))
-                        ((TileMap)targetNode).SetLayerYSortEnabled(_tmLayerCounter, bool.Parse(val));
+                    if (targetNodeClass.IsAssignableTo(typeof(TileMapLayer)))
+                        ((TileMapLayer)targetNode).YSortEnabled = bool.Parse(val);
                     break;
                 case "texture_filter" when (type == "int"):
                     if (int.Parse(val) < (int)CanvasItem.TextureFilterEnum.Max)
@@ -2015,40 +1958,32 @@ public class TilemapCreator
                     ((CanvasItem)targetNode).UseParentMaterial = bool.Parse(val);
                     break;
 
-                // TileMap properties
-                case "cell_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    if (_godotVersion < 0x40200)
-                        ((TileMap)targetNode).CellQuadrantSize = int.Parse(val);
-                    else
-                        ((TileMap)targetNode).RenderingQuadrantSize = int.Parse(val);
+                // TileMapLayer properties
+                case "y_sort_origin" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).YSortOrigin = int.Parse(val);
                     break;
-                case "rendering_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    ((TileMap)targetNode).RenderingQuadrantSize = int.Parse(val);
+                case "x_draw_order_reversed" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).XDrawOrderReversed = bool.Parse(val);
                     break;
-                case "collision_animatable" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    ((TileMap)targetNode).CollisionAnimatable = bool.Parse(val);
+                case "rendering_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).RenderingQuadrantSize = int.Parse(val);
                     break;
-                case "collision_visibility_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
+                case "collision_enabled" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).CollisionEnabled = bool.Parse(val);
+                    break;
+                case "use_kinematic_bodies" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).UseKinematicBodies = bool.Parse(val);
+                    break;
+                case "collision_visibility_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     if (int.Parse(val) < 3)
-                        ((TileMap)targetNode).CollisionVisibilityMode = (TileMap.VisibilityMode)int.Parse(val);
+                        ((TileMapLayer)targetNode).CollisionVisibilityMode = (TileMapLayer.DebugVisibilityMode)int.Parse(val);
                     break;
-                case "navigation_visibility_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMap)):
+                case "navigation_enabled" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).NavigationEnabled = bool.Parse(val);
+                    break;
+                case "navigation_visibility_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     if (int.Parse(val) < 3)
-                        ((TileMap)targetNode).NavigationVisibilityMode = (TileMap.VisibilityMode)int.Parse(val);
-                    break;
-                
-                // Tilemap Layer properties
-                case "layer_z_index" when (type == "int") && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    ((TileMap)targetNode).SetLayerZIndex(_tmLayerCounter, int.Parse(val));
-                    break;
-                case "z_index" when (type == "int") && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    if (_mapLayersToTilemaps)
-                        ((TileMap)targetNode).ZIndex = int.Parse(val);
-                    else
-                        ((TileMap)targetNode).SetLayerZIndex(_tmLayerCounter, int.Parse(val));
-                    break;
-                case "y_sort_origin" when (type == "int") && targetNodeClass.IsAssignableTo(typeof(TileMap)):
-                    ((TileMap)targetNode).SetLayerYSortOrigin(_tmLayerCounter, int.Parse(val));
+                        ((TileMapLayer)targetNode).NavigationVisibilityMode = (TileMapLayer.DebugVisibilityMode)int.Parse(val);
                     break;
 
                 // CollisionObject2D properties

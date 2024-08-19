@@ -22,7 +22,6 @@
 
 func import(source_file: String, project_file: String = ""):
 	var tilemapCreator = preload("TilemapCreator.gd").new()
-	tilemapCreator.set_map_layers_to_tilemaps(true)
 	tilemapCreator.set_add_class_as_metadata(true)
 	if project_file != "":
 		var ct = preload("CustomTypes.gd").new()

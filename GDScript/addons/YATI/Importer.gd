@@ -49,7 +49,6 @@ func _get_preset_name(preset_index: int) -> String:
 
 func _get_import_options(path: String, preset_index: int) -> Array:
 	return [
-		{ "name": "use_tilemap_layers", "default_value": false },
 		{ "name": "use_default_filter", "default_value": false },
 		{ "name": "add_class_as_metadata", "default_value": false },
 		{ "name": "add_id_as_metadata", "default_value": false },
@@ -74,8 +73,6 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 
 	var ct: CustomTypes = null
 	var tilemapCreator = preload("TilemapCreator.gd").new()
-	if options["use_tilemap_layers"] == false:
-		tilemapCreator.set_map_layers_to_tilemaps(true)
 	if options["use_default_filter"] == true:
 		tilemapCreator.set_use_default_filter(true)
 	if options["add_class_as_metadata"] == true:

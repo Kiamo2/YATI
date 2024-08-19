@@ -29,7 +29,6 @@ public static class Importer
 	public static Node2D Import(string sourceFile, string projectFile = "")
 	{
 		var tilemapCreator = new TilemapCreator();
-		tilemapCreator.SetMapLayersToTilemaps(true);
 		tilemapCreator.SetAddClassAsMetadata(true);
 		if (projectFile != "")
 		{
