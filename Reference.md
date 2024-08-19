@@ -172,10 +172,10 @@ Coll.(*): All tile collision objects (except point), ellipse is approximated by 
 
 ## Custom properties reference
 
-Setting these properties affects the Godot settings accordingly.  
+Setting these properties affect the Godot settings accordingly.  
 Custom properties which are not in this list or not fitting to the element are added as Meta Data or - if assigned to a tile - as Custom Data.
 
-> **Tile** custom properties: The property name and type will refer to a layer in the Godot TileMap's Custom Data Layer array,   
+> **Tile** custom properties: The property name and type will refer to a layer in the Godot TileSets's Custom Data Layer array,   
 the property value is assigend to the tile's Custom Data entry which conists only of the layer number and the value.
 
 New since v1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  

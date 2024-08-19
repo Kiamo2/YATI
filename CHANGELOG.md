@@ -38,7 +38,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added support for `godot_script` custom property to set a Script on the Node  
+- Added support for `godot_script` custom property to set a script on to a node  
   This was done by 'atbigelow', thank you August!
 
 ## [1.6.5] - 2024-01-27
