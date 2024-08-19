@@ -489,7 +489,12 @@ public class TilemapCreator
         {
             if (!_parallaxLayerExisting)
             {
-                _background?.Reparent(_parallaxBackground);
+                if (_background != null)
+                {
+                    _background.Owner = null;
+                    _background.Reparent(_parallaxBackground);
+                    _background.Owner = _baseNode;
+                }
                 _parallaxLayerExisting = true;
             }
 

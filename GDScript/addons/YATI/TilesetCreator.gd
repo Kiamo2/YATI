@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 Roland Helmerichs
+# Copyright (c) 2023 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,6 @@ extends RefCounted
 
 const WARNING_COLOR = "yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
-const GODOT_ATLAS_ID_PROPERTY = "godot_atlas_id"
 
 var _tileset = null
 var _current_atlas_source = null
@@ -176,7 +175,7 @@ func create_or_append(tile_set: Dictionary):
 
 	if "image" in tile_set:
 		_current_atlas_source = TileSetAtlasSource.new()
-		var added_source_id: int = _tileset.add_source(_current_atlas_source, get_special_property(tile_set, GODOT_ATLAS_ID_PROPERTY))
+		var added_source_id: int = _tileset.add_source(_current_atlas_source)
 		_current_atlas_source.texture_region_size = _tile_size
 		if tile_set.has("margin"):
 			_current_atlas_source.margins = Vector2i(tile_set["margin"], tile_set["margin"])
@@ -294,7 +293,7 @@ func handle_tiles(tiles: Array):
 		if tile.has("image"):
 			# Tile with its own image -> separate atlas source
 			_current_atlas_source = TileSetAtlasSource.new()
-			var added_source_id = _tileset.add_source(_current_atlas_source, get_special_property(tile, GODOT_ATLAS_ID_PROPERTY))
+			var added_source_id = _tileset.add_source(_current_atlas_source)
 			register_atlas_source(added_source_id, 1, tile_id, Vector2i.ZERO)
 
 			var texture_path = tile["image"]
@@ -464,7 +463,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 				polygon[i] = object_base_coords + pt_rot
 				i += 1
 
-		var nav = get_special_property(obj, "navigation_layer")
+		var nav = get_layer_number_for_special_property(obj, "navigation_layer")
 		if nav >= 0:
 			var nav_p = NavigationPolygon.new()
 			nav_p.add_outline(polygon)
@@ -479,14 +478,14 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 			ensure_layer_existing(layer_type.NAVIGATION, nav)
 			current_tile.set_navigation_polygon(nav, nav_p)
 
-		var occ = get_special_property(obj, "occlusion_layer")
+		var occ = get_layer_number_for_special_property(obj, "occlusion_layer")
 		if occ >= 0:
 			var occ_p = OccluderPolygon2D.new()
 			occ_p.polygon = polygon
 			ensure_layer_existing(layer_type.OCCLUSION, occ)
 			current_tile.set_occluder(occ, occ_p)
 
-		var phys = get_special_property(obj, "physics_layer")
+		var phys = get_layer_number_for_special_property(obj, "physics_layer")
 		# If no property is specified assume collision (i.e. default)
 		if phys < 0 and nav < 0 and occ < 0:
 			phys = 0
@@ -517,7 +516,7 @@ func transpose_coords(x: float, y: float):
 	return Vector2(x, y)
 
 
-func get_special_property(dict: Dictionary, property_name: String):
+func get_layer_number_for_special_property(dict: Dictionary, property_name: String):
 	if not dict.has("properties"): return -1
 	for	property in dict["properties"]:
 		var name = property.get("name", "")
@@ -629,7 +628,7 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 			var layer_index = int(name.substr(17))
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			current_tile.set_constant_angular_velocity(layer_index, float(val))
-		elif name.to_lower() != GODOT_ATLAS_ID_PROPERTY:
+		else:
 			var custom_layer = _tileset.get_custom_data_layer_by_name(name)
 			if custom_layer < 0:
 				_tileset.add_custom_data_layer()
@@ -644,7 +643,6 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 				}.get(type, TYPE_STRING)
 				_tileset.set_custom_data_layer_type(custom_layer, custom_type)
 			current_tile.set_custom_data(name, get_right_typed_value(type, val))
-			current_tile.set_meta(name, get_right_typed_value(type, val))
 
 
 func handle_tileset_properties(properties: Array):
@@ -694,7 +692,7 @@ func handle_tileset_properties(properties: Array):
 			layer_index = int(name.substr(14))
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_sdf_collision(layer_index, val.to_lower() == "true")
-		elif name.to_lower() != GODOT_ATLAS_ID_PROPERTY:
+		else:
 			_tileset.set_meta(name, get_right_typed_value(type, val))
 
 

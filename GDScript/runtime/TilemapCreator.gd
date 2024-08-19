@@ -416,7 +416,9 @@ func handle_parallaxes(parent: Node, layer_node: Node, layer_dict: Dictionary):
 	if layer_dict.has("parallaxx") or layer_dict.has("parallaxy"):
 		if not _parallax_layer_existing:
 			if _background != null:
+				_background.owner = null
 				_background.reparent(_parallax_background)
+				_background.owner = _base_node
 			_parallax_layer_existing = true
 	
 		var par_x = layer_dict.get("parallaxx", 0.0)

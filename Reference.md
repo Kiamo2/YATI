@@ -187,16 +187,13 @@ Custom properties which are not in this list or not fitting to the element are a
 > **Tile** custom properties: The property name and type will refer to a layer in the Godot TileMap's Custom Data Layer array,   
 the property value is assigend to the tile's Custom Data entry which conists only of the layer number and the value.
 
-New since v1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  
+New in v1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  
 You can assign more than one group by passing the group names as a comma-separated list.
 
-New since v1.6.0: You can download [this file](./supplemental/godot_enums.json) containing several Godot enums and import it using the Custom Type Editor
+New for v1.6.0: You can download [this file](./supplemental/godot_enums.json) containing several Godot enums and import it using the Custom Type Editor
 
-New since v1.6.6: A special custom property `godot_script` to specify a node script.  
+New in v1.6.6: A special custom property `godot_script` to specify a node script.  
 
-New since v1.6.8: A special custom property `godot_atlas_id` to force special atlas id values.  
-The property is either a tileset property or in case of an image collection tileset a tile property.  
-**Please use this property only if you know what you're doing and why!** 
 
 Remarks:  
 - (*) refers to a string consisting of comma separated values, each value representing an element number to enable.  

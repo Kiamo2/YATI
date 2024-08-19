@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2024 Roland Helmerichs
+// Copyright (c) 2023 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,6 @@ public class TilesetCreator
 {
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
-    private const string GodotAtlasIdProperty = "godot_atlas_id";
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private TileSet _tileset;
@@ -208,7 +207,7 @@ public class TilesetCreator
         if (tileSet.TryGetValue("image", out var imagePath))
         {
             _currentAtlasSource = new TileSetAtlasSource();
-            var addedSourceId = _tileset.AddSource(_currentAtlasSource, GetSpecialProperty(tileSet, GodotAtlasIdProperty));
+            var addedSourceId = _tileset.AddSource(_currentAtlasSource);
             _currentAtlasSource.TextureRegionSize = _tileSize;
             if (tileSet.ContainsKey("margin"))
                 _currentAtlasSource.Margins = new Vector2I((int)tileSet["margin"], (int)tileSet["margin"]);
@@ -349,7 +348,7 @@ public class TilesetCreator
             {
                 // Tile with it's own image -> separate atlas source
                 _currentAtlasSource = new TileSetAtlasSource();
-                var addedSourceId = _tileset.AddSource(_currentAtlasSource, GetSpecialProperty(tile, GodotAtlasIdProperty));
+                var addedSourceId = _tileset.AddSource(_currentAtlasSource);
                 RegisterAtlasSource(addedSourceId, 1, tileId, Vector2I.Zero);
                 
                 var texturePath = (string)tile["image"];
@@ -573,7 +572,7 @@ public class TilesetCreator
                 }
             }
 
-            var nav = GetSpecialProperty(obj, "navigation_layer");
+            var nav = GetLayerNumberForSpecialProperty(obj, "navigation_layer");
             if (nav >= 0)
             {
                 var navP = new NavigationPolygon();
@@ -589,7 +588,7 @@ public class TilesetCreator
                 currentTile.SetNavigationPolygon(nav, navP);
             }
 
-            var occ = GetSpecialProperty(obj, "occlusion_layer");
+            var occ = GetLayerNumberForSpecialProperty(obj, "occlusion_layer");
             if (occ >= 0)
             {
                 var occP = new OccluderPolygon2D();
@@ -598,7 +597,7 @@ public class TilesetCreator
                 currentTile.SetOccluder(occ, occP);
             }
 
-            var phys = GetSpecialProperty(obj, "physics_layer");
+            var phys = GetLayerNumberForSpecialProperty(obj, "physics_layer");
             // If no property is specified assume physics (i.e. default)
             if (phys < 0 && nav < 0 && occ < 0)
                 phys = 0;
@@ -608,8 +607,8 @@ public class TilesetCreator
             EnsureLayerExisting(LayerType.Physics, phys);
             currentTile.AddCollisionPolygon(phys);
             currentTile.SetCollisionPolygonPoints(phys, polygonIndex, polygon);
-            if (!obj.TryGetValue("properties", out var value)) continue;
-            foreach (var property in (Array<Dictionary>)value)
+            if (!obj.ContainsKey("properties")) continue;
+            foreach (var property in (Array<Dictionary>)obj["properties"])
             {
                 var name = (string)property.GetValueOrDefault("name", "");
                 var type = (string)property.GetValueOrDefault("type", "string");
@@ -640,11 +639,11 @@ public class TilesetCreator
         return new Vector2(x, y);
     }
 
-    private static int GetSpecialProperty(Dictionary dict, string propertyName)
+    private static int GetLayerNumberForSpecialProperty(Dictionary dict, string propertyName)
     {
-        if (!dict.TryGetValue("properties", out var value)) return -1;
+        if (!dict.ContainsKey("properties")) return -1;
 
-        foreach (var property in (Array<Dictionary>)value)
+        foreach (var property in (Array<Dictionary>)dict["properties"])
         {
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
@@ -789,7 +788,7 @@ public class TilesetCreator
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 currentTile.SetConstantAngularVelocity(layerIndex, float.Parse(val, Inv));
             }
-            else if (name.ToLower() != GodotAtlasIdProperty)
+            else
             {
                 var customLayer = _tileset.GetCustomDataLayerByName(name);
                 if (customLayer < 0)
@@ -810,7 +809,6 @@ public class TilesetCreator
                 }
 
                 currentTile.SetCustomData(name, GetRightTypedValue(type, val));
-                currentTile.SetMeta(name, GetRightTypedValue(type, val));
             }
         }
     }
@@ -879,7 +877,7 @@ public class TilesetCreator
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
             }
-            else if (name.ToLower() != GodotAtlasIdProperty)
+            else
                 _tileset.SetMeta(name, GetRightTypedValue(type, val));
         }
     }
