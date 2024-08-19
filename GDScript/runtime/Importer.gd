@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023 Roland Helmerichs
+# Copyright (c) 2024 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,7 +25,7 @@ func import(source_file: String, project_file: String = ""):
 	tilemapCreator.set_map_layers_to_tilemaps(true)
 	tilemapCreator.set_add_class_as_metadata(true)
 	if project_file != "":
-		var ct = CustomTypes.new()
+		var ct = preload("CustomTypes.gd").new()
 		ct.load_custom_types(project_file)
 		tilemapCreator.set_custom_types(ct)
 	return tilemapCreator.create(source_file)
