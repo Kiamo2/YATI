@@ -215,7 +215,7 @@ func create(source_file: String):
 			handle_layer(layer, _base_node)
 
 	if base_dictionary.has("properties"):
-		handle_properties(_base_node, base_dictionary["properties"], true)
+		handle_properties(_base_node, base_dictionary["properties"])
 
 	if _parallax_background.get_child_count() == 0:
 		_base_node.remove_child(_parallax_background)
@@ -229,7 +229,7 @@ func create(source_file: String):
 	var ret = _base_node.get_child(0)
 	recursively_change_owner(ret, ret)
 	if base_dictionary.has("properties"):
-		handle_properties(ret, base_dictionary["properties"], true)
+		handle_properties(ret, base_dictionary["properties"])
 	ret.name = _base_name
 	return ret
 
@@ -1500,7 +1500,7 @@ func get_right_typed_value(type: String, val: String):
 		return val
 	
 
-func handle_properties(target_node: Node, properties: Array, map_properties: bool = false):
+func handle_properties(target_node: Node, properties: Array):
 	var has_children = false
 	if target_node is StaticBody2D or target_node is Area2D or target_node is CharacterBody2D or target_node is RigidBody2D:
 		has_children = target_node.get_child_count() > 0 
@@ -1544,17 +1544,13 @@ func handle_properties(target_node: Node, properties: Array, map_properties: boo
 		elif name.to_lower() == "light_mask" and type == "string":
 			target_node.light_mask = get_bitmask_integer_from_string(val, 20)
 		elif name.to_lower() == "visibility_layer" and type == "string":
-			target_node.visibility_layer = get_bitmask_integer_from_string(val, 20)	
-		elif name.to_lower() == "z_index" and type == "int" and (not target_node is TileMapLayer or map_properties):
-			target_node.z_index = int(val)
-		elif name.to_lower() == "canvas_z_index" and type == "int":
+			target_node.visibility_layer = get_bitmask_integer_from_string(val, 20)
+		elif name.to_lower() == "z_index" and type == "int":
 			target_node.z_index = int(val)
 		elif name.to_lower() == "z_as_relative" and type == "bool":
 			target_node.z_as_relative = val.to_lower() == "true"
 		elif name.to_lower() == "y_sort_enabled" and type == "bool":
 			target_node.y_sort_enabled = val.to_lower() == "true"
-			if target_node is TileMapLayer:
-				target_node.y_sort_enabled = val.to_lower() == "true"
 		elif name.to_lower() == "texture_filter" and type == "int":
 			if int(val) < CanvasItem.TEXTURE_FILTER_MAX:
 				target_node.texture_filter = int(val)
