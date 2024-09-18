@@ -380,6 +380,15 @@ public class TilemapCreator
                         CreateMapFromData(data, 0, 0, _mapWidth);
                 }
 
+                var classString = (string)layer.GetValueOrDefault("class", "");
+                if (classString == "")
+                    classString = (string)layer.GetValueOrDefault("type", "");
+                if (_addClassAsMetadata && classString != "")
+                    _tilemap.SetMeta("class", classString);
+                var objId = (int)layer.GetValueOrDefault("id", 0);
+                if (_addIdAsMetadata && objId != 0)
+                    _tilemap.SetMeta("id", objId);
+
                 if (layer.TryGetValue("properties", out var props))
                     HandleProperties(_tilemap, (Array<Dictionary>)props);
               
@@ -507,13 +516,12 @@ public class TilemapCreator
             parallaxNode.Name = (pxName != "") ? pxName + " (PL)" : "ParallaxLayer";
             parallaxNode.MotionScale = new Vector2(parX, parY);
             parallaxNode.AddChild(layerNode);
-            layerNode.Owner = _baseNode;
         }
         else
         {
             parent.AddChild(layerNode);
-            layerNode.Owner = _baseNode;
         }
+        layerNode.Owner = _baseNode;
     }
     
     private Array<uint> HandleData(Variant data)
