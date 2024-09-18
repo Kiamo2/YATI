@@ -11,7 +11,7 @@ Latest version: 2.0.2 (needs Godot 4.3.0 or higher)
 Downloads: [GDScript version](../../releases/download/v2.0.2/v2.0.2-gdscript.zip) / [CSharp version](../../releases/download/v2.0.2/v2.0.2-csharp.zip)
 
 Latest version for Godot 4.2.x: 1.6.9  
-Version 1.6.8 downloads: [GDScript version](../../releases/download/v1.6.9/v1.6.9-gdscript.zip) / [CSharp version](../../releases/download/v1.6.9/v1.6.9-csharp.zip)
+Version 1.6.9 downloads: [GDScript version](../../releases/download/v1.6.9/v1.6.9-gdscript.zip) / [CSharp version](../../releases/download/v1.6.9/v1.6.9-csharp.zip)
 
 **New since v1.5.2:** Runtime packages are now additionally available.  
 For installation and usage please refer to the [runtime document](Runtime.md)
