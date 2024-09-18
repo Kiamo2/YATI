@@ -288,6 +288,15 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			if data != null:
 				create_map_from_data(data, 0, 0, _map_width)
 
+		var class_string = layer.get("class", "")
+		if class_string == "":
+			class_string = layer.get("type", "")
+		if _add_class_as_metadata and class_string != "":
+			_tilemap_layer.set_meta("class", class_string)
+		var obj_id = layer.get("id", 0)
+		if _add_id_as_metadata and obj_id != 0:
+			_tilemap_layer.set_meta("id", obj_id)
+
 		if layer.has("properties"):
 			handle_properties(_tilemap_layer, layer["properties"])
 

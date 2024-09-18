@@ -330,6 +330,15 @@ public class TilemapCreator
                         CreateMapFromData(data, 0, 0, _mapWidth);
                 }
 
+                var classString = (string)layer.GetValueOrDefault("class", "");
+                if (classString == "")
+                    classString = (string)layer.GetValueOrDefault("type", "");
+                if (_addClassAsMetadata && classString != "")
+                    _tilemapLayer.SetMeta("class", classString);
+                var objId = (int)layer.GetValueOrDefault("id", 0);
+                if (_addIdAsMetadata && objId != 0)
+                    _tilemapLayer.SetMeta("id", objId);
+
                 if (layer.TryGetValue("properties", out var props))
                     HandleProperties(_tilemapLayer, (Array<Dictionary>)props);
               
