@@ -749,6 +749,15 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 						# then merge them into the template
 						template_obj["properties"] = obj.properties
 
+				# Template obj needs id and obj class/type/name overrides template's class/type/name
+				template_obj["id"] = obj_id
+				if obj.has("class") and obj["class"] != "":
+					template_obj["class"] = obj["class"]
+				if obj.has("type") and obj["type"] != "":
+					template_obj["type"] = obj["type"]
+				if obj.has("name") and obj["name"] != "":
+					template_obj["name"] = obj["name"]
+
 				handle_object(template_obj, layer_node, template_tileset, Vector2(obj_x, obj_y))
 
 	# v1.2: New class 'instance'
