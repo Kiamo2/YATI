@@ -852,6 +852,18 @@ public class TilemapCreator
                         }
                     }
 
+                    // Template obj needs id and obj class/type/name overrides template's class/type/name
+                    templateObj["id"] = objId;
+                    if (obj.TryGetValue("class", out var objClass))
+                        if ((string)objClass != "")
+                            templateObj["class"] = objClass;
+                    if (obj.TryGetValue("type", out var objType))
+                        if ((string)objType != "")
+                            templateObj["type"] = objType;
+                    if (obj.TryGetValue("name", out var objNam))
+                        if ((string)objNam != "")
+                            templateObj["name"] = objNam;
+
                     HandleObject(templateObj, layerNode, templateTileSet, new Vector2(objX, objY));
                 }
             }
