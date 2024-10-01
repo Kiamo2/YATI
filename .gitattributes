@@ -15,4 +15,4 @@ CSharp/runtime/TilesetCreator.cs linguist-detectable=false
 * export-ignore
 
 # But not the GDScript folder (chose this one by default since the majority of users will go for this one).
-GDScript/* export-included
+GDScript/addons/* export-included
