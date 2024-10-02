@@ -10,9 +10,15 @@ CSharp/runtime/TilesetCreator.cs linguist-detectable=false
 
 # Exclude all top-level files and directories (except addons) from ZIP downloads.
 # This makes installing through the AssetLib easier, because no files and folders need to be unchecked.
-
-# Ignore everything by default since the repo got a lot of files
-# * export-ignore
-
-# But not the GDScript folder (chose this one by default since the majority of users will go for this one).
-GDScript/addons/* export-included
+.github/* export-ignore
+CSharp/* export-ignore
+GDScript/runtime/* export-ignore
+supplemental/* export-ignore
+.gitattributes export-ignore
+CHANGELOG.md export-ignore
+LICENSE export-ignore
+README.md export-ignore
+Reference.md export-ignore
+Reference_4.2.x.md export-ignore
+Runtime.md export-ignore
+icon.png export-ignore
