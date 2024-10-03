@@ -72,6 +72,7 @@ Default: `None`
 
 After import you can manipulate the genereted map by a post processor script. The script must have a method "_post_process" with
 a parameter of type Node2D (the base node of the generated map) and return the changed map as Node2D.  
+*Please note: only [owned nodes](https://docs.godotengine.org/en/stable/classes/class_node.html#class-node-property-owner) are saved to the final imported scene.*
 
 Further GDScript requirements: "extends Node"
 
