@@ -49,7 +49,7 @@ Default: `Off`
 
 If enabled any flipped/rotated tiles are no longer created as alternative tiles.  
 An enhancement in Godot 4.2 makes this possible.  
-*Please note: Rotated non-sqare tiles may appear wrongly placed if this option is `On`.  
+*Please note: Rotated non-square tiles may appear wrongly placed if this option is `On`.  
 This currently can't be avoided due to Godot specifics.*
 
 ### Map Wangset to Terrain

@@ -40,7 +40,7 @@ Default: `Off`
 
 If enabled any flipped/rotated tiles are no longer created as alternative tiles.  
 An enhancement in Godot 4.2 makes this possible.  
-*Please note: Rotated non-sqare tiles may appear wrongly placed if this option is `On`.  
+*Please note: Rotated non-square tiles may appear wrongly placed if this option is `On`.  
 This currently can't be avoided due to Godot specifics.*
 
 ### Map Wangset to Terrain
@@ -63,6 +63,7 @@ Default: `None`
 
 After import you can manipulate the genereted map by a post processor script. The script must have a method "_post_process" with
 a parameter of type Node2D (the base node of the generated map) and return the changed map as Node2D.  
+*Please note: only [owned nodes](https://docs.godotengine.org/en/stable/classes/class_node.html#class-node-property-owner) are saved to the final imported scene.*
 
 Further GDScript requirements: "extends Node"
 
