@@ -503,6 +503,9 @@ func create_polygons_on_alternative_tiles(source_data: TileData, target_data: Ti
 		var occluder_polygon = OccluderPolygon2D.new()
 		occluder_polygon.polygon = pts_new
 		target_data.set_occluder(layer_id, occluder_polygon)
+	# Copy properties to created alternative tile
+	for name in source_data.get_meta_list():
+		target_data.set_meta(name, source_data.get_meta(name))
 		
 
 func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_width: int):
