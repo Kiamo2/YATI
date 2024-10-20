@@ -55,6 +55,7 @@ public partial class Importer: EditorImportPlugin
             new() { { "name", "add_id_as_metadata" }, { "default_value", false } },
             new() { { "name", "no_alternative_tiles" }, { "default_value", false } },
             new() { { "name", "map_wangset_to_terrain" }, { "default_value", false } },
+            new() { { "name", "custom_data_prefix" }, { "default_value", "data_" } },
             new() { { "name", "tiled_project_file" }, { "default_value", "" },
                     { "property_hint", (int)PropertyHint.File }, { "hint_string", "*.tiled-project;Project File" } },
             new() { { "name", "post_processor" }, { "default_value", "" },
@@ -97,6 +98,8 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetNoAlternativeTiles(true);
         if ((string)options["map_wangset_to_terrain"] == "true")
             tilemapCreator.SetMapWangsetToTerrain(true);
+        if ((string)options["custom_data_prefix"] != "")
+            tilemapCreator.SetCustomDataPrefix((string)options["custom_data_prefix"]);
         if (options.ContainsKey("tiled_project_file") && (string)options["tiled_project_file"] != "")
         {
             ct = new CustomTypes();
