@@ -1868,6 +1868,12 @@ func handle_properties(target_node: Node, properties: Array):
 		elif name.to_lower() == "gizmo_extents" and (type == "float" or type == "int") and target_node is Marker2D:
 			target_node.gizmo_extents = float(val)
 
+		# TilemapLayer properties
+		elif name.to_lower() == "collision_layer" and type == "string" and target_node is TileMapLayer:
+			target_node.tile_set.set_physics_layer_collision_layer(0, get_bitmask_integer_from_string(val, 32))
+		elif name.to_lower() == "collision_mask" and type == "string" and target_node is TileMapLayer:
+			target_node.tile_set.set_physics_layer_collision_mask(0, get_bitmask_integer_from_string(val, 32))
+
 		# Other properties are added as Metadata
 		else:
 			target_node.set_meta(name, get_right_typed_value(type, val))
