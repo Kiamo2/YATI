@@ -10,7 +10,7 @@ Tested on Windows 10 with Godot 4.3/4.2.2 and Tiled 1.11.0 (Tiled maps from olde
 Latest version: 2.1.0 (needs Godot 4.3.0 or higher)  
 Downloads: [GDScript version](../../releases/download/v2.1.0/v2.1.0-gdscript.zip) / [CSharp version](../../releases/download/v2.1.0/v2.1.0-csharp.zip)
 
-Latest version for Godot 4.2.x: 1.6.11  
+Latest version for Godot 4.2.x: 1.7.0  
 Version 1.7.0 downloads: [GDScript version](../../releases/download/v1.7.0/v1.7.0-gdscript.zip) / [CSharp version](../../releases/download/v1.7.0/v1.7.0-csharp.zip)
 
 **New since v1.5.2:** Runtime packages are now additionally available.  
