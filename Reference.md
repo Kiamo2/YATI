@@ -50,6 +50,15 @@ Default: `Off`
 
 Switch on the 'old' (prior to version 1.4.0) mapping where Tiled wangsets ('terrain sets') were mapped to Godot terrains to keep the terrain set names.
 
+### Custom Data Prefix
+###### (new since version 2.1.0 / 1.7.0)
+
+Default: `data_`
+
+Tile properties with this prefix on the name are (after removing the prefix) explicitly assigned to Godot's tile custom data for special purposes in Godot.  
+Tile properties without this prefix on the name are assigned to the tile's meta data.
+This allows for distinguishing between custom data and (more general) meta data.
+
 ### Tiled Project File
 ###### (new since version 1.6.0)
 
@@ -174,10 +183,12 @@ Coll.(*): All tile collision objects (except point), ellipse is approximated by 
 ## Custom properties reference
 
 Setting these properties affect the Godot settings accordingly.  
-Custom properties which are not in this list or not fitting to the element are added as Meta Data or - if assigned to a tile - as Custom Data.
+Custom properties which are not in this list or not fitting to the element are added as Meta Data.  
+If assigned to a tile and the property name is starting with the custom data prefix they are added to the Tile Custom Data.
 
 > **Tile** custom properties: The property name and type will refer to a layer in the Godot TileSets's Custom Data Layer array,   
-the property value is assigend to the tile's Custom Data entry which conists only of the layer number and the value.
+the property value is assigend to the tile's Custom Data entry which conists only of the layer number and the value.  
+**New since version 2.1.0 / 1.7.0:** Only properties with custom data prefix on the name  are handled this way
 
 New since v1.5.4: A special custom property `godot_group` to specify the Godot Group to which the imported element is assigned.  
 You can assign more than one group by passing the group names as a comma-separated list.

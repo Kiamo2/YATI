@@ -29,6 +29,7 @@ const FLIPPED_DIAGONALLY_FLAG = 0x20000000
 const BACKGROUND_COLOR_RECT_NAME = "Background Color"
 const WARNING_COLOR = "Yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
+const CLASS_INTERNAL = "class"
 const GODOT_NODE_TYPE_PROPERTY = "godot_node_type"
 const GODOT_GROUP_PROPERTY = "godot_group"
 const GODOT_SCRIPT_PROPERTY = "godot_script"
@@ -64,6 +65,7 @@ var _map_wangset_to_terrain = false
 var _add_class_as_metadata = false
 var _add_id_as_metadata = false
 var _dont_use_alternative_tiles = false
+var _custom_data_prefix: String = ""
 var _object_groups
 var _ct: CustomTypes = null
 
@@ -123,6 +125,10 @@ func set_map_wangset_to_terrain(value: bool):
 		_map_wangset_to_terrain = value
 	
 
+func set_custom_data_prefix(value: String):
+	_custom_data_prefix = value
+
+
 func set_custom_types(ct: CustomTypes):
 	_ct = ct
 
@@ -167,6 +173,7 @@ func create(source_file: String):
 			tileset_creator.set_custom_types(_ct)	
 		if _map_wangset_to_terrain:
 			tileset_creator.map_wangset_to_terrain()
+		tileset_creator.set_custom_data_prefix(_custom_data_prefix)
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
 		_error_count = tileset_creator.get_error_count()
 		_warning_count = tileset_creator.get_warning_count()
@@ -577,7 +584,12 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 						if diff_y % 2 != 0:
 							diff_y += 1
 						tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
-					create_polygons_on_alternative_tiles(atlas_source.get_tile_data(atlas_coords, 0), tile_data, alt_id)
+					
+					var src_data = atlas_source.get_tile_data(atlas_coords, 0)
+					create_polygons_on_alternative_tiles(src_data, tile_data, alt_id)
+					# Copy metadata to alternative tile
+					for meta_name in src_data.get_meta_list():
+						tile_data.set_meta(meta_name, src_data.get_meta(meta_name))
 		
 		_tilemap_layer.set_cell(cell_coords, source_id, atlas_coords, alt_id)
 
@@ -628,6 +640,42 @@ func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignm
 		"top": Vector2(0.0, height / 2.0),
 		"topright": Vector2(-width / 2.0, height / 2.0),
 	}.get(alignment, Vector2(width / 2.0, -height / 2.0))
+
+
+func convert_metadata_to_obj_properties(td: TileData, obj: Dictionary) -> void:
+	var meta_list = td.get_meta_list()
+	for meta_name in meta_list:
+		if meta_name.to_lower() in [CLASS_INTERNAL, GODOT_NODE_TYPE_PROPERTY]:
+			continue
+		var meta_val = td.get_meta(meta_name)
+		var meta_type = typeof(meta_val)
+		var prop_dict = {}
+		prop_dict["name"] = meta_name
+		var prop_type = {
+			TYPE_BOOL: "bool",
+			TYPE_INT: "int",
+			TYPE_STRING: "string",
+			TYPE_FLOAT: "float",
+			TYPE_COLOR: "color"
+		}.get(meta_type, "string")
+		# Type "file" assumed and thus forced for these properties
+		if meta_name.to_lower() in ["godot_script", "material", "physics_material_override"]:
+			prop_type = "file"
+
+		prop_dict["type"] = prop_type
+		prop_dict["value"] = meta_val
+
+		if obj.has("properties"):
+			# Add property only if not already contained in properties
+			var found = false
+			for prop in obj["properties"]:
+				if prop["name"].to_lower() == meta_name.to_lower():
+					found = true
+				if not found:
+					obj["properties"].append(prop_dict)
+		else:
+			obj["properties"] = [prop_dict]
+
 
 
 func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: Vector2) -> void:
@@ -715,7 +763,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				handle_object(template_obj, layer_node, template_tileset, Vector2(obj_x, obj_y))
 
 	# v1.2: New class 'instance'
-	if godot_type == _godot_type.INSTANCE and not obj.has("template") and not obj.has("text"):
+	if godot_type == _godot_type.INSTANCE and not obj.has("template") and not obj.has("text") and not obj.has("gid"):
 		var res_path = get_property(obj, "res_path", "file")
 		if res_path == "":
 			printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
@@ -789,7 +837,9 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			td = gid_source.get_tile_data(atlas_coords, 0)
 			obj_sprite.region_enabled = true
 			var region_size = Vector2(gid_source.texture_region_size)
-			var pos: Vector2 = atlas_coords * region_size
+			var separation = Vector2(gid_source.separation)
+			var margins = Vector2(gid_source.margins)
+			var pos: Vector2 = atlas_coords * (region_size + separation) + margins
 			if get_property(obj, "clip_artifacts", "bool") == "true":
 				pos += Vector2(0.5, 0.5)
 				region_size -= Vector2(1.0, 1.0)
@@ -817,6 +867,48 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				obj_sprite.scale = Vector2(scale_x, scale_y)
 			td = gid_source.get_tile_data(Vector2i.ZERO, 0)
 
+		# Tile objects could also be classified as instance...
+		var obj_is_instance = godot_type == _godot_type.INSTANCE and not obj.has("template") and not obj.has("text")
+		var tile_class = ""
+		if td.has_meta(CLASS_INTERNAL):
+			tile_class = td.get_meta(CLASS_INTERNAL)
+			class_string = tile_class
+		if td.has_meta(GODOT_NODE_TYPE_PROPERTY):
+			tile_class = td.get_meta(GODOT_NODE_TYPE_PROPERTY)
+
+		if tile_class.to_lower() == "instance" or obj_is_instance:
+			var res_path = get_property(obj, "res_path", "file")
+			if td.has_meta("res_path"):
+				if res_path == "":
+					res_path = td.get_meta("res_path")
+			if res_path == "":
+				printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
+				_error_count += 1
+			else:
+				if obj.has("template_dir_path"):
+					res_path = obj.template_dir_path.path_join(res_path)
+				var scene = load_resource_from_file(res_path)
+				# Error check
+				if scene == null: return
+
+				obj_sprite.owner = null
+				layer_node.remove_child(obj_sprite)
+				var instance = scene.instantiate()
+				layer_node.add_child(instance)
+				instance.owner = _base_node
+				instance.name = obj_name if obj_name != "" else res_path.get_file().get_basename()
+				instance.position = transpose_coords(obj_x, obj_y)
+				instance.rotation_degrees = obj_rot
+				instance.visible = obj_visible
+				convert_metadata_to_obj_properties(td, obj)
+				if _add_class_as_metadata and class_string != "":
+					instance.set_meta("class", class_string)
+				if _add_id_as_metadata and obj_id != 0:
+					instance.set_meta("id", obj_id)
+				if obj.has("properties"):
+					handle_properties(instance, obj["properties"])
+			return
+
 		var idx = td.get_custom_data(CUSTOM_DATA_INTERNAL)
 		if idx > 0:
 			var parent = {
@@ -841,36 +933,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				if obj.has("properties"):
 					handle_properties(parent, obj["properties"])
 			
-		var meta_list = td.get_meta_list()
-		for meta_name in meta_list:
-			var meta_val = td.get_meta(meta_name)
-			var meta_type = typeof(meta_val)
-			var prop_dict = {}
-			prop_dict["name"] = meta_name
-			var prop_type = {
-				TYPE_BOOL: "bool",
-				TYPE_INT: "int",
-				TYPE_STRING: "string",
-				TYPE_FLOAT: "float",
-				TYPE_COLOR: "color"
-			}.get(meta_type, "string")
-			# Type "file" assumed and thus forced for these properties
-			if meta_name.to_lower() in ["godot_script", "material", "physics_material_override"]:
-				prop_type = "file"
-
-			prop_dict["type"] = prop_type
-			prop_dict["value"] = meta_val
-
-			if obj.has("properties"):
-				# Add property only if not already contained in properties
-				var found = false
-				for prop in obj["properties"]:
-					if prop["name"].to_lower() == meta_name.to_lower():
-						found = true
-				if not found:
-					obj["properties"].append(prop_dict)
-			else:
-				obj["properties"] = [prop_dict]
+		convert_metadata_to_obj_properties(td, obj)
 
 		obj_sprite.flip_h = flippedH
 		obj_sprite.flip_v = flippedV
@@ -1526,7 +1589,7 @@ func handle_properties(target_node: Node, properties: Array):
 		var name: String = property.get("name", "")
 		var type: String = property.get("type", "string")
 		var val: String = str(property.get("value", ""))
-		if name == "" or name.to_lower() == GODOT_NODE_TYPE_PROPERTY: continue
+		if name == "" or name.to_lower() == GODOT_NODE_TYPE_PROPERTY or name.to_lower() == "res_path": continue
 		if name.begins_with("__") and has_children:
 			var child_prop_dict = {}
 			child_prop_dict["name"] = name.substr(2)

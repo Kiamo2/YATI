@@ -25,6 +25,7 @@ extends RefCounted
 const WARNING_COLOR = "yellow"
 const CUSTOM_DATA_INTERNAL = "__internal__"
 const GODOT_ATLAS_ID_PROPERTY = "godot_atlas_id"
+const CLASS_INTERNAL = "class"
 
 var _tileset = null
 var _current_atlas_source = null
@@ -52,6 +53,7 @@ var _object_groups = null
 var _object_groups_counter: int = 0
 var _tileset_orientation
 var _map_wangset_to_terrain: bool = false
+var _custom_data_prefix: String
 var _ct: CustomTypes = null
 var _current_first_gid = -1
 
@@ -87,6 +89,10 @@ func set_custom_types(ct: CustomTypes):
 func map_wangset_to_terrain():
 	_map_wangset_to_terrain = true
 	
+
+func set_custom_data_prefix(value: String):
+	_custom_data_prefix = value
+
 
 func create_from_dictionary_array(tileSets: Array):
 	for tile_set in tileSets:
@@ -188,17 +194,9 @@ func create_or_append(tile_set: Dictionary):
 			return;
 
 		_current_atlas_source.texture = texture
+		_columns = _current_atlas_source.texture.get_width() / _tile_size.x
+		_tile_count = _columns * _current_atlas_source.texture.get_width() / _tile_size.x
 		
-		if (_tile_count == 0) or (_columns == 0):
-			var image_width: int = tile_set.get("imagewidth", 0)
-			var image_height: int = tile_set.get("imageheight", 0)
-			if image_width == 0:
-				var img = _current_atlas_source.texture
-				image_width = img.get_width()
-				image_height = img.get_height()
-			_columns = image_width / _tile_size.x
-			_tile_count = _columns * image_height / _tile_size.x
-	
 		register_atlas_source(added_source_id, _tile_count, -1, _tile_offset)
 		var atlas_grid_size = _current_atlas_source.get_atlas_grid_size()
 		_current_max_x = atlas_grid_size.x - 1
@@ -288,6 +286,9 @@ func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 func handle_tiles(tiles: Array):
 	for tile in tiles:
 		var tile_id = tile["id"]
+		var tile_class = tile.get("class", "")
+		if tile_class == "":
+			tile_class = tile.get("type", "")
 
 		var current_tile
 		if tile.has("image"):
@@ -338,6 +339,9 @@ func handle_tiles(tiles: Array):
 			handle_animation(tile["animation"], tile_id)
 		if tile.has("objectgroup"):
 			handle_objectgroup(tile["objectgroup"], current_tile, tile_id)
+
+		if tile_class != "":
+			current_tile.set_meta(CLASS_INTERNAL, tile_class)
 
 		if _ct != null:
 			_ct.merge_custom_properties(tile, "tile")
@@ -629,21 +633,27 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
 			current_tile.set_constant_angular_velocity(layer_index, float(val))
 		elif name.to_lower() != GODOT_ATLAS_ID_PROPERTY:
-			var custom_layer = _tileset.get_custom_data_layer_by_name(name)
-			if custom_layer < 0:
-				_tileset.add_custom_data_layer()
-				custom_layer = _tileset.get_custom_data_layers_count() - 1
-				_tileset.set_custom_data_layer_name(custom_layer, name)
-				var custom_type = {
-					"bool": TYPE_BOOL,
-					"int": TYPE_INT,
-					"string": TYPE_STRING,
-					"float": TYPE_FLOAT,
-					"color": TYPE_COLOR
-				}.get(type, TYPE_STRING)
-				_tileset.set_custom_data_layer_type(custom_layer, custom_type)
-			current_tile.set_custom_data(name, get_right_typed_value(type, val))
-			current_tile.set_meta(name, get_right_typed_value(type, val))
+			if _custom_data_prefix == "" or name.to_lower().begins_with(_custom_data_prefix):
+				name = name.substr(len(_custom_data_prefix))
+
+				var custom_layer = _tileset.get_custom_data_layer_by_name(name)
+				if custom_layer < 0:
+					_tileset.add_custom_data_layer()
+					custom_layer = _tileset.get_custom_data_layers_count() - 1
+					_tileset.set_custom_data_layer_name(custom_layer, name)
+					var custom_type = {
+						"bool": TYPE_BOOL,
+						"int": TYPE_INT,
+						"string": TYPE_STRING,
+						"float": TYPE_FLOAT,
+						"color": TYPE_COLOR
+					}.get(type, TYPE_STRING)
+					_tileset.set_custom_data_layer_type(custom_layer, custom_type)
+
+				current_tile.set_custom_data(name, get_right_typed_value(type, val))
+
+			if _custom_data_prefix == "" or not name.to_lower().begins_with(_custom_data_prefix):
+				current_tile.set_meta(name, get_right_typed_value(type, val))
 
 
 func handle_tileset_properties(properties: Array):

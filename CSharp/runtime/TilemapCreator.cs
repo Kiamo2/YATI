@@ -42,6 +42,7 @@ public class TilemapCreator
     private const string BackgroundColorRectName = "Background Color";
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
+    private const string ClassInternal = "class";
     private const string GodotNodeTypeProperty = "godot_node_type";
     private const string GodotGroupProperty = "godot_group";
     private const string GodotScriptProperty = "godot_script";
@@ -78,6 +79,7 @@ public class TilemapCreator
     private bool _addClassAsMetadata;
     private bool _addIdAsMetadata;
     private bool _dontUseAlternativeTiles;
+    private string _customDataPrefix = "";
     private Dictionary _objectGroups;
     private CustomTypes _ct;
 
@@ -140,6 +142,11 @@ public class TilemapCreator
         _mapWangsetToTerrain = value;
     }
 
+    public void SetCustomDataPrefix(string value)
+    {
+        _customDataPrefix = value;
+    }
+
     public void SetCustomTypes(CustomTypes ct)
     {
         _ct = ct;
@@ -188,6 +195,7 @@ public class TilemapCreator
                 tilesetCreator.SetCustomTypes(_ct);
             if (_mapWangsetToTerrain)
                 tilesetCreator.MapWangsetToTerrain();
+            tilesetCreator.SetCustomDataPrefix(_customDataPrefix);
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
             _errorCount = tilesetCreator.GetErrorCount();
             _warningCount = tilesetCreator.GetWarningCount();
@@ -689,7 +697,12 @@ public class TilemapCreator
                                 diffY += 1;
                             tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
                         }
-                        CreatePolygonsOnAlternativeTiles(atlasSource.GetTileData(atlasCoords, 0), tileData, altId);
+
+                        var srcData = atlasSource.GetTileData(atlasCoords, 0);
+                        CreatePolygonsOnAlternativeTiles(srcData, tileData, altId);
+                        // Copy meta data to alternative tile
+                        foreach (var metaName in srcData.GetMetaList())
+                            tileData.SetMeta(metaName, srcData.GetMeta(metaName));   
                     }
                 }
             }
@@ -753,6 +766,50 @@ public class TilemapCreator
             "topright" => new Vector2(-width / 2.0f, height / 2.0f),
             _ => objSprite.Offset
         };
+    }
+
+    private static void ConvertMetaDataToObjProperties(TileData td, Dictionary obj)
+    {
+        var metaList = td.GetMetaList();
+        foreach (var metaName in metaList)
+        {
+            if (((string)metaName)?.ToLower() is ClassInternal or GodotNodeTypeProperty)
+                continue;
+            var metaVal = td.GetMeta(metaName);
+            var metaType = metaVal.VariantType;
+            var propDict = new Dictionary();
+            propDict.Add("name", metaName);
+            var propType = metaType switch
+            {
+                Variant.Type.Bool => "bool",
+                Variant.Type.Int => "int",
+                Variant.Type.String => "string",
+                Variant.Type.Float => "float",
+                Variant.Type.Color => "color",
+                _ => "string"
+            };
+            // Type "file" assumed and thus forced for these properties 
+            if (((string)metaName)?.ToLower() is "godot_script" or "material" or "physics_material_override")
+                propType = "file";
+                
+            propDict.Add("type", propType);
+            propDict.Add("value", metaVal);
+                
+            if (obj.TryGetValue("properties", out var props))
+            {
+                // Add property only if not already contained in properties
+                var found = false;
+                foreach (var prop in (Array<Dictionary>)props)
+                {
+                    if (string.Equals((string)prop["name"], metaName, StringComparison.CurrentCultureIgnoreCase))
+                        found = true;
+                }
+                if (!found)
+                    ((Array<Dictionary>)props).Add(propDict);
+            }
+            else
+                obj.Add("properties", new Array<Dictionary> { propDict });
+        }
     }
 
     private void HandleObject(Dictionary obj, Node layerNode, TileSet tileset, Vector2 offSet)
@@ -868,7 +925,7 @@ public class TilemapCreator
         }
         
         // v1.2: New class 'instance'
-        if (godotType == GodotType.Instance && !obj.ContainsKey("template") && !obj.ContainsKey("text"))
+        if (godotType == GodotType.Instance && !obj.ContainsKey("template") && !obj.ContainsKey("text") && !obj.ContainsKey("gid"))
         {
             var resPath = GetProperty(obj, "res_path", "file");
             if (resPath == "")
@@ -955,7 +1012,9 @@ public class TilemapCreator
                 td = gidSource.GetTileData(atlasCoords, 0);
                 objSprite.RegionEnabled = true;
                 var regionSize = (Vector2)gidSource.TextureRegionSize;
-                var pos = atlasCoords * regionSize;
+                var separation = (Vector2)gidSource.Separation;
+                var margins = (Vector2)gidSource.Margins;
+                var pos = atlasCoords * (regionSize + separation) + margins;
                 if (GetProperty(obj, "clip_artifacts", "bool") == "true")
                 {
                     pos += new Vector2(0.5f, 0.5f);   
@@ -994,6 +1053,59 @@ public class TilemapCreator
                 td = gidSource.GetTileData(Vector2I.Zero, 0);
             }
 
+            // Tile objects could also be classified as instance...
+            var objIsInstance = godotType == GodotType.Instance && !obj.ContainsKey("template") && !obj.ContainsKey("text");
+            var tileClass = "";
+            if (td.HasMeta(ClassInternal))
+            {
+                tileClass = (string)td.GetMeta(ClassInternal);
+                classString = tileClass;
+            }
+            if (td.HasMeta(GodotNodeTypeProperty))
+                tileClass = (string)td.GetMeta(GodotNodeTypeProperty);
+
+            if (tileClass.ToLower() == "instance" || objIsInstance)
+            {
+                var resPath = GetProperty(obj, "res_path", "file");
+                if (td.HasMeta("res_path"))
+                {
+                    if (resPath == "")
+                        resPath = (string)td.GetMeta("res_path");
+                }
+                if (resPath == "")
+                {
+                    GD.PrintErr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped");
+                    _errorCount++;
+                }
+                else
+                {
+                    if (obj.TryGetValue("template_dir_path", out var tdPath))
+                        resPath = ((string)tdPath).PathJoin(resPath);
+                    var scene = (PackedScene)LoadResourceFromFile(resPath);
+                    // Error check
+                    if (scene == null) return;
+
+                    var instance = scene.Instantiate();
+                    objSprite.Owner = null;
+                    layerNode.RemoveChild(objSprite);
+                    layerNode.AddChild(instance);
+                    instance.Owner = _baseNode;
+                    instance.Name = (objName != "") ? objName : resPath.GetFile().GetBaseName();
+                    ((Node2D)instance).Position = TransposeCoords(objX, objY);
+                    ((Node2D)instance).RotationDegrees = objRot;
+                    ((Node2D)instance).Visible = objVisible;
+                    ConvertMetaDataToObjProperties(td, obj);
+                    if (_addClassAsMetadata && classString != "")
+                        instance.SetMeta("class", classString);
+                    if (_addIdAsMetadata && objId != 0)
+                        instance.SetMeta("id", objId);
+                    if (obj.TryGetValue("properties", out var props))
+                        HandleProperties(instance, (Array<Dictionary>)props);
+                }
+
+                return;
+            }
+
             var idx = (int)td.GetCustomData(CustomDataInternal);
             if (idx > 0)
             {
@@ -1024,47 +1136,7 @@ public class TilemapCreator
                 }
             }
 
-            var metaList = td.GetMetaList();
-            foreach (var metaName in metaList)
-            {
-                var metaVal = td.GetMeta(metaName);
-                var metaType = metaVal.VariantType;
-                var propDict = new Dictionary();
-                propDict.Add("name", metaName);
-                var propType = metaType switch
-                {
-                    Variant.Type.Bool => "bool",
-                    Variant.Type.Int => "int",
-                    Variant.Type.String => "string",
-                    Variant.Type.Float => "float",
-                    Variant.Type.Color => "color",
-                    _ => "string"
-                };
-                // Type "file" assumed and thus forced for these properties 
-                if (((string)metaName).ToLower() is "godot_script" or "material" or "physics_material_override")
-                    propType = "file";
-                
-                propDict.Add("type", propType);
-                propDict.Add("value", metaVal);
-                
-                if (obj.TryGetValue("properties", out var props2))
-                {
-                    // Add property only if not already contained in properties
-                    var found = false;
-                    foreach (var prop in (Array<Dictionary>)props2)
-                    {
-                        if (string.Equals((string)prop["name"], metaName, StringComparison.CurrentCultureIgnoreCase))
-                            found = true;
-                    }
-                    if (!found)
-                        ((Array<Dictionary>)props2).Add(propDict);
-                }
-                else
-                {
-                    var props = new Array<Dictionary> { propDict };
-                    obj.Add("properties", props);
-                }
-            }
+            ConvertMetaDataToObjProperties(td, obj);
 
             objSprite.FlipH = flippedH;
             objSprite.FlipV = flippedV;
@@ -1901,7 +1973,7 @@ public class TilemapCreator
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = (string)property.GetValueOrDefault("value", "");
-            if (name == "" || name.ToLower() == GodotNodeTypeProperty) continue;
+            if (name == "" || name.ToLower() == GodotNodeTypeProperty || name.ToLower() == "res_path") continue;
             if (name.StartsWith("__") && hasChildren)
             {
                 var childPropDict = new Dictionary();

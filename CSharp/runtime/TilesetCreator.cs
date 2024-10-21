@@ -35,6 +35,7 @@ public class TilesetCreator
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
     private const string GodotAtlasIdProperty = "godot_atlas_id";
+    private const string ClassInternal = "class";
 
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
     private TileSet _tileset;
@@ -63,6 +64,7 @@ public class TilesetCreator
     private int _objectGroupsCounter;
     private string _tilesetOrientation;
     private bool _mapWangsetToTerrain;
+    private string _customDataPrefix;
     private CustomTypes _ct;
     private int _currentFirstGid = -1;
 
@@ -104,6 +106,11 @@ public class TilesetCreator
         _mapWangsetToTerrain = true;
     }
     
+    public void SetCustomDataPrefix(string value)
+    {
+        _customDataPrefix = value;
+    }
+
     public TileSet CreateFromDictionaryArray(Array<Dictionary> tileSets)
     {
         foreach (var tileSet in tileSets)
@@ -221,20 +228,9 @@ public class TilesetCreator
                 return;
 
             _currentAtlasSource.Texture = texture;
+            _columns = _currentAtlasSource.Texture.GetWidth() / _tileSize.X;
+            _tileCount = _columns * _currentAtlasSource.Texture.GetHeight() / _tileSize.X;
  
-            if ((_tileCount == 0) || (_columns == 0))
-            {
-                var imagewidth = tileSet.TryGetValue("imagewidth", out var imgWidth) ? (int)imgWidth : 0;
-                var imageheight = tileSet.TryGetValue("imageheight", out var imgHeight) ? (int)imgHeight : 0;
-                if (imagewidth == 0)
-                {
-                    var img = _currentAtlasSource.Texture;
-                    imagewidth = img.GetWidth();
-                    imageheight = img.GetHeight();
-                }
-                _columns = imagewidth / _tileSize.X;
-                _tileCount = _columns * imageheight / _tileSize.X;
-            }
             RegisterAtlasSource(addedSourceId, _tileCount, -1, _tileOffset);
             var atlasGridSize = _currentAtlasSource.GetAtlasGridSize();
             _currentMaxX = atlasGridSize.X - 1;
@@ -343,6 +339,9 @@ public class TilesetCreator
         foreach (var tile in tiles)
         {
             var tileId = (int)tile["id"];
+            var tileClass = (string)tile.GetValueOrDefault("class", "");
+            if (tileClass == "")
+                tileClass = (string)tile.GetValueOrDefault("type", "");
 
             TileData currentTile;
             if (tile.ContainsKey("image"))
@@ -411,6 +410,9 @@ public class TilesetCreator
                 HandleAnimation((Array<Dictionary>)animVal, tileId);
             if (tile.TryGetValue("objectgroup", out var objgrp))
                 HandleObjectgroup((Dictionary)objgrp, currentTile, tileId);
+
+            if (tileClass != "")
+                currentTile.SetMeta(ClassInternal, tileClass);
 
             _ct?.MergeCustomProperties(tile, "tile");
             if (tile.TryGetValue("properties", out var props))
@@ -791,26 +793,33 @@ public class TilesetCreator
             }
             else if (name.ToLower() != GodotAtlasIdProperty)
             {
-                var customLayer = _tileset.GetCustomDataLayerByName(name);
-                if (customLayer < 0)
+                if (_customDataPrefix == "" || name.ToLower().StartsWith(_customDataPrefix))
                 {
-                    _tileset.AddCustomDataLayer();
-                    customLayer = _tileset.GetCustomDataLayersCount() - 1;
-                    _tileset.SetCustomDataLayerName(customLayer, name);
-                    var customType = type switch
-                    {
-                        "bool" => Variant.Type.Bool,
-                        "int" => Variant.Type.Int,
-                        "string" => Variant.Type.String,
-                        "float" => Variant.Type.Float,
-                        "color" => Variant.Type.Color,
-                        _ => Variant.Type.String
-                    };
-                    _tileset.SetCustomDataLayerType(customLayer, customType);
-                }
+                    if (name.ToLower().StartsWith(_customDataPrefix))
+                        name = name[_customDataPrefix.Length..];
 
-                currentTile.SetCustomData(name, GetRightTypedValue(type, val));
-                currentTile.SetMeta(name, GetRightTypedValue(type, val));
+                    var customLayer = _tileset.GetCustomDataLayerByName(name);
+                    if (customLayer < 0)
+                    {
+                        _tileset.AddCustomDataLayer();
+                        customLayer = _tileset.GetCustomDataLayersCount() - 1;
+                        _tileset.SetCustomDataLayerName(customLayer, name);
+                        var customType = type switch
+                        {
+                            "bool" => Variant.Type.Bool,
+                            "int" => Variant.Type.Int,
+                            "string" => Variant.Type.String,
+                            "float" => Variant.Type.Float,
+                            "color" => Variant.Type.Color,
+                            _ => Variant.Type.String
+                        };
+                        _tileset.SetCustomDataLayerType(customLayer, customType);
+                    }
+
+                    currentTile.SetCustomData(name, GetRightTypedValue(type, val));
+                }
+                if (_customDataPrefix == "" || !name.ToLower().StartsWith(_customDataPrefix))
+                    currentTile.SetMeta(name, GetRightTypedValue(type, val));
             }
         }
     }

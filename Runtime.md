@@ -3,9 +3,9 @@
 The YATI runtime package allows for importing Tiled maps during (game) runtime.  
 To offer such a package was proposed by Jeff Brooks (see issue #16) as being of value for several users.  
 
-Like for the editor plugin there's a [GDScript version](../../releases/download/v2.0.3/runtime-v2.0.3-gdscript.zip) and a [CSharp version](../../releases/download/v2.0.3/runtime-v2.0.3-csharp.zip) available.  
+Like for the editor plugin there's a [GDScript version](../../releases/download/v2.1.0/runtime-v2.1.0-gdscript.zip) and a [CSharp version](../../releases/download/v2.1.0/runtime-v2.1.0-csharp.zip) available.  
 
-(Runtime downloads for Godot 4.2.x: [GDScript version](../../releases/download/v1.6.10/runtime-v1.6.10-gdscript.zip) and a [CSharp version](../../releases/download/v1.6.10/runtime-v1.6.10-csharp.zip))
+(Runtime downloads for Godot 4.2.x: [GDScript version](../../releases/download/v1.7.0/runtime-v1.7.0-gdscript.zip) and a [CSharp version](../../releases/download/v1.7.0/runtime-v1.7.0-csharp.zip))
 
 ## Installation
 
