@@ -16,7 +16,8 @@ Properties with a name not starting with that prefix are now assigned only to th
   (Both are now calculated from the width and height of the tileset image)
 - Fixed need for exporting with option 'Resolve object types and properties'.  
 Save / Save all should now being sufficient.
-
+- Fixed problem with missing meta data on alternative tiles (merged PR #60, thank you zhtsu)
+  
 ## [2.0.3 / 1.6.10] - 2024-09-30
 
 ### Fixed
