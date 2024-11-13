@@ -5,12 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.1 / 1.7.1] - 2024-11-13
+
+### Added
+- Like 'instance' now also propagate 'XXXbody' tile class types to tilemap objects
+
+### Fixed
+- Fixed issue #63
+
 ## [2.1.0 / 1.7.0] - 2024-10-21
 
+### Added
 - Added new string option 'Custom Data Prefix' (Default value: 'data_') to make it possible to explicitly assign  
 the custom property of a tile to Godot's Tile Custom Data.  
 Properties with a name not starting with that prefix are now assigned only to the tile's meta data.  
 (If neccessary, set the option to an empty string to generate the previous behavior)
+
+### Fixed
 - Fixed problem with tile objects being slightly off with tileset images having separation and/or margins.
 - Fixed problems resulting from unreliable tileset entries (tilecount / columns).  
   (Both are now calculated from the width and height of the tileset image)
