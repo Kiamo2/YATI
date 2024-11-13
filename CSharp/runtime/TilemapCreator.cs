@@ -824,13 +824,18 @@ public class TilemapCreator
         };
     }
 
-    private static void ConvertMetaDataToObjProperties(TileData td, Dictionary obj)
+    private void ConvertMetaDataToObjProperties(TileData td, Dictionary obj)
     {
         var metaList = td.GetMetaList();
         foreach (var metaName in metaList)
         {
-            if (((string)metaName)?.ToLower() is ClassInternal or GodotNodeTypeProperty)
+            switch (((string)metaName)?.ToLower())
+            {
+                case GodotNodeTypeProperty:
+                case ClassInternal when !_addClassAsMetadata:
                 continue;
+            }
+
             var metaVal = td.GetMeta(metaName);
             var metaType = metaVal.VariantType;
             var propDict = new Dictionary();
@@ -1109,7 +1114,7 @@ public class TilemapCreator
                 td = gidSource.GetTileData(Vector2I.Zero, 0);
             }
 
-            // Tile objects could also be classified as instance...
+            // Tile objects may already have been classified as instance in the tileset
             var objIsInstance = godotType == GodotType.Instance && !obj.ContainsKey("template") && !obj.ContainsKey("text");
             var tileClass = "";
             if (td.HasMeta(ClassInternal))
@@ -1161,6 +1166,12 @@ public class TilemapCreator
 
                 return;
             }
+            
+            // Tile objects may already have been classified as ...body in the tileset
+            if (tileClass != "" && godotType == GodotType.Empty)
+                godotType = GetGodotType(tileClass);
+
+            ConvertMetaDataToObjProperties(td, obj);
 
             var idx = (int)td.GetCustomData(CustomDataInternal);
             if (idx > 0)
@@ -1191,8 +1202,6 @@ public class TilemapCreator
                         HandleProperties(parent, (Array<Dictionary>)props);
                 }
             }
-
-            ConvertMetaDataToObjProperties(td, obj);
 
             objSprite.FlipH = flippedH;
             objSprite.FlipV = flippedV;

@@ -690,7 +690,9 @@ func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignm
 func convert_metadata_to_obj_properties(td: TileData, obj: Dictionary) -> void:
 	var meta_list = td.get_meta_list()
 	for meta_name in meta_list:
-		if meta_name.to_lower() in [CLASS_INTERNAL, GODOT_NODE_TYPE_PROPERTY]:
+		if meta_name.to_lower() == GODOT_NODE_TYPE_PROPERTY:
+			continue
+		if meta_name.to_lower() == CLASS_INTERNAL and not _add_class_as_metadata:
 			continue
 		var meta_val = td.get_meta(meta_name)
 		var meta_type = typeof(meta_val)
@@ -912,7 +914,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				obj_sprite.scale = Vector2(scale_x, scale_y)
 			td = gid_source.get_tile_data(Vector2i.ZERO, 0)
 
-		# Tile objects could also be classified as instance...
+		# Tile objects may already have been classified as instance in the tileset
 		var obj_is_instance = godot_type == _godot_type.INSTANCE and not obj.has("template") and not obj.has("text")
 		var tile_class = ""
 		if td.has_meta(CLASS_INTERNAL):
@@ -954,6 +956,12 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					handle_properties(instance, obj["properties"])
 			return
 
+		# Tile objects may already have been classified as ...body in the tileset
+		if tile_class != "" and godot_type == _godot_type.EMPTY:
+			godot_type = get_godot_type(tile_class)
+
+		convert_metadata_to_obj_properties(td, obj)
+
 		var idx = td.get_custom_data(CUSTOM_DATA_INTERNAL)
 		if idx > 0:
 			var parent = {
@@ -978,8 +986,6 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				if obj.has("properties"):
 					handle_properties(parent, obj["properties"])
 			
-		convert_metadata_to_obj_properties(td, obj)
-
 		obj_sprite.flip_h = flippedH
 		obj_sprite.flip_v = flippedV
 

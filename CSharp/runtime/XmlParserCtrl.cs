@@ -30,7 +30,6 @@ public class XmlParserCtrl
     private readonly XmlParser _parser = new();
     private string _parsedFileName;
 
-    
     public Error Open(string sourceFile)
     {
         _parsedFileName = sourceFile;
