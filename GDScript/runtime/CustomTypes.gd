@@ -26,46 +26,46 @@ extends RefCounted
 
 var _custom_types = null
 
-func load_custom_types(project_file: String):
-    var project_file_as_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(project_file)
-    if project_file_as_dictionary.has("propertyTypes"):
-        _custom_types = project_file_as_dictionary["propertyTypes"]
+func load_custom_types(project_file: String, za: ZipAccess = null):
+	var project_file_as_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(project_file, za)
+	if project_file_as_dictionary.has("propertyTypes"):
+		_custom_types = project_file_as_dictionary["propertyTypes"]
 
 
 func unload_custom_types():
-    _custom_types.clear()
+	_custom_types.clear()
 
 
 func merge_custom_properties(obj: Dictionary, scope: String):
-    if _custom_types == null: return
-    
-    var class_string = obj.get("class", "")
-    if class_string == "":
-        class_string = obj.get("type", "")
-    
-    var properties: Array
-    var new_key = false
-    if obj.has("properties"):
-        properties = obj["properties"]
-    else:
-        properties = []
-        new_key = true
+	if _custom_types == null: return
+	
+	var class_string = obj.get("class", "")
+	if class_string == "":
+		class_string = obj.get("type", "")
+	
+	var properties: Array
+	var new_key = false
+	if obj.has("properties"):
+		properties = obj["properties"]
+	else:
+		properties = []
+		new_key = true
 
-    for ct_prop in _custom_types:
-        var pt_name = ct_prop.get("name", "")
-        var pt_type = ct_prop.get("type", "")
-        var pt_scope: Array = ct_prop.get("useAs", [])
-        if pt_name != class_string or pt_type != "class" or not pt_scope.has(scope): continue
-        var pt_members: Array = ct_prop.get("members", [])
-        for mem in pt_members:
-            var name = mem.get("name", "")
-            var append = true
-            for prop in properties:
-                if name == prop.get("name", ""):
-                    append = false
-                    break
-            if not append: continue
-            if new_key:
-                obj["properties"] = []
-                new_key = false
-            obj["properties"].append(mem)
+	for ct_prop in _custom_types:
+		var pt_name = ct_prop.get("name", "")
+		var pt_type = ct_prop.get("type", "")
+		var pt_scope: Array = ct_prop.get("useAs", [])
+		if pt_name != class_string or pt_type != "class" or not pt_scope.has(scope): continue
+		var pt_members: Array = ct_prop.get("members", [])
+		for mem in pt_members:
+			var name = mem.get("name", "")
+			var append = true
+			for prop in properties:
+				if name == prop.get("name", ""):
+					append = false
+					break
+			if not append: continue
+			if new_key:
+				obj["properties"] = []
+				new_key = false
+			obj["properties"].append(mem)

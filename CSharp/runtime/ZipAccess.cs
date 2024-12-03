@@ -1,4 +1,4 @@
-// MIT License
+﻿// MIT License
 //
 // Copyright (c) 2024 Roland Helmerichs
 //
@@ -24,40 +24,39 @@ using Godot;
 
 namespace YATI;
 
-public static class Importer
+public class ZipAccess
 {
-	public static Node2D Import(string sourceFile, string projectFile = "")
-	{
-		var tilemapCreator = new TilemapCreator();
-		tilemapCreator.SetAddClassAsMetadata(true);
-		if (projectFile != "" && FileAccess.FileExists(projectFile))
-		{
-			var ct = new CustomTypes();
-			ct.LoadCustomTypes(projectFile);
-			tilemapCreator.SetCustomTypes(ct);
-		}
-		return tilemapCreator.Create(sourceFile);
-	}
+    private readonly string _zipFilePath;
+    private ZipReader _reader;
 
-	public static Node2D ImportFromZip(string zipFile, string sourceFileInZip, string projectFileInZip = "")
-	{
-		if (!FileAccess.FileExists(zipFile))
-			return null;
-		var za = new ZipAccess(zipFile);
-		var err = za.Open();
-		if (err != Error.Ok)
-			return null;
-		var tilemapCreator = new TilemapCreator();
-		tilemapCreator.SetZipAccess(za);
-		tilemapCreator.SetAddClassAsMetadata(true);
-		if (projectFileInZip != "" && za.FileExists(projectFileInZip))
-		{
-			var ct = new CustomTypes();
-			ct.LoadCustomTypes(projectFileInZip, za);
-			tilemapCreator.SetCustomTypes(ct);
-		}
-		var ret= tilemapCreator.Create(sourceFileInZip);
-		za.Close();
-		return ret;
-	}
+    public ZipAccess(string zipFilePath)
+    {
+        _zipFilePath = zipFilePath;
+    }
+
+    public Error Open()
+    {
+        _reader = new ZipReader();
+        return _reader.Open(_zipFilePath);
+    }
+
+    public bool FileExists(string fileInZip)
+    {
+        return _reader.FileExists(fileInZip);
+    }
+
+    public byte[] GetFíle(string fileInZip)
+    {
+        return _reader.ReadFile(fileInZip);
+    }
+
+    public string GetZipFilePath()
+    {
+        return _zipFilePath;
+    }
+    
+    public void Close()
+    {
+        _reader.Close();
+    }
 }

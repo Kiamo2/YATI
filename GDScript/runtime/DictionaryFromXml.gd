@@ -31,8 +31,8 @@ var _csv_encoded = true
 var _is_map: bool
 var _in_tileset: bool = false
 
-func create(source_file_name: String):
-	var err = _xml.open(source_file_name)
+func create(source_file_name: String, za: ZipAccess = null):
+	var err = _xml.open(source_file_name, za)
 	if err != OK:
 		return null
 
@@ -66,7 +66,7 @@ func create(source_file_name: String):
 		print("Import aborted with ", err, " error.")
 		return null
 
-func simple_element(element_name: String, attribs: Dictionary) -> int:
+func simple_element(element_name: String, attribs: Dictionary):
 	if element_name == "image":
 		_current_dictionary["image"] = attribs["source"]
 		if attribs.has("width"):

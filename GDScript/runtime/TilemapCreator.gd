@@ -68,6 +68,7 @@ var _dont_use_alternative_tiles = false
 var _custom_data_prefix: String = ""
 var _object_groups
 var _ct: CustomTypes = null
+var _za: ZipAccess = null
 
 var _iso_rot: float = 0.0
 var _iso_skew: float = 0.0
@@ -133,6 +134,10 @@ func set_custom_types(ct: CustomTypes):
 	_ct = ct
 
 
+func set_zip_access(za: ZipAccess):
+	_za = za
+
+
 func get_tileset():
 	return _tileset
 
@@ -148,7 +153,7 @@ func recursively_change_owner(node: Node, new_owner: Node):
 func create(source_file: String):
 	_godot_version = Engine.get_version_info()["hex"]
 	_base_path = source_file.get_base_dir()
-	var base_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(source_file)
+	var base_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(source_file, _za)
 	_map_orientation = base_dictionary.get("orientation", "othogonal")
 	_map_width = base_dictionary.get("width", 0)
 	_map_height = base_dictionary.get("height", 0)
@@ -171,6 +176,8 @@ func create(source_file: String):
 		tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
 		if _ct != null:
 			tileset_creator.set_custom_types(_ct)	
+		if _za != null:
+			tileset_creator.set_zip_access(_za)	
 		if _map_wangset_to_terrain:
 			tileset_creator.map_wangset_to_terrain()
 		tileset_creator.set_custom_data_prefix(_custom_data_prefix)
@@ -362,21 +369,41 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			texture_rect.modulate = Color(tint_color, layer_opacity)
 		texture_rect.visible = layer_visible
 
-		# ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
 		var texture_path = layer["image"]
-		if not FileAccess.file_exists(texture_path):
-			texture_path = _base_path.get_base_dir().path_join(layer["image"])
-		if not FileAccess.file_exists(texture_path):
-			texture_path = _base_path.path_join(layer["image"])
-		if FileAccess.file_exists(texture_path):
-			texture_rect.texture = load(texture_path)
-			var exists = ResourceLoader.exists(texture_path, "Image")
-			if exists:
-				texture_rect.texture = load(texture_path)
-			else:
-				var image = Image.load_from_file(texture_path)
+		var file_not_found: bool = true
+		if _za:
+			if not _za.file_exists(texture_path):
+				texture_path = cleanup_path(_base_path.get_base_dir().path_join(layer["image"]))
+			if not _za.file_exists(texture_path):
+				texture_path = cleanup_path(_base_path.path_join(layer["image"]))
+			if _za.file_exists(texture_path):
+				var image = Image.new()
+				var extension = texture_path.get_extension().to_lower()
+				match extension:
+					"png":
+						image.load_png_from_buffer(_za.get_file(texture_path))
+					"jpg", "jpeg":
+						image.load_jpg_from_buffer(_za.get_file(texture_path))
+					"bmp":
+						image.load_bmp_from_buffer(_za.get_file(texture_path))
 				texture_rect.texture = ImageTexture.create_from_image(image)
+				file_not_found = false
 		else:
+			if not FileAccess.file_exists(texture_path):
+				texture_path = _base_path.get_base_dir().path_join(layer["image"])
+			if not FileAccess.file_exists(texture_path):
+				texture_path = _base_path.path_join(layer["image"])
+			if FileAccess.file_exists(texture_path):
+				texture_rect.texture = load(texture_path)
+				var exists = ResourceLoader.exists(texture_path, "Image")
+				if exists:
+					texture_rect.texture = load(texture_path)
+				else:
+					var image = Image.load_from_file(texture_path)
+					texture_rect.texture = ImageTexture.create_from_image(image)
+				file_not_found = false
+
+		if file_not_found:
 			printerr("ERROR: Image file '" + layer["image"] + "' not found.")
 			_error_count += 1
 
@@ -521,6 +548,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		var flipped_d = (int_id & FLIPPED_DIAGONALLY_FLAG) > 0
 		var gid: int = int_id & 0x0FFFFFFF
 		if gid <= 0: continue
+		@warning_ignore("integer_division")
 		var cell_coords = Vector2(cell_counter % map_width + offset_x, cell_counter / map_width + offset_y)
 
 		var source_id = get_matching_source_id(gid)
@@ -542,6 +570,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 			if atlas_source.get_atlas_grid_size() == Vector2i.ONE:
 				atlas_coords = Vector2i.ZERO
 			else:
+				@warning_ignore("integer_division")
 				atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 		if not atlas_source.has_tile(atlas_coords):
 			atlas_source.create_tile(atlas_coords)
@@ -596,7 +625,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 
 func get_godot_type(godot_type_string: String):
 	var gts = godot_type_string.to_lower()
-	var _godot_type = {
+	var godot_type = {
 		"": _godot_type.EMPTY,
 		"collision": _godot_type.BODY,
 		"staticbody": _godot_type.BODY,
@@ -610,7 +639,7 @@ func get_godot_type(godot_type_string: String):
 		"polygon": _godot_type.POLYGON,
 		"instance": _godot_type.INSTANCE
 	}.get(gts, _godot_type.UNKNOWN)
-	return _godot_type
+	return godot_type
 
 
 func get_godot_node_type_property(obj: Dictionary):
@@ -678,7 +707,30 @@ func convert_metadata_to_obj_properties(td: TileData, obj: Dictionary) -> void:
 		else:
 			obj["properties"] = [prop_dict]
 
-
+func cleanup_path(path: String) -> String:
+	while true:
+		var path_arr = path.split("/")
+		var is_clean: bool = true
+		for i in range(1, path_arr.size()):
+			if path_arr[i] == "..":
+				path_arr[i] = ""
+				path_arr[i-1] = ""
+				is_clean = false
+				break
+			if path_arr[i] == ".":
+				path_arr[i] = ""
+				is_clean = false
+		var new_path = ""
+		for t in path_arr:
+			if t == "": continue
+			if new_path != "":
+				new_path += "/"
+			if t != "":
+				new_path += t
+		if is_clean:
+			return new_path
+		path = new_path
+	return ""
 
 func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: Vector2) -> void:
 	var obj_id = obj.get("id", 0)
@@ -715,7 +767,9 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 	if obj.has("template"):
 		var template_path = _base_path.path_join(obj["template"])
-		var template_dict = preload("DictionaryBuilder.gd").new().get_dictionary(template_path)
+		if _za and not _za.file_exists(template_path):
+			template_path = cleanup_path(template_path)
+		var template_dict = preload("DictionaryBuilder.gd").new().get_dictionary(template_path, _za)
 		var template_tileset = null
 
 		if template_dict.has("tilesets"):
@@ -833,6 +887,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			if atlas_width <= 0: return
 
 			var effective_gid: int = gid - _first_gids[get_first_gid_index(gid)]
+			@warning_ignore("integer_division")
 			var atlas_coords = Vector2(effective_gid % atlas_width, effective_gid / atlas_width)
 			if not gid_source.has_tile(atlas_coords):
 				gid_source.create_tile(atlas_coords)
@@ -963,8 +1018,8 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		obj_text.visible = obj_visible
 		var txt = obj["text"]
 		obj_text.text = txt.get("text", "Hello World")
-		var wrap = txt.get("wrap", false)
-		obj_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
+		var wrap_ = txt.get("wrap", false)
+		obj_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap_ else TextServer.AUTOWRAP_OFF
 		var align_h = txt.get("halign", "left")
 		match align_h:
 			"left": obj_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -1533,7 +1588,13 @@ func get_num_tiles_for_source_id(source_id: int):
 func load_resource_from_file(path: String):
 	var orig_path = path
 	var ret: Resource = null
-	# ToDo: Not sure if this first check makes any sense since an image can't be properly imported if not in project tree
+	
+	if _za:
+		# Resources cannot be loaded from Zip but maybe they are provided nearby
+		path = _za.get_zip_file_path().get_base_dir().path_join(orig_path)
+		if not FileAccess.file_exists(path):
+			path = _za.get_zip_file_path().get_basename().path_join(orig_path)
+
 	if not FileAccess.file_exists(path):
 		path = _base_path.get_base_dir().path_join(orig_path)
 	if not FileAccess.file_exists(path):
@@ -1546,7 +1607,7 @@ func load_resource_from_file(path: String):
 	return ret
 	
 	
-func get_bitmask_integer_from_string(mask_string: String, max: int):
+func get_bitmask_integer_from_string(mask_string: String, max_len: int):
 	var ret: int = 0
 	var s1_arr = mask_string.split(",", false)
 	for s1 in s1_arr:
@@ -1556,12 +1617,12 @@ func get_bitmask_integer_from_string(mask_string: String, max: int):
 			var i2 = int(s2_arr[1]) if s2_arr[1].is_valid_int() else 0
 			if i1 == 0 or i2 == 0 or i1 > i2: continue
 			for i in range(i1, i2+1):
-				if i <= max:
-					ret += pow(2, i-1)
+				if i <= max_len:
+					ret += int(pow(2, i-1))
 		elif s1.is_valid_int():
 			var i = int(s1)
-			if i <= max:
-				ret += pow(2, i-1)
+			if i <= max_len:
+				ret += int(pow(2, i-1))
 	return ret
 
 

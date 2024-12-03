@@ -55,6 +55,7 @@ var _tileset_orientation
 var _map_wangset_to_terrain: bool = false
 var _custom_data_prefix: String
 var _ct: CustomTypes = null
+var _za: ZipAccess = null
 var _current_first_gid = -1
 
 
@@ -86,6 +87,10 @@ func set_custom_types(ct: CustomTypes):
 	_ct = ct
 
 
+func set_zip_access(za: ZipAccess):
+	_za = za
+
+
 func map_wangset_to_terrain():
 	_map_wangset_to_terrain = true
 	
@@ -105,11 +110,14 @@ func create_from_dictionary_array(tileSets: Array):
 			if checked_file.begins_with(":/automap"):
 				continue # This is no error skip it
  
-			if not FileAccess.file_exists(checked_file):
+			if _za:
+				if not _za.file_exists(checked_file):
+					checked_file = cleanup_path(_base_path_map.path_join(checked_file))
+			elif not FileAccess.file_exists(checked_file):
 				checked_file = _base_path_map.path_join(checked_file)
 			_base_path_tileset = checked_file.get_base_dir()
  
-			tile_set_dict = preload("DictionaryBuilder.gd").new().get_dictionary(checked_file)
+			tile_set_dict = preload("DictionaryBuilder.gd").new().get_dictionary(checked_file, _za)
 			if tile_set_dict != null and tile_set.has("firstgid"):
 				tile_set_dict["firstgid"] = tile_set["firstgid"]
 	
@@ -216,25 +224,67 @@ func create_or_append(tile_set: Dictionary):
 	if tile_set.has("properties"):
 		handle_tileset_properties(tile_set["properties"])
 
+func cleanup_path(path: String) -> String:
+	while true:
+		var path_arr = path.split("/")
+		var is_clean: bool = true
+		for i in range(1, path_arr.size()):
+			if path_arr[i] == "..":
+				path_arr[i] = ""
+				path_arr[i-1] = ""
+				is_clean = false
+				break
+			if path_arr[i] == ".":
+				path_arr[i] = ""
+				is_clean = false
+		var new_path = ""
+		for t in path_arr:
+			if t == "": continue
+			if new_path != "":
+				new_path += "/"
+			if t != "":
+				new_path += t
+		if is_clean:
+			return new_path
+		path = new_path
+	return ""
 
 func load_image(path: String):
 	var orig_path = path
 	var ret: Texture2D = null
-	# ToDo: Not sure if this first check makes any sense since an image can't be properly imported if not in project tree
-	if not FileAccess.file_exists(path):
-		path = _base_path_map.get_base_dir().path_join(orig_path)
-	if not FileAccess.file_exists(path):
-		path = _base_path_tileset.path_join(orig_path)
-	if FileAccess.file_exists(path):
-		var exists = ResourceLoader.exists(path, "Image")
-		if exists:
-			ret = load(path)
-		else:
-			var image = Image.load_from_file(path)
+	if _za:
+		if not _za.file_exists(path):
+			path = cleanup_path(_base_path_map.get_base_dir().path_join(orig_path))
+		if not _za.file_exists(path):
+			path = cleanup_path(_base_path_tileset.path_join(orig_path))
+		if _za.file_exists(path):
+			var image = Image.new()
+			var extension = path.get_extension().to_lower()
+			match extension:
+				"png":
+					image.load_png_from_buffer(_za.get_file(path))
+				"jpg", "jpeg":
+					image.load_jpg_from_buffer(_za.get_file(path))
+				"bmp":
+					image.load_bmp_from_buffer(_za.get_file(path))
 			ret = ImageTexture.create_from_image(image)
 	else:
+		if not FileAccess.file_exists(path):
+			path = _base_path_map.get_base_dir().path_join(orig_path)
+		if not FileAccess.file_exists(path):
+			path = _base_path_tileset.path_join(orig_path)
+		if FileAccess.file_exists(path):
+			var exists = ResourceLoader.exists(path, "Image")
+			if exists:
+				ret = load(path)
+			else:
+				var image = Image.load_from_file(path)
+				ret = ImageTexture.create_from_image(image)
+
+	if ret == null:
 		printerr("ERROR: Image file '" + orig_path + "' not found.")
 		_error_count += 1
+
 	return ret
 
 
@@ -260,6 +310,7 @@ func register_object_group(tile_id: int, object_group: Dictionary):
 
 func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 	if tile_id < _tile_count:
+		@warning_ignore("integer_division")
 		var row = tile_id / _columns
 		var col = tile_id % _columns
 		var tile_coords = Vector2i(col, row)
@@ -331,6 +382,7 @@ func handle_tiles(tiles: Array):
 			var diff_y = _tile_size.y - _map_tile_size.y
 			if diff_y % 2 != 0:
 				diff_y += 1
+			@warning_ignore("integer_division")
 			current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 				
 		if tile.has("probability"):
@@ -356,8 +408,10 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 	var separation_y: int = 0
 	var separation_vect = Vector2(separation_x, separation_y)
 	var anim_columns: int = 0
+	@warning_ignore("integer_division")
 	var tile_coords = Vector2(tile_id % _columns, tile_id / _columns)
 	var max_diff_x = _columns - tile_coords.x
+	@warning_ignore("integer_division")
 	var max_diff_y = _tile_count / _columns - tile_coords.y
 	var diff_x = 0
 	var diff_y = 0
@@ -366,6 +420,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 		var frame_tile_id: int = frame["tileid"]
 		if frame_count == 2:
 			diff_x = (frame_tile_id - tile_id) % _columns
+			@warning_ignore("integer_division")
 			diff_y = (frame_tile_id - tile_id) / _columns
 			if diff_x == 0 and diff_y > 0 and diff_y < max_diff_y:
 				separation_y = diff_y - 1
@@ -382,6 +437,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 		if frame_count > 1 and frame_count < frames.size():
 			var next_frame_tile_id: int = frames[frame_count]["tileid"]
 			var compare_diff_x = (next_frame_tile_id - frame_tile_id) % _columns
+			@warning_ignore("integer_division")
 			var compare_diff_y = (next_frame_tile_id - frame_tile_id) / _columns
 			if compare_diff_x != diff_x or compare_diff_y != diff_y:
 				print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
@@ -548,7 +604,7 @@ func load_resource_from_file(path: String):
 		return ret
 
 
-func get_bitmask_integer_from_string(mask_string: String, max: int):
+func get_bitmask_integer_from_string(mask_string: String, max_len: int):
 	var ret: int = 0
 	var s1_arr = mask_string.split(",", false)
 	for s1 in s1_arr:
@@ -558,12 +614,12 @@ func get_bitmask_integer_from_string(mask_string: String, max: int):
 			var i2 = int(s2_arr[1]) if s2_arr[1].is_valid_int() else 0
 			if i1 == 0 or i2 == 0 or i1 > i2: continue
 			for i in range(i1, i2+1):
-				if i <= max:
-					ret += pow(2, i-1)
+				if i <= max_len:
+					ret += int(pow(2, i-1))
 		elif s1.is_valid_int():
 			var i = int(s1)
-			if i <= max:
-				ret += pow(2, i-1)
+			if i <= max_len:
+				ret += int(pow(2, i-1))
 	return ret
 
 
@@ -760,6 +816,7 @@ func handle_wangsets_old_mapping(wangsets):
 					var diff_y = _tile_size.y - _map_tile_size.y
 					if diff_y % 2 != 0:
 						diff_y += 1
+					@warning_ignore("integer_division")
 					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 
 				current_tile.terrain_set = current_terrain_set
@@ -789,7 +846,7 @@ func handle_wangsets(wangsets):
 		_terrain_counter = -1
 		var current_terrain_set = _terrain_sets_counter
 
-		var current_terrain = _terrain_counter
+		#var current_terrain = _terrain_counter
 		var terrain_set_name = ""
 		if "name" in wangset:
 			terrain_set_name = wangset["name"]
@@ -829,6 +886,7 @@ func handle_wangsets(wangsets):
 					var diff_y = _tile_size.y - _map_tile_size.y
 					if diff_y % 2 != 0:
 						diff_y += 1
+					@warning_ignore("integer_division")
 					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 
 				current_tile.terrain_set = current_terrain_set

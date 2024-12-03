@@ -27,6 +27,7 @@ using Array = Godot.Collections.Array;
 using FileAccess = Godot.FileAccess;
 using System;
 using System.Globalization;
+using System.IO;
 
 namespace YATI;
 
@@ -66,6 +67,7 @@ public class TilesetCreator
     private bool _mapWangsetToTerrain;
     private string _customDataPrefix;
     private CustomTypes _ct;
+    private ZipAccess _za;
     private int _currentFirstGid = -1;
 
     private enum LayerType
@@ -101,6 +103,11 @@ public class TilesetCreator
         _ct = ct;
     }
 
+    public void SetZipAccess(ZipAccess za)
+    {
+        _za = za;
+    }
+
     public void MapWangsetToTerrain()
     {
         _mapWangsetToTerrain = true;
@@ -123,12 +130,17 @@ public class TilesetCreator
                 // Catch the AutoMap Rules tileset (is Tiled internal)
                 if (checkedFile.StartsWith(":/automap"))
                     continue; // This is no error just skip it
-                
-                if (!FileAccess.FileExists(checkedFile))
+
+                if (_za != null)
+                {
+                    if (!_za.FileExists(checkedFile))
+                        checkedFile = CleanupPath(_basePathMap.PathJoin(checkedFile));
+                }
+                else if (!FileAccess.FileExists(checkedFile))
                     checkedFile = _basePathMap.PathJoin(checkedFile);
                 _basePathTileset = checkedFile.GetBaseDir();
 
-                tileSetDict = DictionaryBuilder.GetDictionary(checkedFile);
+                tileSetDict = DictionaryBuilder.GetDictionary(checkedFile, _za);
                 if (tileSetDict != null && tileSet.TryGetValue("firstgid", out var firstGid))
                     tileSetDict["firstgid"] = firstGid;
             }
@@ -144,13 +156,6 @@ public class TilesetCreator
             _append = true;
         }
 
-        return _tileset;
-    }
-
-    public TileSet CreateFromFile(string sourceFile)
-    {
-        var tileSet = DictionaryBuilder.GetDictionary(sourceFile);
-        CreateOrAppend(tileSet);
         return _tileset;
     }
 
@@ -253,27 +258,90 @@ public class TilesetCreator
             HandleTilesetProperties((Array<Dictionary>)props);
     }
 
+    private static string CleanupPath(string path)
+    {
+        while (true)
+        {
+            var pathArr = path.Split('/');
+            var isClean = true;
+            for (var i = 1; i < pathArr.Length; i++)
+            {
+                if (pathArr[i] == "..")
+                {
+                    pathArr[i] = string.Empty;
+                    pathArr[i - 1] = string.Empty;
+                    isClean = false;
+                    break;
+                }
+
+                if (pathArr[i] != ".") continue;
+                pathArr[i] = string.Empty;
+                isClean = false;
+            }
+
+            var newPath = string.Empty;
+            foreach (var t in pathArr)
+            {
+                if (t == string.Empty) continue;
+                if (newPath != string.Empty) newPath += '/';
+                if (t != string.Empty) newPath += t;
+            }
+
+            if (isClean) return newPath;
+            path = newPath;
+        }
+    }
+
     private Texture2D LoadImage(string path)
     {
         var origPath = path;
         Texture2D ret = null;
-        // ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
-        if (!FileAccess.FileExists(path))
-            path = _basePathMap.GetBaseDir().PathJoin(origPath);
-        if (!FileAccess.FileExists(path))
-            path = _basePathTileset.PathJoin(origPath);
-        if (FileAccess.FileExists(path))
+        if (_za != null)
         {
-            var exists = ResourceLoader.Exists(path, "Image");
-            if (exists)
-                ret = (Texture2D)ResourceLoader.Load(path, "Image");
-            else
+            if (!_za.FileExists(path))
+                path = CleanupPath(_basePathMap.GetBaseDir().PathJoin(origPath));
+            if (!_za.FileExists(path))
+                path = CleanupPath(_basePathTileset.PathJoin(origPath));
+            if (_za.FileExists(path))
             {
-                var image = Image.LoadFromFile(path);
+                var image = new Image();
+                var extension = Path.GetExtension(path).ToLower();
+                switch (extension)
+                {
+                    case ".png":
+                        image.LoadPngFromBuffer(_za.GetFíle(path));
+                        break;
+                    case ".jpg":
+                    case ".jpeg":
+                        image.LoadJpgFromBuffer(_za.GetFíle(path));
+                        break;
+                    case ".bmp":
+                        image.LoadBmpFromBuffer(_za.GetFíle(path));
+                        break;
+                }
                 ret = ImageTexture.CreateFromImage(image);
             }
         }
         else
+        {
+            if (!FileAccess.FileExists(path))
+                path = _basePathMap.GetBaseDir().PathJoin(origPath);
+            if (!FileAccess.FileExists(path))
+                path = _basePathTileset.PathJoin(origPath);
+            if (FileAccess.FileExists(path))
+            {
+                var exists = ResourceLoader.Exists(path, "Image");
+                if (exists)
+                    ret = (Texture2D)ResourceLoader.Load(path, "Image");
+                else
+                {
+                    var image = Image.LoadFromFile(path);
+                    ret = ImageTexture.CreateFromImage(image);
+                }
+            }
+        }
+
+        if (ret == null)
         {
             GD.PrintErr($"ERROR: Image file '{origPath}' not found.");
             _errorCount++;

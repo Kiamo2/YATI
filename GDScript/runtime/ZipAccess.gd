@@ -20,29 +20,26 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-func import(source_file: String, project_file: String = ""):
-	var tilemapCreator = preload("TilemapCreator.gd").new()
-	tilemapCreator.set_add_class_as_metadata(true)
-	if project_file != "":
-		var ct = CustomTypes.new()
-		ct.load_custom_types(project_file)
-		tilemapCreator.set_custom_types(ct)
-	return tilemapCreator.create(source_file)
+class_name ZipAccess
 
-func import_from_zip(zip_file: String, source_file_in_zip: String, project_file_in_zip: String = ""):
-	if not FileAccess.file_exists(zip_file):
-		return null
-	var za = ZipAccess.new()
-	var err = za.open(zip_file)
-	if err != OK:
-		return null
-	var tilemapCreator = preload("TilemapCreator.gd").new()
-	tilemapCreator.set_zip_access(za)
-	tilemapCreator.set_add_class_as_metadata(true)
-	if project_file_in_zip != "" and za.file_exists(project_file_in_zip):
-		var ct = CustomTypes.new()
-		ct.load_custom_types(project_file_in_zip, za)
-		tilemapCreator.set_custom_types(ct)
-	var ret = tilemapCreator.create(source_file_in_zip)
-	za.close()
-	return ret
+extends RefCounted
+
+var _zip_file_path: String
+var _reader: ZIPReader
+
+func open(zip_file_path: String) -> Error:
+    _zip_file_path = zip_file_path
+    _reader = ZIPReader.new()
+    return _reader.open(_zip_file_path)
+
+func file_exists(file_in_zip: String) -> bool:
+    return _reader.file_exists(file_in_zip)
+
+func get_file(file_in_zip: String) -> PackedByteArray:
+    return _reader.read_file(file_in_zip)
+
+func get_zip_file_path() -> String:
+    return _zip_file_path
+
+func close():
+    _reader.close()

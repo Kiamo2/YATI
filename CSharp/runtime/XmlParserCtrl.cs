@@ -30,10 +30,10 @@ public class XmlParserCtrl
     private readonly XmlParser _parser = new();
     private string _parsedFileName;
 
-    public Error Open(string sourceFile)
+    public Error Open(string sourceFile, ZipAccess za = null)
     {
         _parsedFileName = sourceFile;
-        return _parser.Open(_parsedFileName);
+        return za != null ? _parser.OpenBuffer(za.GetFíle(_parsedFileName)) : _parser.Open(_parsedFileName);
     }
 
     public string NextElement()

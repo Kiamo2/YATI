@@ -31,9 +31,9 @@ public class CustomTypes
 {
     private Array<Dictionary> _customTypes;
     
-    public void LoadCustomTypes(string projectFile)
+    public void LoadCustomTypes(string projectFile, ZipAccess za = null)
     {
-        var projFileAsDictionary = DictionaryBuilder.GetDictionary(projectFile);
+        var projFileAsDictionary = DictionaryBuilder.GetDictionary(projectFile, za);
         if (projFileAsDictionary.TryGetValue("propertyTypes", out var propTypes))
             _customTypes = (Array<Dictionary>)propTypes;
     }

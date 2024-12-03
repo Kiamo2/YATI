@@ -82,6 +82,7 @@ public class TilemapCreator
     private string _customDataPrefix = "";
     private Dictionary _objectGroups;
     private CustomTypes _ct;
+    private ZipAccess _za;
 
     private float _isoRot;
     private float _isoSkew;
@@ -152,6 +153,11 @@ public class TilemapCreator
         _ct = ct;
     }
 
+    public void SetZipAccess(ZipAccess za)
+    {
+        _za = za;
+    }
+
     public TileSet GetTileset()
     {
         return _tileset;
@@ -170,7 +176,7 @@ public class TilemapCreator
     {
         _godotVersion = (int)Engine.GetVersionInfo()["hex"];
         _basePath = sourceFile.GetBaseDir();
-        var baseDictionary = DictionaryBuilder.GetDictionary(sourceFile);
+        var baseDictionary = DictionaryBuilder.GetDictionary(sourceFile, _za);
         _mapOrientation = (string)baseDictionary.GetValueOrDefault("orientation", "orthogonal");
         _mapWidth = (int)baseDictionary.GetValueOrDefault("width", 0);
         _mapHeight = (int)baseDictionary.GetValueOrDefault("height", 0);
@@ -193,6 +199,8 @@ public class TilemapCreator
             tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
             if (_ct != null)
                 tilesetCreator.SetCustomTypes(_ct);
+            if (_za != null)
+                tilesetCreator.SetZipAccess(_za);
             if (_mapWangsetToTerrain)
                 tilesetCreator.MapWangsetToTerrain();
             tilesetCreator.SetCustomDataPrefix(_customDataPrefix);
@@ -414,24 +422,57 @@ public class TilemapCreator
                     textureRect.Modulate = new Color(tintColor, layerOpacity);
                 textureRect.Visible = layerVisible;
 
-                // ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
                 var texturePath = (string)layer["image"];
-                if (!FileAccess.FileExists(texturePath))
-                    texturePath = _basePath.GetBaseDir().PathJoin((string)layer["image"]);
-                if (!FileAccess.FileExists(texturePath))
-                    texturePath = _basePath.PathJoin((string)layer["image"]);
-                if (FileAccess.FileExists(texturePath))
+
+                var fileNotFound = true;
+                if (_za != null)
                 {
-                    var exists = ResourceLoader.Exists(texturePath, "Image");
-                    if (exists)
-                        textureRect.Texture = (Texture2D)ResourceLoader.Load(texturePath, "Image");
-                    else
+                    if (!_za.FileExists(texturePath))
+                        texturePath = CleanupPath(_basePath.GetBaseDir().PathJoin((string)layer["image"]));
+                    if (!_za.FileExists(texturePath))
+                        texturePath = CleanupPath(_basePath.PathJoin((string)layer["image"]));
+                    if (_za.FileExists(texturePath))
                     {
-                        var image = Image.LoadFromFile(texturePath);
-                        textureRect.Texture = ImageTexture.CreateFromImage(image);
+                        var image = new Image();
+                        var extension = Path.GetExtension(texturePath).ToLower();
+                        switch (extension)
+                        {
+                            case ".png":
+                                image.LoadPngFromBuffer(_za.GetFíle(texturePath));
+                                break;
+                            case ".jpg":
+                            case ".jpeg":
+                                image.LoadJpgFromBuffer(_za.GetFíle(texturePath));
+                                break;
+                            case ".bmp":
+                                image.LoadBmpFromBuffer(_za.GetFíle(texturePath));
+                                break;
+                        }
+                       textureRect.Texture = ImageTexture.CreateFromImage(image);
+                       fileNotFound = false;
                     }
                 }
                 else
+                {
+                    if (!FileAccess.FileExists(texturePath))
+                        texturePath = _basePath.GetBaseDir().PathJoin((string)layer["image"]);
+                    if (!FileAccess.FileExists(texturePath))
+                        texturePath = _basePath.PathJoin((string)layer["image"]);
+                    if (FileAccess.FileExists(texturePath))
+                    {
+                        var exists = ResourceLoader.Exists(texturePath, "Image");
+                        if (exists)
+                            textureRect.Texture = (Texture2D)ResourceLoader.Load(texturePath, "Image");
+                        else
+                        {
+                            var image = Image.LoadFromFile(texturePath);
+                            textureRect.Texture = ImageTexture.CreateFromImage(image);
+                        }
+                        fileNotFound = false;
+                    }
+                }
+
+                if (fileNotFound)
                 {
                     GD.PrintErr($"ERROR: Image file '{(string)layer["image"]}' not found.");
                     _errorCount++;
@@ -817,6 +858,40 @@ public class TilemapCreator
         }
     }
 
+    private static string CleanupPath(string path)
+    {
+        while (true)
+        {
+            var pathArr = path.Split('/');
+            var isClean = true;
+            for (var i = 1; i < pathArr.Length; i++)
+            {
+                if (pathArr[i] == "..")
+                {
+                    pathArr[i] = string.Empty;
+                    pathArr[i - 1] = string.Empty;
+                    isClean = false;
+                    break;
+                }
+
+                if (pathArr[i] != ".") continue;
+                pathArr[i] = string.Empty;
+                isClean = false;
+            }
+
+            var newPath = string.Empty;
+            foreach (var t in pathArr)
+            {
+                if (t == string.Empty) continue;
+                if (newPath != string.Empty) newPath += '/';
+                if (t != string.Empty) newPath += t;
+            }
+
+            if (isClean) return newPath;
+            path = newPath;
+        }
+    }
+    
     private void HandleObject(Dictionary obj, Node layerNode, TileSet tileset, Vector2 offSet)
     {
         var objId = (int)obj.GetValueOrDefault("id", 0);
@@ -856,7 +931,9 @@ public class TilemapCreator
         if (obj.TryGetValue("template", out var tplVal))
         {
             var templatePath = _basePath.PathJoin((string)tplVal);
-            var templateDict = DictionaryBuilder.GetDictionary(templatePath);
+            if (_za != null && !_za.FileExists(templatePath))
+                templatePath = CleanupPath(templatePath);
+            var templateDict = DictionaryBuilder.GetDictionary(templatePath, _za);
             //var templateFirstGids = new Array<int>();
             TileSet templateTileSet = null;
             if (templateDict.TryGetValue("tilesets", out var tsVal))
@@ -1902,7 +1979,15 @@ public class TilemapCreator
     {
         var origPath = path;
         Resource ret = null;
-        // ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
+
+        if (_za != null)
+        {
+            // Resources cannot be loaded from Zip but maybe they are provided nearby
+            path = _za.GetZipFilePath().GetBaseDir().PathJoin(origPath);
+            if (!File.Exists(path))
+                path = _za.GetZipFilePath().GetBaseName().PathJoin(origPath);
+        }
+
         if (!FileAccess.FileExists(path))
             path = _basePath.GetBaseDir().PathJoin(origPath);
         if (!FileAccess.FileExists(path))
