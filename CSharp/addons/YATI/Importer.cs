@@ -103,6 +103,10 @@ public partial class Importer: EditorImportPlugin
             ct.LoadCustomTypes((string)options["tiled_project_file"]);
             tilemapCreator.SetCustomTypes(ct);
         }
+        if (options.ContainsKey("save_tileset_to") && (string)options["save_tileset_to"] != "")
+        {
+            tilemapCreator.SetSaveTilesetTo((string)options["save_tileset_to"]);
+        }
 
         var node2D = tilemapCreator.Create(sourceFile);
         if (node2D == null)
@@ -110,18 +114,6 @@ public partial class Importer: EditorImportPlugin
 
         var errors = tilemapCreator.GetErrorCount();
         var warnings = tilemapCreator.GetWarningCount();
-        if (options.ContainsKey("save_tileset_to") && (string)options["save_tileset_to"] != "")
-        {
-            var tileset = tilemapCreator.GetTileset();
-            var saveRet = ResourceSaver.Save(tileset, (string)options["save_tileset_to"]);
-            if (saveRet == Error.Ok)
-                GD.Print($"Successfully saved tileset to '{(string)options["save_tileset_to"]}'");
-            else
-            {
-                GD.PrintErr($"Saving tileset returned error {saveRet}");
-                errors++;
-            }
-        }
 
         var postProcError = false;
         if (options.ContainsKey("post_processor") && (string)options["post_processor"] != "")

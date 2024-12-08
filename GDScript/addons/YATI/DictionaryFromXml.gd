@@ -67,7 +67,7 @@ func create(source_file_name: String):
 		print("Import aborted with ", err, " error.")
 		return null
 
-func simple_element(element_name: String, attribs: Dictionary) -> int:
+func simple_element(element_name: String, attribs: Dictionary):
 	if element_name == "image":
 		_current_dictionary["image"] = attribs["source"]
 		if attribs.has("width"):

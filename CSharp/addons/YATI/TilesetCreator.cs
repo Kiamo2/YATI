@@ -107,7 +107,7 @@ public class TilesetCreator
     {
         _mapWangsetToTerrain = true;
     }
-    
+
     public void SetCustomDataPrefix(string value)
     {
         _customDataPrefix = value;
@@ -348,7 +348,7 @@ public class TilesetCreator
             TileData currentTile;
             if (tile.ContainsKey("image"))
             {
-                // Tile with it's own image -> separate atlas source
+                // Tile with its own image -> separate atlas source
                 _currentAtlasSource = new TileSetAtlasSource();
                 var addedSourceId = _tileset.AddSource(_currentAtlasSource, GetSpecialProperty(tile, GodotAtlasIdProperty));
                 RegisterAtlasSource(addedSourceId, 1, tileId, Vector2I.Zero);

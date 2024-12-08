@@ -82,6 +82,7 @@ public class TilemapCreator
     private bool _addIdAsMetadata;
     private bool _dontUseAlternativeTiles;
     private string _customDataPrefix = "";
+    private string _tilesetSavePath = "";
     private Dictionary _objectGroups;
     private CustomTypes _ct;
 
@@ -152,6 +153,11 @@ public class TilemapCreator
     public void SetCustomTypes(CustomTypes ct)
     {
         _ct = ct;
+    }
+
+    public void SetSaveTilesetTo(string path)
+    {
+        _tilesetSavePath = path;
     }
 
     public TileSet GetTileset()
@@ -255,7 +261,24 @@ public class TilemapCreator
         if (baseDictionary.TryGetValue("layers", out var layers))
             foreach (var layer in (Array<Dictionary>)layers)
                 HandleLayer(layer, _baseNode);
-
+        
+        if (_tilesetSavePath != "")
+        {
+            var saveRet = ResourceSaver.Save(_tileset, _tilesetSavePath);
+            if (saveRet == Error.Ok)
+            {
+                GD.Print($"Successfully saved tileset to '{_tilesetSavePath}'");
+                foreach (var node in _baseNode.FindChildren("*", "TileMapLayer"))
+                    if (node is TileMapLayer tm && tm.TileSet.ResourcePath == "")
+                        tm.TileSet = (TileSet)LoadResourceFromFile(_tilesetSavePath);
+            }
+            else
+            {
+                GD.PrintErr($"Saving tileset returned error {saveRet}");
+                _errorCount++;
+            }
+        }
+        
         if (baseDictionary.TryGetValue("properties", out var mapProps))
             HandleProperties(_baseNode, (Array<Dictionary>)mapProps);
         
@@ -779,7 +802,7 @@ public class TilemapCreator
             {
                 case GodotNodeTypeProperty:
                 case ClassInternal when !_addClassAsMetadata:
-                continue;
+                    continue;
             }
 
             var metaVal = td.GetMeta(metaName);
@@ -2058,6 +2081,9 @@ public class TilemapCreator
                     break;
 
                 // TileMapLayer properties
+                case "tile_set" when type == "file" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    ((TileMapLayer)targetNode).TileSet = (TileSet)LoadResourceFromFile(val);
+                    break;
                 case "y_sort_origin" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     ((TileMapLayer)targetNode).YSortOrigin = int.Parse(val);
                     break;

@@ -90,6 +90,8 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		ct = CustomTypes.new()
 		ct.load_custom_types(options["tiled_project_file"])
 		tilemapCreator.set_custom_types(ct)
+	if options.has("save_tileset_to") and options["save_tileset_to"] != "":
+		tilemapCreator.set_save_tileset_to(options["save_tileset_to"])
 
 	var node2D = tilemapCreator.create(source_file)
 	if node2D == null:
@@ -97,14 +99,6 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 
 	var errors = tilemapCreator.get_error_count()
 	var warnings = tilemapCreator.get_warning_count()
-	if options.has("save_tileset_to") and options["save_tileset_to"] != "":
-		var tile_set = tilemapCreator.get_tileset()
-		var save_ret = ResourceSaver.save(tile_set, options["save_tileset_to"])
-		if save_ret == OK:
-			print("Successfully saved tileset to '" + options["save_tileset_to"] + "'")
-		else:
-			printerr("Saving tileset returned error " + str(save_ret))
-			errors += 1
 
 	var post_proc_error = false
 	if options.has("post_processor") and options["post_processor"] != "":

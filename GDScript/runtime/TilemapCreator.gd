@@ -66,6 +66,7 @@ var _add_class_as_metadata = false
 var _add_id_as_metadata = false
 var _dont_use_alternative_tiles = false
 var _custom_data_prefix: String = ""
+var _tileset_save_path: String = ""
 var _object_groups
 var _ct: CustomTypes = null
 var _za: ZipAccess = null
@@ -123,8 +124,8 @@ func set_no_alternative_tiles(value: bool):
 
 
 func set_map_wangset_to_terrain(value: bool):
-		_map_wangset_to_terrain = value
-	
+	_map_wangset_to_terrain = value
+
 
 func set_custom_data_prefix(value: String):
 	_custom_data_prefix = value
@@ -132,6 +133,9 @@ func set_custom_data_prefix(value: String):
 
 func set_custom_types(ct: CustomTypes):
 	_ct = ct
+
+func set_save_tileset_to(path: String):
+	_tileset_save_path = path
 
 
 func set_zip_access(za: ZipAccess):
@@ -227,6 +231,18 @@ func create(source_file: String):
 	if base_dictionary.has("layers"):
 		for layer in base_dictionary["layers"]:
 			handle_layer(layer, _base_node)
+
+	if _tileset_save_path != "":
+		var save_ret = ResourceSaver.save(_tileset, _tileset_save_path)
+		if save_ret == OK:
+			print("Successfully saved tileset to '" + _tileset_save_path + "'")
+			for node in _base_node.find_children("*", "TileMapLayer"):
+				if node is TileMapLayer and node.tile_set.resource_path == "":
+					node.tile_set = ResourceLoader.load(_tileset_save_path)
+		else:
+			printerr("Saving tileset returned error " + str(save_ret))
+			_error_count += 1
+
 
 	if base_dictionary.has("properties"):
 		handle_properties(_base_node, base_dictionary["properties"])
@@ -1711,6 +1727,8 @@ func handle_properties(target_node: Node, properties: Array):
 			target_node.use_parent_material = val.to_lower() == "true"
 	
 		# TileMapLayer properties
+		elif name.to_lower() == "tile_set" and type == "file" and target_node is TileMapLayer:
+			target_node.tile_set = load_resource_from_file(val)
 		elif name.to_lower() == "y_sort_origin" and type == "int" and target_node is TileMapLayer:
 			target_node.y_sort_origin = int(val)
 		elif name.to_lower() == "x_draw_order_reversed" and type == "bool" and target_node is TileMapLayer:

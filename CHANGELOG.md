@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.3] - 2024-12-08
+
+### Added
+- If option 'SaveTilesetTo' is used the saved tileset will automatcally be referenced in all TileMapLayer's tilesets 
+- Also evaluate a Tiled custom property 'tile_set' (type 'file') on a (Tiled) tile layer - this was missing.  
+This allows to force the use of a specific Godot tileset resource on the corresponding TileMapLayer.
+
 ## [2.1.2] - 2024-12-03
 
 ### Added

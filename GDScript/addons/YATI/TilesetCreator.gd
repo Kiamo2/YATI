@@ -261,6 +261,7 @@ func register_object_group(tile_id: int, object_group: Dictionary):
 
 func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 	if tile_id < _tile_count:
+		@warning_ignore("integer_division")
 		var row = tile_id / _columns
 		var col = tile_id % _columns
 		var tile_coords = Vector2i(col, row)
@@ -332,6 +333,7 @@ func handle_tiles(tiles: Array):
 			var diff_y = _tile_size.y - _map_tile_size.y
 			if diff_y % 2 != 0:
 				diff_y += 1
+			@warning_ignore("integer_division")
 			current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 				
 		if tile.has("probability"):
@@ -357,8 +359,10 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 	var separation_y: int = 0
 	var separation_vect = Vector2(separation_x, separation_y)
 	var anim_columns: int = 0
+	@warning_ignore("integer_division")
 	var tile_coords = Vector2(tile_id % _columns, tile_id / _columns)
 	var max_diff_x = _columns - tile_coords.x
+	@warning_ignore("integer_division")
 	var max_diff_y = _tile_count / _columns - tile_coords.y
 	var diff_x = 0
 	var diff_y = 0
@@ -367,6 +371,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 		var frame_tile_id: int = frame["tileid"]
 		if frame_count == 2:
 			diff_x = (frame_tile_id - tile_id) % _columns
+			@warning_ignore("integer_division")
 			diff_y = (frame_tile_id - tile_id) / _columns
 			if diff_x == 0 and diff_y > 0 and diff_y < max_diff_y:
 				separation_y = diff_y - 1
@@ -383,6 +388,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 		if frame_count > 1 and frame_count < frames.size():
 			var next_frame_tile_id: int = frames[frame_count]["tileid"]
 			var compare_diff_x = (next_frame_tile_id - frame_tile_id) % _columns
+			@warning_ignore("integer_division")
 			var compare_diff_y = (next_frame_tile_id - frame_tile_id) / _columns
 			if compare_diff_x != diff_x or compare_diff_y != diff_y:
 				print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
@@ -549,7 +555,7 @@ func load_resource_from_file(path: String):
 		return ret
 
 
-func get_bitmask_integer_from_string(mask_string: String, max: int):
+func get_bitmask_integer_from_string(mask_string: String, max_len: int):
 	var ret: int = 0
 	var s1_arr = mask_string.split(",", false)
 	for s1 in s1_arr:
@@ -559,12 +565,12 @@ func get_bitmask_integer_from_string(mask_string: String, max: int):
 			var i2 = int(s2_arr[1]) if s2_arr[1].is_valid_int() else 0
 			if i1 == 0 or i2 == 0 or i1 > i2: continue
 			for i in range(i1, i2+1):
-				if i <= max:
-					ret += pow(2, i-1)
+				if i <= max_len:
+					ret += int(pow(2, i-1))
 		elif s1.is_valid_int():
 			var i = int(s1)
-			if i <= max:
-				ret += pow(2, i-1)
+			if i <= max_len:
+				ret += int(pow(2, i-1))
 	return ret
 
 
@@ -761,6 +767,7 @@ func handle_wangsets_old_mapping(wangsets):
 					var diff_y = _tile_size.y - _map_tile_size.y
 					if diff_y % 2 != 0:
 						diff_y += 1
+					@warning_ignore("integer_division")
 					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 
 				current_tile.terrain_set = current_terrain_set
@@ -790,7 +797,7 @@ func handle_wangsets(wangsets):
 		_terrain_counter = -1
 		var current_terrain_set = _terrain_sets_counter
 
-		var current_terrain = _terrain_counter
+		#var current_terrain = _terrain_counter
 		var terrain_set_name = ""
 		if "name" in wangset:
 			terrain_set_name = wangset["name"]
@@ -830,6 +837,7 @@ func handle_wangsets(wangsets):
 					var diff_y = _tile_size.y - _map_tile_size.y
 					if diff_y % 2 != 0:
 						diff_y += 1
+					@warning_ignore("integer_division")
 					current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 
 				current_tile.terrain_set = current_terrain_set
