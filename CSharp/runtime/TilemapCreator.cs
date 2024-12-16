@@ -451,9 +451,9 @@ public class TilemapCreator
                 if (_za != null)
                 {
                     if (!_za.FileExists(texturePath))
-                        texturePath = CleanupPath(_basePath.GetBaseDir().PathJoin((string)layer["image"]));
+                        texturePath = CommonUtils.CleanupPath(_basePath.GetBaseDir().PathJoin((string)layer["image"]));
                     if (!_za.FileExists(texturePath))
-                        texturePath = CleanupPath(_basePath.PathJoin((string)layer["image"]));
+                        texturePath = CommonUtils.CleanupPath(_basePath.PathJoin((string)layer["image"]));
                     if (_za.FileExists(texturePath))
                     {
                         var image = new Image();
@@ -832,6 +832,23 @@ public class TilemapCreator
         };
     }
 
+    private static Vector2 GetInstanceOffset(float width, float height, string alignment)
+    {
+        return alignment switch
+        {
+            "bottomleft" => new Vector2(0.0f, -height),
+            "bottom" => new Vector2(-width / 2.0f, -height),
+            "bottomright" => new Vector2(-width, -height),
+            "left" => new Vector2(0.0f, -height / 2.0f),
+            "center" => new Vector2(-width / 2.0f, -height / 2.0f),
+            "right" => new Vector2(-width, -height / 2.0f),
+            "topleft" => Vector2.Zero,
+            "top" => new Vector2(-width / 2.0f, 0.0f),
+            "topright" => new Vector2(-width, 0.0f),
+            _ => Vector2.Zero
+        };
+    }
+
     private void ConvertMetaDataToObjProperties(TileData td, Dictionary obj)
     {
         var metaList = td.GetMetaList();
@@ -880,40 +897,6 @@ public class TilemapCreator
                 obj.Add("properties", new Array<Dictionary> { propDict });
         }
     }
-
-    private static string CleanupPath(string path)
-    {
-        while (true)
-        {
-            var pathArr = path.Split('/');
-            var isClean = true;
-            for (var i = 1; i < pathArr.Length; i++)
-            {
-                if (pathArr[i] == "..")
-                {
-                    pathArr[i] = string.Empty;
-                    pathArr[i - 1] = string.Empty;
-                    isClean = false;
-                    break;
-                }
-
-                if (pathArr[i] != ".") continue;
-                pathArr[i] = string.Empty;
-                isClean = false;
-            }
-
-            var newPath = string.Empty;
-            foreach (var t in pathArr)
-            {
-                if (t == string.Empty) continue;
-                if (newPath != string.Empty) newPath += '/';
-                if (t != string.Empty) newPath += t;
-            }
-
-            if (isClean) return newPath;
-            path = newPath;
-        }
-    }
     
     private void HandleObject(Dictionary obj, Node layerNode, TileSet tileset, Vector2 offSet)
     {
@@ -955,7 +938,7 @@ public class TilemapCreator
         {
             var templatePath = _basePath.PathJoin((string)tplVal);
             if (_za != null && !_za.FileExists(templatePath))
-                templatePath = CleanupPath(templatePath);
+                templatePath = CommonUtils.CleanupPath(templatePath);
             var templateDict = DictionaryBuilder.GetDictionary(templatePath, _za);
             //var templateFirstGids = new Array<int>();
             TileSet templateTileSet = null;
@@ -1196,9 +1179,10 @@ public class TilemapCreator
                     layerNode.AddChild(instance);
                     instance.Owner = _baseNode;
                     instance.Name = (objName != "") ? objName : resPath.GetFile().GetBaseName();
-                    ((Node2D)instance).Position = TransposeCoords(objX, objY);
+                    ((Node2D)instance).Position = TransposeCoords(objX, objY) + GetInstanceOffset(objWidth, objHeight, _currentObjectAlignment);
                     ((Node2D)instance).RotationDegrees = objRot;
                     ((Node2D)instance).Visible = objVisible;
+                    ((Node2D)instance).Scale = objSprite.Scale;
                     ConvertMetaDataToObjProperties(td, obj);
                     if (_addClassAsMetadata && classString != "")
                         instance.SetMeta("class", classString);
@@ -2025,57 +2009,13 @@ public class TilemapCreator
 
         return ret;
     }
-
-    private static uint GetBitmaskIntegerFromString(string maskString, int max)
-    {
-        uint ret = 0;
-        var s1Arr = maskString.Split(',', StringSplitOptions.TrimEntries);
-        foreach (var s1 in s1Arr)
-        {
-            if (s1.Contains('-'))
-            {
-                var s2Arr = s1.Split('-', 2, StringSplitOptions.TrimEntries);
-                if (!int.TryParse(s2Arr[0], out var i1) || !int.TryParse(s2Arr[1], out var i2)) continue;
-                if (i1 > i2) continue;
-                for (var i = i1; i <= i2; i++)
-                    if (i <= max)
-                        ret += (uint)Math.Pow(2, i - 1);
-            }
-            else if (int.TryParse(s1, out var i)) 
-                if (i <= max) 
-                    ret += (uint)Math.Pow(2, i - 1);
-        }
-
-        return ret;
-    }
-
+    
     private Dictionary GetObjectGroup(int index)
     {
         Dictionary ret = null;
         if (_objectGroups != null)
             ret = (Dictionary)_objectGroups.GetValueOrDefault(index, (Dictionary)null);
         return ret;
-    }
-    
-    private static Variant GetRightTypedValue(string type, string val)
-    {
-        switch (type)
-        {
-            case "bool":
-                return bool.Parse(val);
-            case "float":
-                return float.Parse(val, Inv);
-            case "int":
-                return int.Parse(val);
-            case "color":
-            {
-                // If alpha is present it's oddly the first byte, so we have to shift it to the end
-                if (val.Length == 9) val = val[0] + val[3..] + val.Substring(1, 2);
-                return val;
-            }
-            default:
-                return val;
-        }
     }
 
     private void HandleProperties(Node targetNode, Array<Dictionary> properties)
@@ -2134,10 +2074,10 @@ public class TilemapCreator
                         ((CanvasItem)targetNode).ClipChildren = (CanvasItem.ClipChildrenMode)int.Parse(val);
                     break;
                 case "light_mask" when (type == "string"):
-                    ((CanvasItem)targetNode).LightMask = (int)GetBitmaskIntegerFromString(val, 20);
+                    ((CanvasItem)targetNode).LightMask = (int)CommonUtils.GetBitmaskIntegerFromString(val, 20);
                     break;
                 case "visibility_layer" when (type == "string"):
-                    ((CanvasItem)targetNode).VisibilityLayer = GetBitmaskIntegerFromString(val, 20);
+                    ((CanvasItem)targetNode).VisibilityLayer = CommonUtils.GetBitmaskIntegerFromString(val, 20);
                     break;
                 case "z_index" when (type == "int"):
                     ((CanvasItem)targetNode).ZIndex = int.Parse(val);
@@ -2200,10 +2140,10 @@ public class TilemapCreator
                         ((CollisionObject2D)targetNode).DisableMode = (CollisionObject2D.DisableModeEnum)int.Parse(val);
                     break;
                 case "collision_layer" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
-                    ((CollisionObject2D)targetNode).CollisionLayer = GetBitmaskIntegerFromString(val, 32);
+                    ((CollisionObject2D)targetNode).CollisionLayer = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "collision_mask" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
-                    ((CollisionObject2D)targetNode).CollisionMask = GetBitmaskIntegerFromString(val, 32);
+                    ((CollisionObject2D)targetNode).CollisionMask = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "collision_priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
                     ((CollisionObject2D)targetNode).CollisionPriority = float.Parse(val, Inv);
@@ -2350,19 +2290,19 @@ public class TilemapCreator
                         ((CharacterBody2D)targetNode).PlatformOnLeave = (CharacterBody2D.PlatformOnLeaveEnum)int.Parse(val);
                     break;
                 case "platform_floor_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).PlatformFloorLayers = GetBitmaskIntegerFromString(val, 32);
+                    ((CharacterBody2D)targetNode).PlatformFloorLayers = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "platform_wall_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).PlatformWallLayers = GetBitmaskIntegerFromString(val, 32);
+                    ((CharacterBody2D)targetNode).PlatformWallLayers = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "safe_margin" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).SafeMargin = float.Parse(val, Inv);
                     break;
                 case "collision_layer" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).CollisionLayer = GetBitmaskIntegerFromString(val, 32);
+                    ((CharacterBody2D)targetNode).CollisionLayer = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "collision_mask" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    ((CharacterBody2D)targetNode).CollisionMask = GetBitmaskIntegerFromString(val, 32);
+                    ((CharacterBody2D)targetNode).CollisionMask = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "collision_priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).CollisionPriority = float.Parse(val, Inv);
@@ -2452,7 +2392,7 @@ public class TilemapCreator
                     ((NavigationRegion2D)targetNode).Enabled = bool.Parse(val);
                     break;
                 case "navigation_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
-                    ((NavigationRegion2D)targetNode).NavigationLayers = GetBitmaskIntegerFromString(val, 32);
+                    ((NavigationRegion2D)targetNode).NavigationLayers = CommonUtils.GetBitmaskIntegerFromString(val, 32);
                     break;
                 case "enter_cost" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
                     ((NavigationRegion2D)targetNode).EnterCost = float.Parse(val, Inv);
@@ -2466,7 +2406,7 @@ public class TilemapCreator
                     ((LightOccluder2D)targetNode).SdfCollision = bool.Parse(val);
                     break;
                 case "occluder_light_mask" when type == "string" && targetNodeClass.IsAssignableTo(typeof(LightOccluder2D)):
-                    ((LightOccluder2D)targetNode).OccluderLightMask = (int)GetBitmaskIntegerFromString(val, 20);
+                    ((LightOccluder2D)targetNode).OccluderLightMask = (int)CommonUtils.GetBitmaskIntegerFromString(val, 20);
                     break;
 
                 // Polygon2D properties
@@ -2490,7 +2430,7 @@ public class TilemapCreator
                 // Other properties are added as Metadata
                 default:
                 {
-                    targetNode.SetMeta(name, GetRightTypedValue(type, val));
+                    targetNode.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
                     break;
                 }
             }

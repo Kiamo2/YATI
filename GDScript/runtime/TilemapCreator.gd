@@ -146,7 +146,7 @@ func get_tileset():
 	return _tileset
 
 
-func recursively_change_owner(node: Node, new_owner: Node):
+static func recursively_change_owner(node: Node, new_owner: Node):
 	if node != new_owner:
 		node.owner = new_owner
 	if node.get_child_count() <= 0: return
@@ -389,9 +389,9 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		var file_not_found: bool = true
 		if _za:
 			if not _za.file_exists(texture_path):
-				texture_path = cleanup_path(_base_path.get_base_dir().path_join(layer["image"]))
+				texture_path = CommonUtils.cleanup_path(_base_path.get_base_dir().path_join(layer["image"]))
 			if not _za.file_exists(texture_path):
-				texture_path = cleanup_path(_base_path.path_join(layer["image"]))
+				texture_path = CommonUtils.cleanup_path(_base_path.path_join(layer["image"]))
 			if _za.file_exists(texture_path):
 				var image = Image.new()
 				var extension = texture_path.get_extension().to_lower()
@@ -639,7 +639,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		_tilemap_layer.set_cell(cell_coords, source_id, atlas_coords, alt_id)
 
 
-func get_godot_type(godot_type_string: String):
+static func get_godot_type(godot_type_string: String):
 	var gts = godot_type_string.to_lower()
 	var godot_type = {
 		"": _godot_type.EMPTY,
@@ -658,7 +658,7 @@ func get_godot_type(godot_type_string: String):
 	return godot_type
 
 
-func get_godot_node_type_property(obj: Dictionary):
+static func get_godot_node_type_property(obj: Dictionary):
 	var ret = ""
 	var property_found = false
 	if obj.has("properties"):
@@ -673,7 +673,7 @@ func get_godot_node_type_property(obj: Dictionary):
 	return [ret, property_found]
 
 
-func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignment: String):
+static func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignment: String):
 	obj_sprite.offset = {
 		"bottomleft": Vector2(width / 2.0, -height / 2.0),
 		"bottom": Vector2(0.0, -height / 2.0),
@@ -685,6 +685,20 @@ func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignm
 		"top": Vector2(0.0, height / 2.0),
 		"topright": Vector2(-width / 2.0, height / 2.0),
 	}.get(alignment, Vector2(width / 2.0, -height / 2.0))
+
+
+static func get_instance_offset(width: float, height: float, alignment: String) -> Vector2:
+	return {
+		"bottomleft": Vector2(0.0, -height),
+		"bottom": Vector2(-width / 2.0, -height),
+		"bottomright": Vector2(-width, -height),
+		"left": Vector2(0.0, -height / 2.0),
+		"center": Vector2(-width / 2.0, -height / 2.0),
+		"right": Vector2(-width, -height / 2.0),
+		"topleft": Vector2.ZERO,
+		"top": Vector2(-width / 2.0, 0.0),
+		"topright": Vector2(-width, 0.0),
+	}.get(alignment, Vector2.ZERO)
 
 
 func convert_metadata_to_obj_properties(td: TileData, obj: Dictionary) -> void:
@@ -723,30 +737,6 @@ func convert_metadata_to_obj_properties(td: TileData, obj: Dictionary) -> void:
 		else:
 			obj["properties"] = [prop_dict]
 
-func cleanup_path(path: String) -> String:
-	while true:
-		var path_arr = path.split("/")
-		var is_clean: bool = true
-		for i in range(1, path_arr.size()):
-			if path_arr[i] == "..":
-				path_arr[i] = ""
-				path_arr[i-1] = ""
-				is_clean = false
-				break
-			if path_arr[i] == ".":
-				path_arr[i] = ""
-				is_clean = false
-		var new_path = ""
-		for t in path_arr:
-			if t == "": continue
-			if new_path != "":
-				new_path += "/"
-			if t != "":
-				new_path += t
-		if is_clean:
-			return new_path
-		path = new_path
-	return ""
 
 func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: Vector2) -> void:
 	var obj_id = obj.get("id", 0)
@@ -784,7 +774,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	if obj.has("template"):
 		var template_path = _base_path.path_join(obj["template"])
 		if _za and not _za.file_exists(template_path):
-			template_path = cleanup_path(template_path)
+			template_path = CommonUtils.cleanup_path(template_path)
 		var template_dict = preload("DictionaryBuilder.gd").new().get_dictionary(template_path, _za)
 		var template_tileset = null
 
@@ -970,9 +960,10 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				layer_node.add_child(instance)
 				instance.owner = _base_node
 				instance.name = obj_name if obj_name != "" else res_path.get_file().get_basename()
-				instance.position = transpose_coords(obj_x, obj_y)
+				instance.position = transpose_coords(obj_x, obj_y) + get_instance_offset(obj_width, obj_height, _current_object_alignment)
 				instance.rotation_degrees = obj_rot
 				instance.visible = obj_visible
+				instance.scale = obj_sprite.scale
 				convert_metadata_to_obj_properties(td, obj)
 				if _add_class_as_metadata and class_string != "":
 					instance.set_meta("class", class_string)
@@ -1491,7 +1482,7 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 				collision_shape.one_way_collision_margin = coll_margin
 
 
-func get_property(obj: Dictionary, property_name: String, property_type: String):
+static func get_property(obj: Dictionary, property_name: String, property_type: String):
 	var ret = ""
 	if not obj.has("properties"): return ret
 	for property in obj["properties"]:
@@ -1623,46 +1614,12 @@ func load_resource_from_file(path: String):
 	return ret
 	
 	
-func get_bitmask_integer_from_string(mask_string: String, max_len: int):
-	var ret: int = 0
-	var s1_arr = mask_string.split(",", false)
-	for s1 in s1_arr:
-		if s1.contains("-"):
-			var s2_arr = s1.split("-", false, 1)
-			var i1 = int(s2_arr[0]) if s2_arr[0].is_valid_int() else 0
-			var i2 = int(s2_arr[1]) if s2_arr[1].is_valid_int() else 0
-			if i1 == 0 or i2 == 0 or i1 > i2: continue
-			for i in range(i1, i2+1):
-				if i <= max_len:
-					ret += int(pow(2, i-1))
-		elif s1.is_valid_int():
-			var i = int(s1)
-			if i <= max_len:
-				ret += int(pow(2, i-1))
-	return ret
-
-
 func get_object_group(index: int):
 	var ret = null
 	if _object_groups != null:
 		ret = _object_groups.get(index, null)
 	return ret
 
-
-func get_right_typed_value(type: String, val: String):
-	if type == "bool":
-		return val == "true"
-	elif type == "float":
-		return float(val)
-	elif type == "int":
-		return int(val)
-	elif type == "color":
-		# If alpha is present it's oddly the first byte, so we have to shift it to the end
-		if val.length() == 9: val = val[0] + val.substr(3) + val.substr(1,2)
-		return val
-	else:
-		return val
-	
 
 func handle_properties(target_node: Node, properties: Array):
 	var has_children = false
@@ -1706,9 +1663,9 @@ func handle_properties(target_node: Node, properties: Array):
 			if int(val) < CanvasItem.CLIP_CHILDREN_MAX:
 				target_node.clip_children = int(val)
 		elif name.to_lower() == "light_mask" and type == "string":
-			target_node.light_mask = get_bitmask_integer_from_string(val, 20)
+			target_node.light_mask = CommonUtils.get_bitmask_integer_from_string(val, 20)
 		elif name.to_lower() == "visibility_layer" and type == "string":
-			target_node.visibility_layer = get_bitmask_integer_from_string(val, 20)
+			target_node.visibility_layer = CommonUtils.get_bitmask_integer_from_string(val, 20)
 		elif name.to_lower() == "z_index" and type == "int":
 			target_node.z_index = int(val)
 		elif name.to_lower() == "z_as_relative" and type == "bool":
@@ -1753,9 +1710,9 @@ func handle_properties(target_node: Node, properties: Array):
 			if int(val) < 3:
 				target_node.disable_mode = int(val)
 		elif name.to_lower() == "collision_layer" and type == "string" and target_node is CollisionObject2D:
-			target_node.collision_layer = get_bitmask_integer_from_string(val, 32)
+			target_node.collision_layer = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "collision_mask" and type == "string" and target_node is CollisionObject2D:
-			target_node.collision_mask = get_bitmask_integer_from_string(val, 32)
+			target_node.collision_mask = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "collision_priority" and  (type == "float" or type == "int") and target_node is CollisionObject2D:
 			target_node.collision_priority = float(val)
 		elif name.to_lower() == "input_pickable" and type == "bool" and target_node is CollisionObject2D:
@@ -1855,15 +1812,15 @@ func handle_properties(target_node: Node, properties: Array):
 			if int(val) < 3:
 				target_node.platform_on_leave = int(val)
 		elif name.to_lower() == "platform_floor_layers" and type == "string" and target_node is CharacterBody2D:
-			target_node.platform_floor_layers = get_bitmask_integer_from_string(val, 32)
+			target_node.platform_floor_layers = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "platform_wall_layers" and type == "string" and target_node is CharacterBody2D:
-			target_node.platform_wall_layers = get_bitmask_integer_from_string(val, 32)
+			target_node.platform_wall_layers = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "safe_margin" and  (type == "float" or type == "int") and target_node is CharacterBody2D:
 			target_node.safe_margin = float(val)
 		elif name.to_lower() == "collision_layer" and type == "string" and target_node is CharacterBody2D:
-			target_node.collision_layer = get_bitmask_integer_from_string(val, 32)
+			target_node.collision_layer = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "collision_mask" and type == "string" and target_node is CharacterBody2D:
-			target_node.collision_mask = get_bitmask_integer_from_string(val, 32)
+			target_node.collision_mask = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "collision_priority" and  (type == "float" or type == "int") and target_node is CharacterBody2D:
 			target_node.collision_priority = float(val)
 
@@ -1926,7 +1883,7 @@ func handle_properties(target_node: Node, properties: Array):
 		elif name.to_lower() == "enabled" and type == "bool" and target_node is NavigationRegion2D:
 			target_node.enabled = val.to_lower() == "true"
 		elif name.to_lower() == "navigation_layers" and type == "string" and target_node is NavigationRegion2D:
-			target_node.navigation_layers = get_bitmask_integer_from_string(val, 32)
+			target_node.navigation_layers = CommonUtils.get_bitmask_integer_from_string(val, 32)
 		elif name.to_lower() == "enter_cost" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
 			target_node.enter_cost = float(val)
 		elif name.to_lower() == "travel_cost" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
@@ -1936,7 +1893,7 @@ func handle_properties(target_node: Node, properties: Array):
 		elif name.to_lower() == "sdf_collision" and type == "bool" and target_node is LightOccluder2D:
 			target_node.sdf_collision = val.to_lower() == "true"
 		elif name.to_lower() == "occluder_light_mask" and type == "string" and target_node is LightOccluder2D:
-			target_node.occluder_light_mask = get_bitmask_integer_from_string(val, 20)
+			target_node.occluder_light_mask = CommonUtils.get_bitmask_integer_from_string(val, 20)
 
 		# Polygon2D properties
 		elif name.to_lower() == "color" and type == "string" and target_node is Polygon2D:
@@ -1954,4 +1911,4 @@ func handle_properties(target_node: Node, properties: Array):
 
 		# Other properties are added as Metadata
 		else:
-			target_node.set_meta(name, get_right_typed_value(type, val))
+			target_node.set_meta(name, CommonUtils.get_right_typed_value(type, val))

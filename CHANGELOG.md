@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.4] - 2024-12-16
+
+### Fixed
+
+- Fixed issue if a tile's image source is a Tiled map (.tmx or .tmj)  
+**Please note:** To make full use of this i.e. that it's looking like in Tiled, instanting the .tmx / .tmj (or it's saved .tscn) is additionally needed. \+ The referenced .tmx / .tmj should already have been imported.
+
+### Refactoring notes (no change in functionalitiy)
+
+- Moved some common code into a new module 'CommonUtils'
+
 ## [2.1.3] - 2024-12-08
 
 ### Added

@@ -112,7 +112,7 @@ func create_from_dictionary_array(tileSets: Array):
  
 			if _za:
 				if not _za.file_exists(checked_file):
-					checked_file = cleanup_path(_base_path_map.path_join(checked_file))
+					checked_file = CommonUtils.cleanup_path(_base_path_map.path_join(checked_file))
 			elif not FileAccess.file_exists(checked_file):
 				checked_file = _base_path_map.path_join(checked_file)
 			_base_path_tileset = checked_file.get_base_dir()
@@ -224,39 +224,15 @@ func create_or_append(tile_set: Dictionary):
 	if tile_set.has("properties"):
 		handle_tileset_properties(tile_set["properties"])
 
-func cleanup_path(path: String) -> String:
-	while true:
-		var path_arr = path.split("/")
-		var is_clean: bool = true
-		for i in range(1, path_arr.size()):
-			if path_arr[i] == "..":
-				path_arr[i] = ""
-				path_arr[i-1] = ""
-				is_clean = false
-				break
-			if path_arr[i] == ".":
-				path_arr[i] = ""
-				is_clean = false
-		var new_path = ""
-		for t in path_arr:
-			if t == "": continue
-			if new_path != "":
-				new_path += "/"
-			if t != "":
-				new_path += t
-		if is_clean:
-			return new_path
-		path = new_path
-	return ""
 
 func load_image(path: String):
 	var orig_path = path
 	var ret: Texture2D = null
 	if _za:
 		if not _za.file_exists(path):
-			path = cleanup_path(_base_path_map.get_base_dir().path_join(orig_path))
+			path = CommonUtils.cleanup_path(_base_path_map.get_base_dir().path_join(orig_path))
 		if not _za.file_exists(path):
-			path = cleanup_path(_base_path_tileset.path_join(orig_path))
+			path = CommonUtils.cleanup_path(_base_path_tileset.path_join(orig_path))
 		if _za.file_exists(path):
 			var image = Image.new()
 			var extension = path.get_extension().to_lower()
@@ -349,7 +325,16 @@ func handle_tiles(tiles: Array):
 			register_atlas_source(added_source_id, 1, tile_id, Vector2i.ZERO)
 
 			var texture_path = tile["image"]
-			_current_atlas_source.texture = load_image(texture_path)
+			var ext = texture_path.get_extension().to_lower()
+			if ext == "tmx" or ext == "tmj":
+				var placeholder_texture = PlaceholderTexture2D.new()
+				var width = tile["imagewidth"]
+				var height = tile["imageheight"]
+				placeholder_texture.size = Vector2(width, height)
+				_current_atlas_source.texture = placeholder_texture
+			else:
+				_current_atlas_source.texture = load_image(texture_path)
+
 			_current_atlas_source.resource_name = texture_path.get_file().get_basename()
 			var texture_width = _current_atlas_source.texture.get_width()
 			if tile.has("width"):
@@ -604,40 +589,6 @@ func load_resource_from_file(path: String):
 		return ret
 
 
-func get_bitmask_integer_from_string(mask_string: String, max_len: int):
-	var ret: int = 0
-	var s1_arr = mask_string.split(",", false)
-	for s1 in s1_arr:
-		if s1.contains("-"):
-			var s2_arr = s1.split("-", false, 1)
-			var i1 = int(s2_arr[0]) if s2_arr[0].is_valid_int() else 0
-			var i2 = int(s2_arr[1]) if s2_arr[1].is_valid_int() else 0
-			if i1 == 0 or i2 == 0 or i1 > i2: continue
-			for i in range(i1, i2+1):
-				if i <= max_len:
-					ret += int(pow(2, i-1))
-		elif s1.is_valid_int():
-			var i = int(s1)
-			if i <= max_len:
-				ret += int(pow(2, i-1))
-	return ret
-
-
-func get_right_typed_value(type: String, val: String):
-	if type == "bool":
-		return val == "true"
-	elif type == "float":
-		return float(val)
-	elif type == "int":
-		return int(val)
-	elif type == "color":
-		# If alpha is present it's strangely the first byte, so we have to shift it to the end
-		if val.length() == 9: val = val[0] + val.substr(3) + val.substr(1,2)
-		return val
-	else:
-		return val
-
-
 func handle_tile_properties(properties: Array, current_tile: TileData):
 	for property in properties:
 		var name = property.get("name", "")
@@ -706,10 +657,10 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 					}.get(type, TYPE_STRING)
 					_tileset.set_custom_data_layer_type(custom_layer, custom_type)
 
-				current_tile.set_custom_data(name, get_right_typed_value(type, val))
+				current_tile.set_custom_data(name, CommonUtils.get_right_typed_value(type, val))
 
 			if _custom_data_prefix == "" or not name.to_lower().begins_with(_custom_data_prefix):
-				current_tile.set_meta(name, get_right_typed_value(type, val))
+				current_tile.set_meta(name, CommonUtils.get_right_typed_value(type, val))
 
 
 func handle_tileset_properties(properties: Array):
@@ -721,36 +672,36 @@ func handle_tileset_properties(properties: Array):
 		var layer_index
 		if name.to_lower() == "collision_layer" and type == "string":
 			ensure_layer_existing(layer_type.PHYSICS, 0)
-			_tileset.set_physics_layer_collision_layer(0, get_bitmask_integer_from_string(val, 32))
+			_tileset.set_physics_layer_collision_layer(0, CommonUtils.get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower().begins_with("collision_layer_") and type == "string":
 			if not name.substr(16).is_valid_int(): continue
 			layer_index = int(name.substr(16))
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
-			_tileset.set_physics_layer_collision_layer(layer_index, get_bitmask_integer_from_string(val, 32))
+			_tileset.set_physics_layer_collision_layer(layer_index, CommonUtils.get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower() == "collision_mask" and type == "string":
 			ensure_layer_existing(layer_type.PHYSICS, 0)
-			_tileset.set_physics_layer_collision_mask(0, get_bitmask_integer_from_string(val, 32))
+			_tileset.set_physics_layer_collision_mask(0, CommonUtils.get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower().begins_with("collision_mask_") and type == "string":
 			if not name.substr(15).is_valid_int(): continue
 			layer_index = int(name.substr(15))
 			ensure_layer_existing(layer_type.PHYSICS, layer_index)
-			_tileset.set_physics_layer_collision_mask(layer_index, get_bitmask_integer_from_string(val, 32))
+			_tileset.set_physics_layer_collision_mask(layer_index, CommonUtils.get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower() == "layers" and type == "string":
 			ensure_layer_existing(layer_type.NAVIGATION, 0)
-			_tileset.set_navigation_layer_layers(0, get_bitmask_integer_from_string(val, 32))
+			_tileset.set_navigation_layer_layers(0, CommonUtils.get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower().begins_with("layers_") and type == "string":
 			if not name.substr(7).is_valid_int(): continue
 			layer_index = int(name.substr(7))
 			ensure_layer_existing(layer_type.NAVIGATION, layer_index)
-			_tileset.set_navigation_layer_layers(layer_index, get_bitmask_integer_from_string(val, 32))
+			_tileset.set_navigation_layer_layers(layer_index, CommonUtils.get_bitmask_integer_from_string(val, 32))
 		elif name.to_lower() == "light_mask" and type == "string":
 			ensure_layer_existing(layer_type.OCCLUSION, 0)
-			_tileset.set_occlusion_layer_light_mask(0, get_bitmask_integer_from_string(val, 20))
+			_tileset.set_occlusion_layer_light_mask(0, CommonUtils.get_bitmask_integer_from_string(val, 20))
 		elif name.to_lower().begins_with("light_mask_") and type == "string":
 			if not name.substr(11).is_valid_int(): continue
 			layer_index = int(name.substr(11))
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
-			_tileset.set_occlusion_layer_light_mask(layer_index, get_bitmask_integer_from_string(val, 20))
+			_tileset.set_occlusion_layer_light_mask(layer_index, CommonUtils.get_bitmask_integer_from_string(val, 20))
 		elif name.to_lower() == "sdf_collision_" and type == "bool":
 			ensure_layer_existing(layer_type.OCCLUSION, 0)
 			_tileset.set_occlusion_layer_sdf_collision(0, val.to_lower() == "true")
@@ -760,7 +711,7 @@ func handle_tileset_properties(properties: Array):
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_sdf_collision(layer_index, val.to_lower() == "true")
 		elif name.to_lower() != GODOT_ATLAS_ID_PROPERTY:
-			_tileset.set_meta(name, get_right_typed_value(type, val))
+			_tileset.set_meta(name, CommonUtils.get_right_typed_value(type, val))
 
 
 func ensure_layer_existing(tp: layer_type, layer: int):

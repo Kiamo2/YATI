@@ -354,7 +354,16 @@ public class TilesetCreator
                 RegisterAtlasSource(addedSourceId, 1, tileId, Vector2I.Zero);
                 
                 var texturePath = (string)tile["image"];
-                _currentAtlasSource.Texture = LoadImage(texturePath);
+                if (texturePath.GetExtension().ToLower() is "tmx" or "tmj")
+                {
+                    var placeholderTexture = new PlaceholderTexture2D();
+                    var width = (int)tile["imagewidth"];
+                    var height = (int)tile["imageheight"];
+                    placeholderTexture.SetSize(new Vector2(width, height));
+                    _currentAtlasSource.Texture = placeholderTexture;
+                }
+                else
+                    _currentAtlasSource.Texture = LoadImage(texturePath);
 
                 // ToDo: The following code is a (C# version only) workaround against possible racing conditions
                 var i = 0;
@@ -680,50 +689,6 @@ public class TilesetCreator
         return ret;
     }
     
-    private static uint GetBitmaskIntegerFromString(string maskString, int max)
-    {
-        uint ret = 0;
-        var s1Arr = maskString.Split(',', StringSplitOptions.TrimEntries);
-        foreach (var s1 in s1Arr)
-        {
-            if (s1.Contains('-'))
-            {
-                var s2Arr = s1.Split('-', 2, StringSplitOptions.TrimEntries);
-                if (!int.TryParse(s2Arr[0], out var i1) || !int.TryParse(s2Arr[1], out var i2)) continue;
-                if (i1 > i2) continue;
-                for (var i = i1; i <= i2; i++)
-                    if (i <= max)
-                        ret += (uint)Math.Pow(2, i - 1);
-            }
-            else if (int.TryParse(s1, out var i)) 
-                if (i <= max) 
-                    ret += (uint)Math.Pow(2, i - 1);
-        }
-
-        return ret;
-    }
-
-    private static Variant GetRightTypedValue(string type, string val)
-    {
-        switch (type)
-        {
-            case "bool":
-                return bool.Parse(val);
-            case "float":
-                return float.Parse(val, Inv);
-            case "int":
-                return int.Parse(val);
-            case "color":
-            {
-                // If alpha is present it's strangely the first byte, so we have to shift it to the end
-                if (val.Length == 9) val = val[0] + val[3..] + val.Substring(1, 2);
-                return val;
-            }
-            default:
-                return val;
-        }
-    }
-
     private void HandleTileProperties(Array<Dictionary> properties, TileData currentTile)
     {
         foreach (var property in properties)
@@ -818,10 +783,10 @@ public class TilesetCreator
                         _tileset.SetCustomDataLayerType(customLayer, customType);
                     }
 
-                    currentTile.SetCustomData(name, GetRightTypedValue(type, val));
+                    currentTile.SetCustomData(name, CommonUtils.GetRightTypedValue(type, val));
                 }
                 if (_customDataPrefix == "" || !name.ToLower().StartsWith(_customDataPrefix))
-                    currentTile.SetMeta(name, GetRightTypedValue(type, val));
+                    currentTile.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
             }
         }
     }
@@ -838,46 +803,46 @@ public class TilesetCreator
             if (name.ToLower() == "collision_layer" && type == "string")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
-                _tileset.SetPhysicsLayerCollisionLayer(0, GetBitmaskIntegerFromString(val, 32));
+                _tileset.SetPhysicsLayerCollisionLayer(0, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower().StartsWith("collision_layer_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(16), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
-                _tileset.SetPhysicsLayerCollisionLayer(layerIndex, GetBitmaskIntegerFromString(val, 32));
+                _tileset.SetPhysicsLayerCollisionLayer(layerIndex, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower() == "collision_mask" && type == "string")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
-                _tileset.SetPhysicsLayerCollisionMask(0, GetBitmaskIntegerFromString(val, 32));
+                _tileset.SetPhysicsLayerCollisionMask(0, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower().StartsWith("collision_mask_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(15), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
-                _tileset.SetPhysicsLayerCollisionMask(layerIndex, GetBitmaskIntegerFromString(val, 32));
+                _tileset.SetPhysicsLayerCollisionMask(layerIndex, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower() == "layers" && type == "string")
             {
                 EnsureLayerExisting(LayerType.Navigation, 0);
-                _tileset.SetNavigationLayerLayers(0, GetBitmaskIntegerFromString(val, 32));
+                _tileset.SetNavigationLayerLayers(0, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower().StartsWith("layers_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(7), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Navigation, layerIndex);
-                _tileset.SetNavigationLayerLayers(layerIndex, GetBitmaskIntegerFromString(val, 32));
+                _tileset.SetNavigationLayerLayers(layerIndex, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
             else if (name.ToLower() == "light_mask" && type == "string")
             {
                 EnsureLayerExisting(LayerType.Occlusion, 0);
-                _tileset.SetOcclusionLayerLightMask(0, (int)GetBitmaskIntegerFromString(val, 20));
+                _tileset.SetOcclusionLayerLightMask(0, (int)CommonUtils.GetBitmaskIntegerFromString(val, 20));
             }
             else if (name.ToLower().StartsWith("light_mask_") && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(11), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
-                _tileset.SetOcclusionLayerLightMask(layerIndex, (int)GetBitmaskIntegerFromString(val, 20));
+                _tileset.SetOcclusionLayerLightMask(layerIndex, (int)CommonUtils.GetBitmaskIntegerFromString(val, 20));
             }
             else if (name.ToLower() == "sdf_collision" && type == "bool")
             {
@@ -891,7 +856,7 @@ public class TilesetCreator
                 _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
             }
             else if (name.ToLower() != GodotAtlasIdProperty)
-                _tileset.SetMeta(name, GetRightTypedValue(type, val));
+                _tileset.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
         }
     }
 
