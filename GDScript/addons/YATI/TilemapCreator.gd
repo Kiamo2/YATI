@@ -75,8 +75,6 @@ var _iso_rot: float = 0.0
 var _iso_skew: float = 0.0
 var _iso_scale: Vector2
 
-var _error_count = 0
-var _warning_count = 0
 var _godot_version: int
 
 enum _godot_type {
@@ -98,14 +96,6 @@ enum _godot_type {
 func custom_compare(a: Dictionary, b: Dictionary):
 	return a["sourceId"] < b["sourceId"]
 
-
-func get_error_count():
-	return _error_count
-
-
-func get_warning_count():
-	return _warning_count
-	
 
 func set_use_default_filter(value: bool):
 	_use_default_filter = value
@@ -154,7 +144,11 @@ static func recursively_change_owner(node: Node, new_owner: Node):
 func create(source_file: String):
 	_godot_version = Engine.get_version_info()["hex"]
 	_base_path = source_file.get_base_dir()
-	var base_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(source_file)
+	var map_content = DataLoader.get_tiled_file_content(source_file, _base_path)
+	if map_content == null:
+		printerr("FATAL ERROR: Tiled map file '" + source_file + "' not found.")
+		return null
+	var base_dictionary: Dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(map_content, source_file)
 	_map_orientation = base_dictionary.get("orientation", "othogonal")
 	_map_width = base_dictionary.get("width", 0)
 	_map_height = base_dictionary.get("height", 0)
@@ -181,8 +175,6 @@ func create(source_file: String):
 			tileset_creator.map_wangset_to_terrain()
 		tileset_creator.set_custom_data_prefix(_custom_data_prefix)
 		_tileset = tileset_creator.create_from_dictionary_array(tilesets)
-		_error_count = tileset_creator.get_error_count()
-		_warning_count = tileset_creator.get_warning_count()
 		_atlas_sources = tileset_creator.get_registered_atlas_sources()
 		if _atlas_sources != null:
 			_atlas_sources.sort_custom(custom_compare)
@@ -236,7 +228,7 @@ func create(source_file: String):
 					node.tile_set = ResourceLoader.load(_tileset_save_path)
 		else:
 			printerr("Saving tileset returned error " + str(save_ret))
-			_error_count += 1
+			CommonUtils.error_count += 1
 
 
 	if base_dictionary.has("properties"):
@@ -379,24 +371,7 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		if layer_opacity < 1.0 or tint_color != "#ffffff":
 			texture_rect.modulate = Color(tint_color, layer_opacity)
 		texture_rect.visible = layer_visible
-
-		# ToDo: Not sure if this first check makes any sense since an image can't be imported properly if not in project tree
-		var texture_path = layer["image"]
-		if not FileAccess.file_exists(texture_path):
-			texture_path = _base_path.get_base_dir().path_join(layer["image"])
-		if not FileAccess.file_exists(texture_path):
-			texture_path = _base_path.path_join(layer["image"])
-		if FileAccess.file_exists(texture_path):
-			texture_rect.texture = load(texture_path)
-			var exists = ResourceLoader.exists(texture_path, "Image")
-			if exists:
-				texture_rect.texture = load(texture_path)
-			else:
-				var image = Image.load_from_file(texture_path)
-				texture_rect.texture = ImageTexture.create_from_image(image)
-		else:
-			printerr("ERROR: Image file '" + layer["image"] + "' not found.")
-			_error_count += 1
+		texture_rect.texture = DataLoader.load_image(layer["image"], _base_path)
 
 		if layer.has("properties"):
 			handle_properties(texture_rect, layer["properties"])
@@ -443,7 +418,7 @@ func handle_data(data, map_size):
 						ret = bytes.decompress(map_size * 4, FileAccess.COMPRESSION_ZSTD)
 					_:
 						printerr("Decompression for type '" + _compression + "' not yet implemented.")
-						_error_count += 1
+						CommonUtils.error_count += 1
 						return []
 				bytes = PackedByteArray(ret)
 			ret = bytes.to_int32_array()	
@@ -740,18 +715,26 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	if godot_type == _godot_type.UNKNOWN:
 		if not _add_class_as_metadata and class_string != "" and not godot_node_type_prop_found:
 			print_rich("[color=" + WARNING_COLOR +"] -- Unknown class '" + class_string + "'. -> Assuming Default[/color]")
-			_warning_count += 1
+			CommonUtils.warning_count += 1
 		elif godot_node_type_prop_found and godot_node_type_property_string != "":	
 			print_rich("[color=" + WARNING_COLOR +"] -- Unknown " + GODOT_NODE_TYPE_PROPERTY + " '" + godot_node_type_property_string + "'. -> Assuming Default[/color]")
-			_warning_count += 1
+			CommonUtils.warning_count += 1
 		godot_type = _godot_type.BODY
 
 
 	if obj.has("template"):
-		var template_path = _base_path.path_join(obj["template"])
-		var template_dict = preload("DictionaryBuilder.gd").new().get_dictionary(template_path)
-		var template_tileset = null
+		var template_dict: Dictionary
+		var template_file = obj["template"]
+		var template_path = _base_path.path_join(template_file).get_base_dir()
+		var template_content = DataLoader.get_tiled_file_content(template_file, _base_path)
+		if template_content == null:
+			printerr("ERROR: Template file '" + template_file + "' not found. -> Continuing but result may be unusable")
+			CommonUtils.error_count += 1
+			template_dict = {}
+		else:
+			template_dict = preload("DictionaryBuilder.gd").new().get_dictionary(template_content, template_file)
 
+		var template_tileset = null
 		if template_dict.has("tilesets"):
 			var tilesets = template_dict["tilesets"]
 			var tileset_creator = preload("TilesetCreator.gd").new()
@@ -763,7 +746,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 		if template_dict.has("objects"):
 			for template_obj in template_dict["objects"]:
-				template_obj["template_dir_path"] = template_path.get_base_dir()
+				template_obj["template_dir_path"] = template_path
 
 				# v1.5.3 Fix according to Carlo M (dogezen)
 				# override and merge properties defined in obj with properties defined in template
@@ -803,11 +786,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		var res_path = get_property(obj, "res_path", "file")
 		if res_path == "":
 			printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
-			_error_count += 1
+			CommonUtils.error_count += 1
 		else:
 			if obj.has("template_dir_path"):
 				res_path = obj.template_dir_path.path_join(res_path)
-			var scene = load_resource_from_file(res_path)
+			var scene = DataLoader.load_resource_from_file(res_path, _base_path)
 			# Error check
 			if scene == null: return
 			var instance = scene.instantiate()
@@ -844,7 +827,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 		if not tileset.has_source(source_id):
 			printerr("Could not get AtlasSource with id " + source_id + ". -> Skipped")
-			_error_count += 1
+			CommonUtils.error_count += 1
 			return
 	
 		var gid_source = tileset.get_source(source_id)
@@ -920,11 +903,11 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					res_path = td.get_meta("res_path")
 			if res_path == "":
 				printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
-				_error_count += 1
+				CommonUtils.error_count += 1
 			else:
 				if obj.has("template_dir_path"):
 					res_path = obj.template_dir_path.path_join(res_path)
-				var scene = load_resource_from_file(res_path)
+				var scene = DataLoader.load_resource_from_file(res_path, _base_path)
 				# Error check
 				if scene == null: return
 
@@ -1250,7 +1233,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			elif godot_type == _godot_type.NAVIGATION:
 				if obj.has("ellipse"):
 					print_rich("[color="+WARNING_COLOR+"] -- Ellipse is unusable for NavigationRegion2D. -> Skipped[/color]")
-					_warning_count += 1
+					CommonUtils.warning_count += 1
 				else:
 					var nav_region = NavigationRegion2D.new()
 					layer_node.add_child(nav_region)
@@ -1280,7 +1263,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			elif godot_type == _godot_type.OCCLUDER:
 				if obj.has("ellipse"):
 					print_rich("[color="+WARNING_COLOR+"] -- Ellipse is unusable for LightOccluder2D. -> Skipped[/color]")
-					_warning_count += 1
+					CommonUtils.warning_count += 1
 				else:
 					var light_occ = LightOccluder2D.new()
 					layer_node.add_child(light_occ)
@@ -1301,7 +1284,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			elif godot_type == _godot_type.POLYGON:
 				if obj.has("ellipse"):
 					print_rich("[color="+WARNING_COLOR+"] -- Ellipse is unusable for Polygon2D. -> Skipped[/color]")
-					_warning_count += 1
+					CommonUtils.warning_count += 1
 				else:
 					var polygon = Polygon2D.new()
 					layer_node.add_child(polygon)
@@ -1325,7 +1308,7 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 		var obj_name = obj.get("name", "")
 		if obj.has("point") and obj["point"]:
 			print_rich("[color="+WARNING_COLOR+"] -- 'Point' has currently no corresponding collision element in Godot 4. -> Skipped[/color]")
-			_warning_count += 1
+			CommonUtils.warning_count += 1
 			break
 
 		var fact = tile_height / _map_tile_height
@@ -1566,22 +1549,6 @@ func get_num_tiles_for_source_id(source_id: int):
 	return -1
 
 
-func load_resource_from_file(path: String):
-	var orig_path = path
-	var ret: Resource = null
-	# ToDo: Not sure if this first check makes any sense since an image can't be properly imported if not in project tree
-	if not FileAccess.file_exists(path):
-		path = _base_path.get_base_dir().path_join(orig_path)
-	if not FileAccess.file_exists(path):
-		path = _base_path.path_join(orig_path)
-	if FileAccess.file_exists(path):
-		ret = ResourceLoader.load(path)
-	else:
-		printerr("ERROR: Resource file '" + orig_path + "' not found.")
-		_error_count += 1
-	return ret
-	
-	
 func get_object_group(index: int):
 	var ret = null
 	if _object_groups != null:
@@ -1647,13 +1614,13 @@ func handle_properties(target_node: Node, properties: Array):
 			if int(val) < CanvasItem.TEXTURE_REPEAT_MAX:
 				target_node.texture_repeat = int(val)
 		elif name.to_lower() == "material" and type == "file":
-			target_node.material = load_resource_from_file(val)
+			target_node.material = DataLoader.load_resource_from_file(val, _base_path)
 		elif name.to_lower() == "use_parent_material" and type == "bool":
 			target_node.use_parent_material = val.to_lower() == "true"
 	
 		# TileMapLayer properties
 		elif name.to_lower() == "tile_set" and type == "file" and target_node is TileMapLayer:
-			target_node.tile_set = load_resource_from_file(val)
+			target_node.tile_set = DataLoader.load_resource_from_file(val, _base_path)
 		elif name.to_lower() == "y_sort_origin" and type == "int" and target_node is TileMapLayer:
 			target_node.y_sort_origin = int(val)
 		elif name.to_lower() == "x_draw_order_reversed" and type == "bool" and target_node is TileMapLayer:
@@ -1746,7 +1713,7 @@ func handle_properties(target_node: Node, properties: Array):
 			
 		# StaticBody2D properties
 		elif name.to_lower() == "physics_material_override" and type == "file" and target_node is StaticBody2D:
-			target_node.physics_material_override = load_resource_from_file(val)
+			target_node.physics_material_override = DataLoader.load_resource_from_file(val, _base_path)
 		elif name.to_lower() == "constant_linear_velocity_x" and (type == "float" or type == "int") and target_node is StaticBody2D:
 			target_node.constant_linear_velocity = Vector2(float(val), target_node.constant_linear_velocity.y)
 		elif name.to_lower() == "constant_linear_velocity_y" and (type == "float" or type == "int") and target_node is StaticBody2D:
@@ -1801,7 +1768,7 @@ func handle_properties(target_node: Node, properties: Array):
 			if int(val) < 2:
 				target_node.center_of_mass_mode = int(val)
 		elif name.to_lower() == "physics_material_override" and type == "file" and target_node is RigidBody2D:
-			target_node.physics_material_override = load_resource_from_file(val)
+			target_node.physics_material_override = DataLoader.load_resource_from_file(val, _base_path)
 		elif name.to_lower() == "gravity_scale" and  (type == "float" or type == "int") and target_node is RigidBody2D:
 			target_node.gravity_scale = float(val)
 		elif name.to_lower() == "custom_integrator" and type == "bool" and target_node is RigidBody2D:

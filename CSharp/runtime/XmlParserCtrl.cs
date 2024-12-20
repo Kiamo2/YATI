@@ -30,10 +30,10 @@ public class XmlParserCtrl
     private readonly XmlParser _parser = new();
     private string _parsedFileName;
 
-    public Error Open(string sourceFile, ZipAccess za = null)
+    public Error Open(byte[] tiledFileContent, string sourceFile)
     {
         _parsedFileName = sourceFile;
-        return za != null ? _parser.OpenBuffer(za.GetFíle(_parsedFileName)) : _parser.Open(_parsedFileName);
+        return _parser.OpenBuffer(tiledFileContent);
     }
 
     public string NextElement()
@@ -47,6 +47,7 @@ public class XmlParserCtrl
             if (text.Length > 0)
                 return "<data>";
         }
+
         while ((_parser.GetNodeType() != XmlParser.NodeType.Element) &&
                (_parser.GetNodeType() != XmlParser.NodeType.ElementEnd))
         {
@@ -57,12 +58,12 @@ public class XmlParserCtrl
 
         return _parser.GetNodeName();
     }
-    
+
     public bool IsEnd()
     {
         return (_parser.GetNodeType() == XmlParser.NodeType.ElementEnd);
     }
-    
+
     public bool IsEmpty()
     {
         return _parser.IsEmpty();

@@ -28,9 +28,9 @@ var _parsed_file_name = ""
 func _init():
 	_parser = XMLParser.new()
 
-func open(source_file, za: ZipAccess) -> int:
+func open(tiled_file_content: PackedByteArray, source_file) -> int:
 	_parsed_file_name = source_file
-	return _parser.open_buffer(za.get_file(_parsed_file_name)) if za else _parser.open(_parsed_file_name)
+	return _parser.open_buffer(tiled_file_content)
 
 func next_element():
 	var err = parse_on()

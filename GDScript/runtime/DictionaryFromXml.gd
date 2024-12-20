@@ -31,8 +31,8 @@ var _csv_encoded = true
 var _is_map: bool
 var _in_tileset: bool = false
 
-func create(source_file_name: String, za: ZipAccess = null):
-	var err = _xml.open(source_file_name, za)
+func create(tiled_file_content: PackedByteArray, source_file_name: String):
+	var err = _xml.open(tiled_file_content, source_file_name)
 	if err != OK:
 		return null
 

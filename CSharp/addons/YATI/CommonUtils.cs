@@ -32,6 +32,9 @@ public static class CommonUtils
 {
     private static readonly CultureInfo Inv = CultureInfo.InvariantCulture;
 
+    public static int ErrorCount { get; set; }
+    public static int WarningCount { get; set; }
+
     public static uint GetBitmaskIntegerFromString(string maskString, int max)
     {
         uint ret = 0;
@@ -47,8 +50,8 @@ public static class CommonUtils
                     if (i <= max)
                         ret += (uint)Math.Pow(2, i - 1);
             }
-            else if (int.TryParse(s1, out var i)) 
-                if (i <= max) 
+            else if (int.TryParse(s1, out var i))
+                if (i <= max)
                     ret += (uint)Math.Pow(2, i - 1);
         }
 

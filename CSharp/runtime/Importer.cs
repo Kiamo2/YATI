@@ -41,23 +41,7 @@ public static class Importer
 
 	public static Node2D ImportFromZip(string zipFile, string sourceFileInZip, string projectFileInZip = "")
 	{
-		if (!FileAccess.FileExists(zipFile))
-			return null;
-		var za = new ZipAccess(zipFile);
-		var err = za.Open();
-		if (err != Error.Ok)
-			return null;
-		var tilemapCreator = new TilemapCreator();
-		tilemapCreator.SetZipAccess(za);
-		tilemapCreator.SetAddClassAsMetadata(true);
-		if (projectFileInZip != "" && za.FileExists(projectFileInZip))
-		{
-			var ct = new CustomTypes();
-			ct.LoadCustomTypes(projectFileInZip, za);
-			tilemapCreator.SetCustomTypes(ct);
-		}
-		var ret= tilemapCreator.Create(sourceFileInZip);
-		za.Close();
-		return ret;
+		DataLoader.ZipFile = zipFile;
+		return Import(sourceFileInZip, projectFileInZip);
 	}
 }

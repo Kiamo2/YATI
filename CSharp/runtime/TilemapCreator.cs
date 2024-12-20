@@ -29,7 +29,6 @@ using System.Linq;
 using Godot;
 using Godot.Collections;
 using Array = Godot.Collections.Array;
-using FileAccess = Godot.FileAccess;
 
 namespace YATI;
 
@@ -83,14 +82,11 @@ public class TilemapCreator
     private string _tilesetSavePath = "";
     private Dictionary _objectGroups;
     private CustomTypes _ct;
-    private ZipAccess _za;
 
     private float _isoRot;
     private float _isoSkew;
     private Vector2 _isoScale;
 
-    private int _errorCount;
-    private int _warningCount;
     private int _godotVersion;
 
     private enum GodotType
@@ -109,16 +105,6 @@ public class TilemapCreator
         Unknown
     }
 
-    public int GetErrorCount()
-    {
-        return _errorCount;
-    }
-
-    public int GetWarningCount()
-    {
-        return _warningCount;
-    }
-    
     public void SetUseDefaultFilter(bool value)
     {
         _useDefaultFilter = value;
@@ -159,11 +145,6 @@ public class TilemapCreator
         _tilesetSavePath = path;
     }
 
-    public void SetZipAccess(ZipAccess za)
-    {
-        _za = za;
-    }
-
     public TileSet GetTileset()
     {
         return _tileset;
@@ -182,7 +163,13 @@ public class TilemapCreator
     {
         _godotVersion = (int)Engine.GetVersionInfo()["hex"];
         _basePath = sourceFile.GetBaseDir();
-        var baseDictionary = DictionaryBuilder.GetDictionary(sourceFile, _za);
+		var mapContent = DataLoader.GetTiledFileContent(sourceFile, _basePath);
+		if (mapContent == null)
+		{
+			GD.PrintErr($"FATAL ERROR: Tiled map file '{sourceFile}' not found.");
+			return null;
+		}
+		var baseDictionary = DictionaryBuilder.GetDictionary(mapContent, _basePath);
         _mapOrientation = (string)baseDictionary.GetValueOrDefault("orientation", "orthogonal");
         _mapWidth = (int)baseDictionary.GetValueOrDefault("width", 0);
         _mapHeight = (int)baseDictionary.GetValueOrDefault("height", 0);
@@ -205,14 +192,10 @@ public class TilemapCreator
             tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
             if (_ct != null)
                 tilesetCreator.SetCustomTypes(_ct);
-            if (_za != null)
-                tilesetCreator.SetZipAccess(_za);
             if (_mapWangsetToTerrain)
                 tilesetCreator.MapWangsetToTerrain();
             tilesetCreator.SetCustomDataPrefix(_customDataPrefix);
             _tileset = tilesetCreator.CreateFromDictionaryArray(tileSets);
-            _errorCount = tilesetCreator.GetErrorCount();
-            _warningCount = tilesetCreator.GetWarningCount();
             var unsorted = tilesetCreator.GetRegisteredAtlasSources();
             if (unsorted != null)
                 _atlasSources = unsorted.OrderBy(x => (int)x["sourceId"]).ToList();
@@ -276,12 +259,12 @@ public class TilemapCreator
                 GD.Print($"Successfully saved tileset to '{_tilesetSavePath}'");
                 foreach (var node in _baseNode.FindChildren("*", "TileMapLayer"))
                     if (node is TileMapLayer tm && tm.TileSet.ResourcePath == "")
-                        tm.TileSet = (TileSet)LoadResourceFromFile(_tilesetSavePath);
+						tm.TileSet = (TileSet)DataLoader.LoadResourceFromFile(_tilesetSavePath, _basePath);
             }
             else
             {
                 GD.PrintErr($"Saving tileset returned error {saveRet}");
-                _errorCount++;
+                CommonUtils.ErrorCount++;
             }
         }
         
@@ -444,62 +427,7 @@ public class TilemapCreator
                 if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
                     textureRect.Modulate = new Color(tintColor, layerOpacity);
                 textureRect.Visible = layerVisible;
-
-                var texturePath = (string)layer["image"];
-
-                var fileNotFound = true;
-                if (_za != null)
-                {
-                    if (!_za.FileExists(texturePath))
-                        texturePath = CommonUtils.CleanupPath(_basePath.GetBaseDir().PathJoin((string)layer["image"]));
-                    if (!_za.FileExists(texturePath))
-                        texturePath = CommonUtils.CleanupPath(_basePath.PathJoin((string)layer["image"]));
-                    if (_za.FileExists(texturePath))
-                    {
-                        var image = new Image();
-                        var extension = Path.GetExtension(texturePath).ToLower();
-                        switch (extension)
-                        {
-                            case ".png":
-                                image.LoadPngFromBuffer(_za.GetFíle(texturePath));
-                                break;
-                            case ".jpg":
-                            case ".jpeg":
-                                image.LoadJpgFromBuffer(_za.GetFíle(texturePath));
-                                break;
-                            case ".bmp":
-                                image.LoadBmpFromBuffer(_za.GetFíle(texturePath));
-                                break;
-                        }
-                       textureRect.Texture = ImageTexture.CreateFromImage(image);
-                       fileNotFound = false;
-                    }
-                }
-                else
-                {
-                    if (!FileAccess.FileExists(texturePath))
-                        texturePath = _basePath.GetBaseDir().PathJoin((string)layer["image"]);
-                    if (!FileAccess.FileExists(texturePath))
-                        texturePath = _basePath.PathJoin((string)layer["image"]);
-                    if (FileAccess.FileExists(texturePath))
-                    {
-                        var exists = ResourceLoader.Exists(texturePath, "Image");
-                        if (exists)
-                            textureRect.Texture = (Texture2D)ResourceLoader.Load(texturePath, "Image");
-                        else
-                        {
-                            var image = Image.LoadFromFile(texturePath);
-                            textureRect.Texture = ImageTexture.CreateFromImage(image);
-                        }
-                        fileNotFound = false;
-                    }
-                }
-
-                if (fileNotFound)
-                {
-                    GD.PrintErr($"ERROR: Image file '{(string)layer["image"]}' not found.");
-                    _errorCount++;
-                }
+                textureRect.Texture = DataLoader.LoadImage((string)layer["image"], _basePath);
 
                 if (layer.TryGetValue("properties", out var props))
                     HandleProperties(textureRect, (Array<Dictionary>)props);
@@ -574,7 +502,7 @@ public class TilemapCreator
                         }
                         default:
                             GD.PrintErr($"Decompression for type '{_compression}' not yet implemented.");
-                            _errorCount++;
+                            CommonUtils.ErrorCount++;
                             return null;
                     }
                     bytes = memoryStreamOutput.ToArray();
@@ -897,7 +825,7 @@ public class TilemapCreator
                 obj.Add("properties", new Array<Dictionary> { propDict });
         }
     }
-    
+
     private void HandleObject(Dictionary obj, Node layerNode, TileSet tileset, Vector2 offSet)
     {
         var objId = (int)obj.GetValueOrDefault("id", 0);
@@ -924,22 +852,31 @@ public class TilemapCreator
             if (!_addClassAsMetadata && classString != "" && !godotNodeTypePropFound)
             {
                 GD.PrintRich($"[color={WarningColor}] -- Unknown class '{classString}'. -> Assuming Default[/color]");
-                _warningCount++;
+                CommonUtils.WarningCount++;
             }
             else if (godotNodeTypePropFound && godotNodeTypePropertyString != "")
             {
                 GD.PrintRich($"[color={WarningColor}] -- Unknown {GodotNodeTypeProperty} '{godotNodeTypePropertyString}'. -> Assuming Default[/color]");
-                _warningCount++;
+                CommonUtils.WarningCount++;
             }
             godotType = GodotType.Body;
         }
         
         if (obj.TryGetValue("template", out var tplVal))
         {
-            var templatePath = _basePath.PathJoin((string)tplVal);
-            if (_za != null && !_za.FileExists(templatePath))
-                templatePath = CommonUtils.CleanupPath(templatePath);
-            var templateDict = DictionaryBuilder.GetDictionary(templatePath, _za);
+			Dictionary templateDict;
+            var templateFile = (string)tplVal;
+            var templatePath = _basePath.PathJoin(templateFile).GetBaseDir();
+			var templateContent = DataLoader.GetTiledFileContent(templateFile, _basePath);
+			if (templateContent == null)
+			{
+				GD.PrintErr($"ERROR: Template file '{templateFile}' not found. -> Continuing but result may be unusable");
+				CommonUtils.ErrorCount++;
+				templateDict = new Dictionary();
+			}
+			else
+				templateDict = DictionaryBuilder.GetDictionary(templateContent, templateFile);
+
             //var templateFirstGids = new Array<int>();
             TileSet templateTileSet = null;
             if (templateDict.TryGetValue("tilesets", out var tsVal))
@@ -953,15 +890,13 @@ public class TilemapCreator
                 if (_mapWangsetToTerrain)
                     tilesetCreator.MapWangsetToTerrain();
                 templateTileSet = tilesetCreator.CreateFromDictionaryArray(tileSets);
-                _errorCount += tilesetCreator.GetErrorCount();
-                _warningCount += tilesetCreator.GetWarningCount();
             }
 
             if (templateDict.TryGetValue("objects", out var objs))
             {
                 foreach (var templateObj in (Array<Dictionary>)objs)
                 {
-                    templateObj["template_dir_path"] = templatePath.GetBaseDir();
+                    templateObj["template_dir_path"] = templatePath;
                     
                     // v1.5.3 Fix according to Carlo M (dogezen)
                     // override and merge properties defined in obj with properties defined in template
@@ -1019,13 +954,13 @@ public class TilemapCreator
             if (resPath == "")
             {
                 GD.PrintErr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped");
-                _errorCount++;
+                CommonUtils.ErrorCount++;
             }
             else
             {
                 if (obj.TryGetValue("template_dir_path", out var tdPath))
                     resPath = ((string)tdPath).PathJoin(resPath);
-                var scene = (PackedScene)LoadResourceFromFile(resPath);
+				var scene = (PackedScene)DataLoader.LoadResourceFromFile(resPath, _basePath);
                 // Error check
                 if (scene == null) return;
 
@@ -1069,7 +1004,7 @@ public class TilemapCreator
             if (!tileset.HasSource(sourceId))
             {
                 GD.PrintErr($"Could not get AtlasSource with id {sourceId}. -> Skipped");
-                _errorCount++;
+                CommonUtils.ErrorCount++;
                 return;
             }
 
@@ -1163,13 +1098,13 @@ public class TilemapCreator
                 if (resPath == "")
                 {
                     GD.PrintErr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped");
-                    _errorCount++;
+                    CommonUtils.ErrorCount++;
                 }
                 else
                 {
                     if (obj.TryGetValue("template_dir_path", out var tdPath))
                         resPath = ((string)tdPath).PathJoin(resPath);
-                    var scene = (PackedScene)LoadResourceFromFile(resPath);
+					var scene = (PackedScene)DataLoader.LoadResourceFromFile(resPath, _basePath);
                     // Error check
                     if (scene == null) return;
 
@@ -1583,7 +1518,7 @@ public class TilemapCreator
                     }
                     case GodotType.Navigation when obj.ContainsKey("ellipse"):
                         GD.PrintRich($"[color={WarningColor}] -- Ellipse is unusable for NavigationRegion2D. -> Skipped[/color]");
-                        _warningCount++;
+                        CommonUtils.WarningCount++;
                         break;
                     case GodotType.Navigation:
                     {
@@ -1616,7 +1551,7 @@ public class TilemapCreator
                     }
                     case GodotType.Occluder when obj.ContainsKey("ellipse"):
                         GD.PrintRich($"[color={WarningColor}] -- Ellipse is unusable for LightOccluder2D. -> Skipped[/color]");
-                        _warningCount++;
+                        CommonUtils.WarningCount++;
                         break;
                     case GodotType.Occluder:
                     {
@@ -1641,7 +1576,7 @@ public class TilemapCreator
                     }
                     case GodotType.Polygon when obj.ContainsKey("ellipse"):
                         GD.PrintRich($"[color={WarningColor}] -- Ellipse is unusable for Polygon2D. -> Skipped[/color]");
-                        _warningCount++;
+                        CommonUtils.WarningCount++;
                         break;
                     case GodotType.Polygon:
                     {
@@ -1677,7 +1612,7 @@ public class TilemapCreator
             {
                 GD.PrintRich(
                     $"[color={WarningColor}] -- 'Point' has currently no corresponding collision element in Godot 4. -> Skipped[/color]");
-                _warningCount++;
+                CommonUtils.WarningCount++;
                 break;
             }
 
@@ -1982,34 +1917,6 @@ public class TilemapCreator
         return -1;
     }
 
-    private Resource LoadResourceFromFile(string path)
-    {
-        var origPath = path;
-        Resource ret = null;
-
-        if (_za != null)
-        {
-            // Resources cannot be loaded from Zip but maybe they are provided nearby
-            path = _za.GetZipFilePath().GetBaseDir().PathJoin(origPath);
-            if (!File.Exists(path))
-                path = _za.GetZipFilePath().GetBaseName().PathJoin(origPath);
-        }
-
-        if (!FileAccess.FileExists(path))
-            path = _basePath.GetBaseDir().PathJoin(origPath);
-        if (!FileAccess.FileExists(path))
-            path = _basePath.PathJoin(origPath);
-        if (FileAccess.FileExists(path))
-            ret = ResourceLoader.Load(path);
-        else
-        {
-            GD.PrintErr($"ERROR: Resource file '{origPath}' not found.");
-            _errorCount++;
-        }
-
-        return ret;
-    }
-    
     private Dictionary GetObjectGroup(int index)
     {
         Dictionary ret = null;
@@ -2097,7 +2004,7 @@ public class TilemapCreator
                         ((CanvasItem)targetNode).TextureRepeat = (CanvasItem.TextureRepeatEnum)int.Parse(val);
                     break;
                 case "material" when (type == "file"):
-                    ((CanvasItem)targetNode).Material = (Material)LoadResourceFromFile(val);
+					((CanvasItem)targetNode).Material = (Material)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "use_parent_material" when (type == "bool"):
                     ((CanvasItem)targetNode).UseParentMaterial = bool.Parse(val);
@@ -2105,7 +2012,7 @@ public class TilemapCreator
 
                 // TileMapLayer properties
                 case "tile_set" when type == "file" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
-                    ((TileMapLayer)targetNode).TileSet = (TileSet)LoadResourceFromFile(val);
+					((TileMapLayer)targetNode).TileSet = (TileSet)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "y_sort_origin" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     ((TileMapLayer)targetNode).YSortOrigin = int.Parse(val);
@@ -2241,7 +2148,7 @@ public class TilemapCreator
                 
                 // StaticBody2D properties
                 case "physics_material_override" when (type == "file"):
-                    ((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)LoadResourceFromFile(val);
+					((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "constant_linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
                     ((StaticBody2D)targetNode).ConstantLinearVelocity = new Vector2(float.Parse(val, Inv), ((StaticBody2D)targetNode).ConstantLinearVelocity.Y);
@@ -2320,7 +2227,7 @@ public class TilemapCreator
                         ((RigidBody2D)targetNode).CenterOfMassMode = (RigidBody2D.CenterOfMassModeEnum)int.Parse(val);
                     break;
                 case "physics_material_override" when (type == "file"):
-                    ((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)LoadResourceFromFile(val);
+					((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "gravity_scale" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     ((RigidBody2D)targetNode).GravityScale = float.Parse(val, Inv);

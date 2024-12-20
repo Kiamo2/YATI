@@ -28,7 +28,13 @@ extends RefCounted
 var _custom_types = null
 
 func load_custom_types(project_file: String):
-    var project_file_as_dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(project_file)
+    var proj_file_content = DataLoader.get_tiled_file_content(project_file, "")
+    if proj_file_content == null:
+        printerr("ERROR: Tiled project file '" + project_file + "' not found.")
+        CommonUtils.error_count += 1
+        return
+
+    var project_file_as_dictionary: Dictionary = preload("DictionaryBuilder.gd").new().get_dictionary(proj_file_content, project_file)
     if project_file_as_dictionary.has("propertyTypes"):
         _custom_types = project_file_as_dictionary["propertyTypes"]
 

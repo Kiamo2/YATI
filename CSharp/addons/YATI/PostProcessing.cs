@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#if TOOLS
 using System;
 using Godot;
 
@@ -34,7 +35,7 @@ public class PostProcessing
     {
         return _error;
     }
-        
+
     public Node2D CallPostProcess(Node2D baseNode, string path)
     {
         var script = (CSharpScript)GD.Load(path);
@@ -44,6 +45,7 @@ public class PostProcessing
             _error = Error.FileUnrecognized;
             return baseNode;
         }
+
         var scriptObj = (GodotObject)script.New();
         try
         {
@@ -76,3 +78,4 @@ public class PostProcessing
         }
     }
 }
+#endif

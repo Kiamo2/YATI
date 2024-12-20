@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.5] - 2024-12-20
+
+### Refactoring notes (no change in functionalitiy)
+
+- All data loading from Tiled files is now amalgamated into a new module 'DataLoader'  
+This is especially beneficial for runtime version users to allow for easier customizing of data loading.  
+E.g. loading from Zip file basically only needs one additional line somewhere ahead from the TilsetCreator.create() call:  
+```py
+DataLoader.zip_file = "<path-to-zip>/xyz.zip"
+```
 ## [2.1.4] - 2024-12-16
 
 ### Fixed

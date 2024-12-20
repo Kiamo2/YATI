@@ -26,22 +26,22 @@ using Godot;
 namespace YATI;
 
 [Tool]
-public partial class TiledImport : EditorPlugin 
+public partial class TiledImport : EditorPlugin
 {
-	private EditorImportPlugin _xmlImport;
-		
-	public override string _GetPluginName() => "Yet another Tiled importer";
-		
-	public override void _EnterTree()
-	{
-		_xmlImport = new Importer();
-		AddImportPlugin(_xmlImport);
-	}
+    private EditorImportPlugin _xmlImport;
 
-	public override void _ExitTree()
-	{
-		RemoveImportPlugin(_xmlImport);
-		_xmlImport = null;
-	}
+    public override string _GetPluginName() => "Yet another Tiled importer";
+
+    public override void _EnterTree()
+    {
+        _xmlImport = new Importer();
+        AddImportPlugin(_xmlImport);
+    }
+
+    public override void _ExitTree()
+    {
+        RemoveImportPlugin(_xmlImport);
+        _xmlImport = null;
+    }
 }
 #endif

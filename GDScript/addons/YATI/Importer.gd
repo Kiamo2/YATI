@@ -72,6 +72,9 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 		printerr("Import file '" + source_file + "' not found!")
 		return ERR_FILE_NOT_FOUND
 
+	CommonUtils.error_count = 0
+	CommonUtils.warning_count = 0
+
 	var ct: CustomTypes = null
 	var tilemapCreator = preload("TilemapCreator.gd").new()
 	if options["use_default_filter"] == true:
@@ -97,8 +100,8 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 	if node2D == null:
 		return FAILED
 
-	var errors = tilemapCreator.get_error_count()
-	var warnings = tilemapCreator.get_warning_count()
+	var errors = CommonUtils.error_count
+	var warnings = CommonUtils.warning_count
 
 	var post_proc_error = false
 	if options.has("post_processor") and options["post_processor"] != "":

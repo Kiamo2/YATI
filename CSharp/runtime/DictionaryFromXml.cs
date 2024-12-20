@@ -41,13 +41,13 @@ public class DictionaryFromXml
     private bool _isMap;
     private bool _inTileset;
     
-    public Dictionary Create(string sourceFileName, ZipAccess za = null)
+    public Dictionary Create(byte[] tiledFileContent, string sourceFileName)
     {
         _ci.NumberFormat.NumberDecimalSeparator = ".";
 
         _xml = new XmlParserCtrl();
-        
-        var err = _xml.Open(sourceFileName, za);
+
+        var err = _xml.Open(tiledFileContent, sourceFileName);
         if (err != Error.Ok) return null;
 
         _currentElement = _xml.NextElement();

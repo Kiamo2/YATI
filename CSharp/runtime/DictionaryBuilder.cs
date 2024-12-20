@@ -20,7 +20,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-using System;
 using System.Linq;
 using Godot;
 using Godot.Collections;
@@ -36,47 +35,18 @@ public static class DictionaryBuilder
         Unknown
     }
 
-    public static Dictionary GetDictionary(string sourceFile, ZipAccess za = null)
+    public static Dictionary GetDictionary(byte[] tiledFileContent, string sourceFile)
     {
-        var checkedFile = sourceFile;
-        if (za != null)
-        {
-            if (!za.FileExists(checkedFile))
-            {
-                GD.PrintErr($"ERROR: File '{sourceFile}' not found. -> Continuing but result may be unusable");
-                return null;
-            }
-        }
-        else if (!FileAccess.FileExists(checkedFile))
-        {
-            checkedFile = sourceFile.GetBaseDir().PathJoin(sourceFile);
-            if (!FileAccess.FileExists(checkedFile))
-            {
-                GD.PrintErr($"ERROR: File '{sourceFile}' not found. -> Continuing but result may be unusable");
-                return null;
-            }
-        }
-        
+
         var type = FileType.Unknown;
-        var extension = sourceFile.GetFile().GetExtension();
+        var extension = sourceFile.GetFile().GetExtension().ToLower();
         if (new[] { "tmx", "tsx", "xml", "tx" }.Contains(extension))
             type = FileType.Xml;
         else if (new[] { "tmj", "tsj", "json", "tj", "tiled-project" }.Contains(extension))
             type = FileType.Json;
         else
         {
-            string chunk;
-            if (za != null)
-            {
-                var fileBytes = za.GetFíle(checkedFile);
-                var chunkArray = fileBytes.Take(12).ToArray();
-                chunk = System.Text.Encoding.UTF8.GetString(chunkArray);
-            }
-            else
-            {
-                using var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
-                chunk = System.Text.Encoding.UTF8.GetString(file.GetBuffer(12));
-            }
+            var chunk = System.Text.Encoding.UTF8.GetString(tiledFileContent, 0, 12);
             if (chunk.StartsWith("<?xml "))
                 type = FileType.Xml;
             else if (chunk.StartsWith("{ \""))
@@ -88,22 +58,13 @@ public static class DictionaryBuilder
             case FileType.Xml:
             {
                 var dictBuilder = new DictionaryFromXml();
-                return dictBuilder.Create(checkedFile, za);
+                return dictBuilder.Create(tiledFileContent, sourceFile);
             }
             case FileType.Json:
             {
                 var json = new Json();
-                if (za != null)
-                {
-                    if (json.Parse(System.Text.Encoding.UTF8.GetString(za.GetFíle(checkedFile))) == Error.Ok)
-                        return (Dictionary)json.Data;
-                }
-                else
-                {
-                    using var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
-                    if (json.Parse(file.GetAsText()) == Error.Ok)
-                        return (Dictionary)json.Data;
-                }
+                if (json.Parse(System.Text.Encoding.UTF8.GetString(tiledFileContent)) == Error.Ok)
+                    return (Dictionary)json.Data;
                 break;
             }
             case FileType.Unknown:

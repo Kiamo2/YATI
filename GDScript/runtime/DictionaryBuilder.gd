@@ -28,34 +28,15 @@ enum FileType {
 	Unknown
 }
 
-func get_dictionary(source_file: String, za: ZipAccess = null):
-	var checked_file = source_file
-	if za:
-		if not za.file_exists(checked_file):
-			printerr("ERROR: File '" + source_file + "' not found. -> Continuing but result may be unusable")
-			return null
-	elif !FileAccess.file_exists(checked_file):
-		checked_file = source_file.get_base_dir().path_join(source_file)
-		if !FileAccess.file_exists(checked_file):
-			printerr("ERROR: File '" + source_file + "' not found. -> Continuing but result may be unusable")
-			return null
-
+func get_dictionary(tiled_file_content: PackedByteArray, source_file: String):
 	var type = FileType.Unknown
-	var extension = source_file.get_file().get_extension()
+	var extension = source_file.get_file().get_extension().to_lower()
 	if ["tmx", "tsx", "xml", "tx"].find(extension) >= 0:
 		type = FileType.Xml
 	elif ["tmj", "tsj", "json", "tj", "tiled-project"].find(extension) >= 0:
 		type = FileType.Json
 	else:
-		var chunk
-		if za:
-			var file_bytes = za.get_file(checked_file).slice(0, 11)
-			chunk = file_bytes.get_string_from_utf8()
-		else:
-			var file = FileAccess.open(checked_file, FileAccess.READ)
-			chunk = file.get_buffer(12)
-			file.close()
-
+		var chunk = tiled_file_content.slice(0, 11).get_string_from_utf8()
 		if chunk.starts_with("<?xml "):
 			type = FileType.Xml
 		elif chunk.starts_with("{ \""):
@@ -64,17 +45,11 @@ func get_dictionary(source_file: String, za: ZipAccess = null):
 	match type:
 		FileType.Xml:
 			var dict_builder = preload("DictionaryFromXml.gd").new()
-			return dict_builder.create(checked_file, za)
+			return dict_builder.create(tiled_file_content, source_file)
 		FileType.Json:
 			var json = JSON.new()
-			if za:
-				if json.parse(za.get_file(checked_file).get_string_from_utf8()) == OK:
-					return json.data
-			else:
-				var file = FileAccess.open(checked_file, FileAccess.READ)
-				if json.parse(file.get_as_text()) == OK:
-					file.close()
-					return json.data
+			if json.parse(tiled_file_content.get_string_from_utf8()) == OK:
+				return json.data
 		FileType.Unknown:
 			printerr("ERROR: File '" + source_file + "' has an unknown type. -> Continuing but result may be unusable")
 

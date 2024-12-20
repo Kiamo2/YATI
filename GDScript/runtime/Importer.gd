@@ -30,19 +30,5 @@ func import(source_file: String, project_file: String = ""):
 	return tilemapCreator.create(source_file)
 
 func import_from_zip(zip_file: String, source_file_in_zip: String, project_file_in_zip: String = ""):
-	if not FileAccess.file_exists(zip_file):
-		return null
-	var za = ZipAccess.new()
-	var err = za.open(zip_file)
-	if err != OK:
-		return null
-	var tilemapCreator = preload("TilemapCreator.gd").new()
-	tilemapCreator.set_zip_access(za)
-	tilemapCreator.set_add_class_as_metadata(true)
-	if project_file_in_zip != "" and za.file_exists(project_file_in_zip):
-		var ct = CustomTypes.new()
-		ct.load_custom_types(project_file_in_zip, za)
-		tilemapCreator.set_custom_types(ct)
-	var ret = tilemapCreator.create(source_file_in_zip)
-	za.close()
-	return ret
+	DataLoader.zip_file = zip_file
+	return import(source_file_in_zip, project_file_in_zip)

@@ -22,6 +22,9 @@
 
 class_name CommonUtils
 
+static var error_count: int
+static var warning_count: int
+
 static func get_bitmask_integer_from_string(mask_string: String, max_len: int):
 	var ret: int = 0
 	var s1_arr = mask_string.split(",", false)

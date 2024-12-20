@@ -43,8 +43,6 @@ var _navigation_layer_counter: int = -1
 var _occlusion_layer_counter: int = -1
 var _append = false
 var _atlas_sources = null
-var _error_count = 0
-var _warning_count = 0
 var _map_tile_size: Vector2i
 var _grid_size: Vector2i
 var _tile_offset: Vector2i
@@ -55,7 +53,6 @@ var _tileset_orientation
 var _map_wangset_to_terrain: bool = false
 var _custom_data_prefix: String
 var _ct: CustomTypes = null
-var _za: ZipAccess = null
 var _current_first_gid = -1
 
 
@@ -65,14 +62,6 @@ enum layer_type {
 	OCCLUSION
 }
 
-
-func get_error_count():
-	return _error_count
-
-
-func get_warning_count():
-	return _warning_count
-	
 
 func set_base_path(source_file: String):
 	_base_path_map = source_file.get_base_dir()
@@ -87,13 +76,9 @@ func set_custom_types(ct: CustomTypes):
 	_ct = ct
 
 
-func set_zip_access(za: ZipAccess):
-	_za = za
-
-
 func map_wangset_to_terrain():
 	_map_wangset_to_terrain = true
-	
+
 
 func set_custom_data_prefix(value: String):
 	_custom_data_prefix = value
@@ -104,37 +89,32 @@ func create_from_dictionary_array(tileSets: Array):
 		var tile_set_dict = tile_set
 	
 		if tile_set.has("source"):
-			var checked_file: String = tile_set["source"]
+			var source_file: String = tile_set["source"]
  
 			# Catch the AutoMap Rules tileset (is Tiled internal)
-			if checked_file.begins_with(":/automap"):
+			if source_file.begins_with(":/automap"):
 				continue # This is no error skip it
  
-			if _za:
-				if not _za.file_exists(checked_file):
-					checked_file = CommonUtils.cleanup_path(_base_path_map.path_join(checked_file))
-			elif not FileAccess.file_exists(checked_file):
-				checked_file = _base_path_map.path_join(checked_file)
-			_base_path_tileset = checked_file.get_base_dir()
+			var tiled_file_content = DataLoader.get_tiled_file_content(source_file, _base_path_map)
+			if tiled_file_content == null:
+				printerr("ERROR: Tileset file '" + source_file + "' not found. -> Continuing but result may be unusable")
+				CommonUtils.error_count += 1
+				continue
+
+			_base_path_tileset = _base_path_map.path_join(source_file).get_base_dir()
  
-			tile_set_dict = preload("DictionaryBuilder.gd").new().get_dictionary(checked_file, _za)
+			tile_set_dict = preload("DictionaryBuilder.gd").new().get_dictionary(tiled_file_content, source_file)
 			if tile_set_dict != null and tile_set.has("firstgid"):
 				tile_set_dict["firstgid"] = tile_set["firstgid"]
 	
 		# Possible error condition
 		if tile_set_dict == null:
-			_error_count += 1
+			CommonUtils.error_count += 1
 			continue
 	
 		create_or_append(tile_set_dict)
 		_append = true
    
-	return _tileset
-
-
-func create_from_file(source_file: String):
-	var tile_set = preload("DictionaryBuilder.gd").new().get_dictionary(source_file)
-	create_or_append(tile_set)
 	return _tileset
 
 
@@ -196,7 +176,7 @@ func create_or_append(tile_set: Dictionary):
 		if tile_set.has("spacing"):
 			_current_atlas_source.separation = Vector2i(tile_set["spacing"], tile_set["spacing"])
 
-		var texture = load_image(tile_set["image"])
+		var texture = DataLoader.load_image(tile_set["image"], _base_path_tileset)
 		if not texture:
 			# Can't continue without texture
 			return;
@@ -223,45 +203,6 @@ func create_or_append(tile_set: Dictionary):
 		
 	if tile_set.has("properties"):
 		handle_tileset_properties(tile_set["properties"])
-
-
-func load_image(path: String):
-	var orig_path = path
-	var ret: Texture2D = null
-	if _za:
-		if not _za.file_exists(path):
-			path = CommonUtils.cleanup_path(_base_path_map.get_base_dir().path_join(orig_path))
-		if not _za.file_exists(path):
-			path = CommonUtils.cleanup_path(_base_path_tileset.path_join(orig_path))
-		if _za.file_exists(path):
-			var image = Image.new()
-			var extension = path.get_extension().to_lower()
-			match extension:
-				"png":
-					image.load_png_from_buffer(_za.get_file(path))
-				"jpg", "jpeg":
-					image.load_jpg_from_buffer(_za.get_file(path))
-				"bmp":
-					image.load_bmp_from_buffer(_za.get_file(path))
-			ret = ImageTexture.create_from_image(image)
-	else:
-		if not FileAccess.file_exists(path):
-			path = _base_path_map.get_base_dir().path_join(orig_path)
-		if not FileAccess.file_exists(path):
-			path = _base_path_tileset.path_join(orig_path)
-		if FileAccess.file_exists(path):
-			var exists = ResourceLoader.exists(path, "Image")
-			if exists:
-				ret = load(path)
-			else:
-				var image = Image.load_from_file(path)
-				ret = ImageTexture.create_from_image(image)
-
-	if ret == null:
-		printerr("ERROR: Image file '" + orig_path + "' not found.")
-		_error_count += 1
-
-	return ret
 
 
 func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int, tile_offset: Vector2i):
@@ -292,7 +233,7 @@ func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 		var tile_coords = Vector2i(col, row)
 		if col > _current_max_x or row > _current_max_y:
 			print_rich("[color="+WARNING_COLOR+"] -- Tile " + str(tile_id) + " at " + str(col) + "," + str(row) + " outside texture range. -> Skipped[/color]")
-			_warning_count += 1
+			CommonUtils.warning_count += 1
 			return null
 		var tile_at_coords = _current_atlas_source.get_tile_at_coords(tile_coords)
 		if tile_at_coords == Vector2i(-1, -1):
@@ -302,11 +243,11 @@ func create_tile_if_not_existing_and_get_tiledata(tile_id: int):
 			print_rich("[color="+WARNING_COLOR+"]         tile_coords:   " + str(col) + "," + str(row) + "[/color]")
 			print_rich("[color="+WARNING_COLOR+"]         tile_at_coords: " + str(tile_at_coords.x) + "," + str(tile_at_coords.x) + "[/color]")
 			print_rich("[color="+WARNING_COLOR+"]-> Tile skipped[/color]")
-			_warning_count += 1
+			CommonUtils.warning_count += 1
 			return null
 		return _current_atlas_source.get_tile_data(tile_coords, 0)
 	print_rich("[color="+WARNING_COLOR+"] -- Tile id " + str(tile_id) + " outside tile count range (0-" + str(_tile_count-1) + "). -> Skipped.[/color]")
-	_warning_count += 1
+	CommonUtils.warning_count += 1
 	return null
 
 
@@ -333,7 +274,7 @@ func handle_tiles(tiles: Array):
 				placeholder_texture.size = Vector2(width, height)
 				_current_atlas_source.texture = placeholder_texture
 			else:
-				_current_atlas_source.texture = load_image(texture_path)
+				_current_atlas_source.texture = DataLoader.load_image(texture_path, _base_path_tileset)
 
 			_current_atlas_source.resource_name = texture_path.get_file().get_basename()
 			var texture_width = _current_atlas_source.texture.get_width()
@@ -415,7 +356,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 				anim_columns = 0
 			else:
 				print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
-				_warning_count += 1
+				CommonUtils.warning_count += 1
 				return
 			separation_vect = Vector2(separation_x, separation_y)
 
@@ -426,7 +367,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 			var compare_diff_y = (next_frame_tile_id - frame_tile_id) / _columns
 			if compare_diff_x != diff_x or compare_diff_y != diff_y:
 				print_rich("[color="+WARNING_COLOR+"] -- Animated tile " + str(tile_id) + ": Succession of tiles not supported in Godot 4. -> Skipped[/color]")
-				_warning_count += 1
+				CommonUtils.warning_count += 1
 				return
 
 		if _current_atlas_source.has_room_for_tile(tile_coords, Vector2.ONE, anim_columns, separation_vect, frame_count, tile_coords):
@@ -439,7 +380,7 @@ func handle_animation(frames: Array, tile_id: int) -> void:
 			_current_atlas_source.set_tile_animation_frame_duration(tile_coords, frame_count-1, duration_in_secs)
 		else:
 			print_rich("[color="+WARNING_COLOR+"] -- TileId " + str(tile_id) +": Not enough room for all animation frames, could only set " + str(frame_count) + " frames.[/color]")
-			_warning_count += 1
+			CommonUtils.warning_count += 1
 			break
 
 
@@ -455,11 +396,11 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 	for obj in objects:
 		if obj.has("point") and obj["point"]:
 			# print_rich("[color="+WARNING_COLOR+"] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
-			# _warning_count += 1
+			# CommonUtils.warning_count += 1
 			break
 		if obj.has("ellipse") and obj["ellipse"]:
 			# print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
-			# _warning_count += 1
+			# CommonUtils.warning_count += 1
 			break
 
 		if _ct != null:
@@ -484,7 +425,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 			var polygon_points = (obj["polygon"] if obj.has("polygon") else obj["polyline"]) as Array
 			if polygon_points.size() < 3:
 				print_rich("[color="+WARNING_COLOR+"] -- Skipped invalid polygon on tile " + str(tile_id) + " (less than 3 points)[/color]")
-				_warning_count += 1
+				CommonUtils.warning_count += 1
 				break
 			polygon = []
 			for pt in polygon_points:
@@ -573,22 +514,6 @@ func get_special_property(dict: Dictionary, property_name: String):
 	return -1
 
 
-func load_resource_from_file(path: String):
-	var orig_path = path
-	var ret: Texture2D = null
-	# ToDo: Not sure if this first check makes any sense since an image can't be properly imported if not in project tree
-	if not FileAccess.file_exists(path):
-		path = _base_path_map.get_base_dir().path_join(orig_path)
-	if not FileAccess.file_exists(path):
-		path = _base_path_tileset.path_join(orig_path)
-	if FileAccess.file_exists(path):
-		ret = ResourceLoader.load(path)
-	else:
-		printerr("ERROR: Resource file '" + orig_path + "' not found.")
-		_error_count += 1
-		return ret
-
-
 func handle_tile_properties(properties: Array, current_tile: TileData):
 	for property in properties:
 		var name = property.get("name", "")
@@ -602,7 +527,7 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 		elif name.to_lower() == "modulate" and  type == "string":
 			current_tile.modulate = Color(val)
 		elif name.to_lower() == "material" and  type == "file":
-			current_tile.material = load_resource_from_file(val)
+			current_tile.material = DataLoader.load_resource_from_file(val, _base_path_tileset)
 		elif name.to_lower() == "z_index" and  type == "int":
 			current_tile.z_index = int(val)
 		elif name.to_lower() == "y_sort_origin" and  type == "int":

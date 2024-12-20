@@ -30,10 +30,17 @@ namespace YATI;
 public class CustomTypes
 {
     private Array<Dictionary> _customTypes;
-    
-    public void LoadCustomTypes(string projectFile, ZipAccess za = null)
+
+    public void LoadCustomTypes(string projectFile)
     {
-        var projFileAsDictionary = DictionaryBuilder.GetDictionary(projectFile, za);
+        var projFileContent = DataLoader.GetTiledFileContent(projectFile, "");
+        if (projFileContent == null)
+        {
+            GD.PrintErr($"ERROR: Tiled project file '{projectFile}' not found.");
+            CommonUtils.ErrorCount++;
+            return;
+        }
+        var projFileAsDictionary = DictionaryBuilder.GetDictionary(projFileContent, projectFile);
         if (projFileAsDictionary.TryGetValue("propertyTypes", out var propTypes))
             _customTypes = (Array<Dictionary>)propTypes;
     }
@@ -42,7 +49,7 @@ public class CustomTypes
     {
         _customTypes?.Clear();
     }
-    
+
     public void MergeCustomProperties(Dictionary obj, string scope)
     {
         if (_customTypes == null) return;
@@ -60,7 +67,7 @@ public class CustomTypes
             properties = new Array<Dictionary>();
             newKey = true;
         }
-        
+
         foreach (var ctProp in _customTypes)
         {
             var ptName = (string)ctProp.GetValueOrDefault("name", "");
@@ -78,8 +85,9 @@ public class CustomTypes
                     obj["properties"] = new Array<Dictionary>();
                     newKey = false;
                 }
+
                 ((Array)obj["properties"]).Add(mem);
-            } 
+            }
         }
     }
 }

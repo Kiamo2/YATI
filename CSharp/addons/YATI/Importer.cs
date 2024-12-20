@@ -33,14 +33,14 @@ public partial class Importer: EditorImportPlugin
 
     public override string _GetVisibleName() => "Import from Tiled";
 
-    public override string[] _GetRecognizedExtensions() => new [] { "tmx", "tmj" };
+    public override string[] _GetRecognizedExtensions() => new[] { "tmx", "tmj" };
 
     public override string _GetResourceType() => "PackedScene";
 
     public override string _GetSaveExtension() => "tscn";
 
     public override float _GetPriority() => 0.1f;
-    
+
     public override int _GetPresetCount() => 0;
 
     public override string _GetPresetName(int presetIndex) => "";
@@ -63,7 +63,7 @@ public partial class Importer: EditorImportPlugin
                     { "property_hint", (int)PropertyHint.SaveFile }, { "hint_string", "*.tres;Resource File" } }
         };
     }
-    
+
     public override int _GetImportOrder() => 99;
 
     public override bool _GetOptionVisibility(string path, StringName optionName, Dictionary options) => true;
@@ -82,6 +82,9 @@ public partial class Importer: EditorImportPlugin
             GD.PrintErr($"Import file '{sourceFile}' not found!");
             return Error.FileNotFound;
         }
+
+        CommonUtils.ErrorCount = 0;
+        CommonUtils.WarningCount = 0;
 
         CustomTypes ct = null;
         var tilemapCreator = new TilemapCreator();
@@ -103,6 +106,7 @@ public partial class Importer: EditorImportPlugin
             ct.LoadCustomTypes((string)options["tiled_project_file"]);
             tilemapCreator.SetCustomTypes(ct);
         }
+
         if (options.ContainsKey("save_tileset_to") && (string)options["save_tileset_to"] != "")
         {
             tilemapCreator.SetSaveTilesetTo((string)options["save_tileset_to"]);
@@ -112,8 +116,8 @@ public partial class Importer: EditorImportPlugin
         if (node2D == null)
             return Error.Failed;
 
-        var errors = tilemapCreator.GetErrorCount();
-        var warnings = tilemapCreator.GetWarningCount();
+        var errors = CommonUtils.ErrorCount;
+        var warnings = CommonUtils.WarningCount;
 
         var postProcError = false;
         if (options.ContainsKey("post_processor") && (string)options["post_processor"] != "")
@@ -122,7 +126,7 @@ public partial class Importer: EditorImportPlugin
             node2D = postProc.CallPostProcess(node2D, (string)options["post_processor"]);
             postProcError = postProc.GetError() != Error.Ok;
         }
-        
+
         var packedScene = new PackedScene();
         packedScene.Pack(node2D);
         //return ResourceSaver.Save(packedScene, $"{sourceFile.GetBaseName()}.{_GetSaveExtension()}");
@@ -150,8 +154,10 @@ public partial class Importer: EditorImportPlugin
                 if (warnings > 1)
                     finalMessageString += "s";
             }
+
             finalMessageString += ".";
         }
+
         GD.Print(finalMessageString);
         if (postProcError)
             GD.Print("Postprocessing was skipped due to some error.");

@@ -37,29 +37,18 @@ public static class DictionaryBuilder
         Unknown
     }
 
-    public static Dictionary GetDictionary(string sourceFile)
+    public static Dictionary GetDictionary(byte[] tiledFileContent, string sourceFile)
     {
-        var checkedFile = sourceFile;
-        if (!FileAccess.FileExists(checkedFile))
-        {
-            checkedFile = sourceFile.GetBaseDir().PathJoin(sourceFile);
-            if (!FileAccess.FileExists(checkedFile))
-            {
-                GD.PrintErr($"ERROR: File '{sourceFile}' not found. -> Continuing but result may be unusable");
-                return null;
-            }
-        }
-        
+
         var type = FileType.Unknown;
-        var extension = sourceFile.GetFile().GetExtension();
+        var extension = sourceFile.GetFile().GetExtension().ToLower();
         if (new[] { "tmx", "tsx", "xml", "tx" }.Contains(extension))
             type = FileType.Xml;
         else if (new[] { "tmj", "tsj", "json", "tj", "tiled-project" }.Contains(extension))
             type = FileType.Json;
         else
         {
-            using var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
-            var chunk = System.Text.Encoding.UTF8.GetString(file.GetBuffer(12));
+            var chunk = System.Text.Encoding.UTF8.GetString(tiledFileContent, 0, 12);
             if (chunk.StartsWith("<?xml "))
                 type = FileType.Xml;
             else if (chunk.StartsWith("{ \""))
@@ -71,13 +60,12 @@ public static class DictionaryBuilder
             case FileType.Xml:
             {
                 var dictBuilder = new DictionaryFromXml();
-                return dictBuilder.Create(checkedFile);
+                return dictBuilder.Create(tiledFileContent, sourceFile);
             }
             case FileType.Json:
             {
                 var json = new Json();
-                using var file = FileAccess.Open(checkedFile, FileAccess.ModeFlags.Read);
-                if (json.Parse(file.GetAsText()) == Error.Ok)
+                if (json.Parse(System.Text.Encoding.UTF8.GetString(tiledFileContent)) == Error.Ok)
                     return (Dictionary)json.Data;
                 break;
             }
