@@ -24,6 +24,7 @@ extends RefCounted
 
 var _xml = preload("XmlParserCtrl.gd").new()
 var _current_element = ""
+var _current_group_level: int = 0
 var _result = {}
 var _current_dictionary = _result
 var _current_array = []
@@ -45,13 +46,19 @@ func create(tiled_file_content: PackedByteArray, source_file_name: String):
 	_is_map = _current_element == "map"
 
 	var base_element = _current_element
-	while (err == OK and (not _xml.is_end() or _current_element != base_element)):
+	var base_group_level = _current_group_level
+	while err == OK and (not _xml.is_end() or _current_element != base_element or
+			(base_element == "group" and _current_element == "group" and _current_group_level == base_group_level)):
 		_current_element = _xml.next_element()
 		if _current_element == null:
 			err = ERR_PARSE_ERROR
 			break
 		if _xml.is_end():
+			if _current_element == "group":
+				_current_group_level -= 1
 			continue
+		if _current_element == "group" and not _xml.is_empty():
+			_current_group_level += 1
 		var c_attributes = _xml.get_attributes()
 		var dictionary_bookmark = _current_dictionary
 		if _xml.is_empty():
@@ -162,12 +169,18 @@ func nested_element(element_name: String, attribs: Dictionary):
 	var array_bookmark_1 = _current_array
 	err = simple_element(element_name, attribs)
 	var base_element = _current_element
-	while err == OK and (_xml.is_end() == false or (_current_element != base_element)):
+	var base_group_level = _current_group_level
+	while err == OK and (not _xml.is_end() or _current_element != base_element or
+			(base_element == "group" and _current_element == "group" and _current_group_level == base_group_level)):
 		_current_element = _xml.next_element()
 		if _current_element == null:
 			return ERR_PARSE_ERROR
 		if _xml.is_end():
+			if _current_element == "group":
+				_current_group_level -= 1
 			continue
+		if _current_element == "group" and not _xml.is_empty():
+			_current_group_level += 1
 		if _current_element == "<data>":
 			var data = _xml.get_data()
 			if base_element == "text" or base_element == "property":

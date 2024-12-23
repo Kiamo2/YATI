@@ -405,8 +405,9 @@ public class TilemapCreator
                 // if (!_useDefaultFilter)
                 //     groupNode.TextureFilter = CanvasItem.TextureFilterEnum.Nearest;
 
-                foreach (Dictionary childLayer in (Array)layer["layers"])
-                    HandleLayer(childLayer, groupNode);
+                if (layer.TryGetValue("layers", out var lrs))
+                    foreach (Dictionary childLayer in (Array)lrs)
+                        HandleLayer(childLayer, groupNode);
 
                 if (layer.TryGetValue("properties", out var props))
                     HandleProperties(groupNode, (Array<Dictionary>)props);

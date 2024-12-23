@@ -351,8 +351,9 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		var layer_pos_y = layer.get("y", 0.0)
 		group_node.position = Vector2(layer_pos_x + layer_offset_x, layer_pos_y + layer_offset_y)
 	
-		for child_layer in layer["layers"]:
-			handle_layer(child_layer, group_node)
+		if layer.has("layers"):
+			for child_layer in layer["layers"]:
+				handle_layer(child_layer, group_node)
 
 		if layer.has("properties"):
 			handle_properties(group_node, layer["properties"])
