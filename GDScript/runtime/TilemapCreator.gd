@@ -842,7 +842,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		obj_sprite.rotation_degrees = obj_rot
 		obj_sprite.visible = obj_visible
 		var td
-		if get_num_tiles_for_source_id(source_id) > 1:
+		if is_partitioned_tileset(source_id):
 			# Object is tile from partitioned tileset 
 			var atlas_width: int = gid_source.get_atlas_grid_size().x
 
@@ -1540,6 +1540,13 @@ func get_tileset_alignment(gid: int):
 	if idx < 0:
 		return DEFAULT_ALIGNMENT
 	return _atlas_sources[idx]["objectAlignment"]	
+
+
+func is_partitioned_tileset(source_id: int) -> bool:
+	for src in _atlas_sources:
+		if src["sourceId"] == source_id:
+			return (src["assignedId"] < 0)
+	return false
 
 
 func get_num_tiles_for_source_id(source_id: int):

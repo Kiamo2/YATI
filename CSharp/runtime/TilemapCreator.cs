@@ -1021,7 +1021,7 @@ public class TilemapCreator
             objSprite.RotationDegrees = objRot;
             objSprite.Visible = objVisible;
             TileData td;
-            if (GetNumTilesForSourceId(sourceId) > 1)
+            if (IsPartitionedTileset(sourceId))
             {
                 // Object is tile from partitioned tileset 
                 var atlasWidth = gidSource.GetAtlasGridSize().X;
@@ -1910,6 +1910,11 @@ public class TilemapCreator
         return (string)_atlasSources[idx]["objectAlignment"];
     }
 
+    private bool IsPartitionedTileset(int sourceId)
+    {
+        return _atlasSources.Where(src => (int)src["sourceId"] == sourceId).Select(src => (int)src["assignedId"] < 0).FirstOrDefault();
+    }
+    
     private int GetNumTilesForSourceId(int sourceId)
     {
         foreach (var src in _atlasSources.Where(src => (int)src["sourceId"] == sourceId))

@@ -217,7 +217,7 @@ public class TilesetCreator
 
             _currentAtlasSource.Texture = texture;
             _columns = _currentAtlasSource.Texture.GetWidth() / _tileSize.X;
-            _tileCount = _columns * _currentAtlasSource.Texture.GetHeight() / _tileSize.X;
+            _tileCount = _columns * _currentAtlasSource.Texture.GetHeight() / _tileSize.Y;
 
             RegisterAtlasSource(addedSourceId, _tileCount, -1, _tileOffset);
             var atlasGridSize = _currentAtlasSource.GetAtlasGridSize();

@@ -183,7 +183,7 @@ func create_or_append(tile_set: Dictionary):
 
 		_current_atlas_source.texture = texture
 		_columns = _current_atlas_source.texture.get_width() / _tile_size.x
-		_tile_count = _columns * _current_atlas_source.texture.get_height() / _tile_size.x
+		_tile_count = _columns * _current_atlas_source.texture.get_height() / _tile_size.y
 		
 		register_atlas_source(added_source_id, _tile_count, -1, _tile_offset)
 		var atlas_grid_size = _current_atlas_source.get_atlas_grid_size()
