@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.8] - 2025-02-17
+
+### Fixed
+- Fixed issue #68
+
+### Changed
+- As of Godot v4.4, the JSON parser no longer distinguishes between integer and float and always returns float.  
+C#'s int.Parse does not like this, which has been taken into account with a corresponding change. 
+
 ## [2.1.7] - 2025-01-01
 
 ### Fixed

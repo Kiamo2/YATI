@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 Roland Helmerichs
+# Copyright (c) 2023-2025 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -486,7 +486,7 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 		for property in obj["properties"]:
 			var name = property.get("name", "")
 			var type = property.get("type", "string")
-			var val = property.get("value", "")
+			var val = str(property.get("value", ""))
 			if name == "": continue
 			if name.to_lower() == "one_way" and type == "bool":
 				current_tile.set_collision_polygon_one_way(phys, polygon_index, val.to_lower() == "true")

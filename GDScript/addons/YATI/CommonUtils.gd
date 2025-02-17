@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 Roland Helmerichs
+# Copyright (c) 2023-2025 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -57,4 +57,7 @@ static func get_right_typed_value(type: String, val: String):
 		if val.length() == 9: val = val[0] + val.substr(3) + val.substr(1,2)
 		return val
 	else:
+		# JSON parsing since Godot 4.4 adds ".0" to integers so remove that
+		if val.ends_with(".0"):
+			val = val.replace(".0", "")
 		return val

@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 Roland Helmerichs
+# Copyright (c) 2023-2025 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -184,8 +184,10 @@ func nested_element(element_name: String, attribs: Dictionary):
 			_current_group_level += 1
 		if _current_element == "<data>":
 			var data = _xml.get_data()
-			if base_element == "text" or base_element == "property":
-				_current_dictionary[base_element] = str(data);
+			if base_element == "text":
+				_current_dictionary[base_element] = str(data).replace("\r", "");
+			elif base_element == "property":
+				_current_array[-1]["value"] = str(data).replace("\r", "");
 			else:
 				data = data.strip_edges(true, true)
 				if _csv_encoded:

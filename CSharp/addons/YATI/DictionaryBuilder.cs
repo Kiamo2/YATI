@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2024 Roland Helmerichs
+// Copyright (c) 2023-2025 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,6 @@ public static class DictionaryBuilder
 
     public static Dictionary GetDictionary(byte[] tiledFileContent, string sourceFile)
     {
-
         var type = FileType.Unknown;
         var extension = sourceFile.GetFile().GetExtension().ToLower();
         if (new[] { "tmx", "tsx", "xml", "tx" }.Contains(extension))

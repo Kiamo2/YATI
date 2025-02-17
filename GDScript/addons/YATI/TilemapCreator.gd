@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2024 Roland Helmerichs
+# Copyright (c) 2023-2025 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -265,7 +265,7 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		_ct.merge_custom_properties(layer, "layer")
 
 	# v1.2: Skip layer
-	if get_property(layer, "no_import", "bool") == "true":
+	if str(get_property(layer, "no_import", "bool")) == "true":
 		return
 
 	if layer_type == "tilelayer":
@@ -1440,13 +1440,13 @@ func add_collision_shapes(parent: CollisionObject2D, object_group: Dictionary, t
 				collision_shape.one_way_collision_margin = coll_margin
 
 
-static func get_property(obj: Dictionary, property_name: String, property_type: String):
+static func get_property(obj: Dictionary, property_name: String, property_type: String) -> String:
 	var ret = ""
 	if not obj.has("properties"): return ret
 	for property in obj["properties"]:
 		var name = property.get("name", "")
 		var type = property.get("type", "string")
-		var val = property.get("value", "")
+		var val = str(property.get("value", ""))
 		if name.to_lower() == property_name and type == property_type:
 			return val
 	return ret

@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2024 Roland Helmerichs
+// Copyright (c) 2023-2025 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -595,7 +595,7 @@ public class TilesetCreator
                         currentTile.SetCollisionPolygonOneWay(phys, polygonIndex, bool.Parse((string)val));
                         break;
                     case "one_way_margin" when type == "int":
-                        currentTile.SetCollisionPolygonOneWayMargin(phys, polygonIndex, int.Parse((string)val));
+                        currentTile.SetCollisionPolygonOneWayMargin(phys, polygonIndex, CommonUtils.SafeIntParse((string)val));
                         break;
                 }
             }
@@ -624,8 +624,8 @@ public class TilesetCreator
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = property.GetValueOrDefault("value", "");
             if (name == "") continue;
-            if (name.ToLower() == propertyName && type == "int")
-                return int.Parse((string)val);
+            if (name.Equals(propertyName, StringComparison.CurrentCultureIgnoreCase) && type == "int")
+                return CommonUtils.SafeIntParse((string)val);
         }
 
         return -1;
@@ -643,13 +643,13 @@ public class TilesetCreator
             if (name.ToLower() == "texture_origin_x" && type == "int")
             {
                 var origin = currentTile.TextureOrigin;
-                origin.X = int.Parse(val);
+                origin.X = CommonUtils.SafeIntParse(val);
                 currentTile.TextureOrigin = origin;
             }
             else if (name.ToLower() == "texture_origin_y" && type == "int")
             {
                 var origin = currentTile.TextureOrigin;
-                origin.Y = int.Parse(val);
+                origin.Y = CommonUtils.SafeIntParse(val);
                 currentTile.TextureOrigin = origin;
             }
             else if (name.ToLower() == "modulate" && type == "string")
@@ -657,9 +657,9 @@ public class TilesetCreator
             else if (name.ToLower() == "material" && type == "file")
                 currentTile.Material = (Material)DataLoader.LoadResourceFromFile(val, _basePathTileset);
             else if (name.ToLower() == "z_index" && type == "int")
-                currentTile.ZIndex = int.Parse(val);
+                currentTile.ZIndex = CommonUtils.SafeIntParse(val);
             else if (name.ToLower() == "y_sort_origin" && type == "int")
-                currentTile.YSortOrigin = int.Parse(val);
+                currentTile.YSortOrigin = CommonUtils.SafeIntParse(val);
             else if (name.ToLower() == "linear_velocity_x" && type is "int" or "float")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);

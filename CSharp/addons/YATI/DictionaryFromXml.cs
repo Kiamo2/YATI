@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2024 Roland Helmerichs
+// Copyright (c) 2023-2025 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -248,21 +248,29 @@ public class DictionaryFromXml
                     _currentGroupLevel++;
                     break;
                 case "<data>":
-            {
+                {
                     Variant data = _xml.GetData();
-                    if (baseElement is "text" or "property")
-                        _currentDictionary.Add(baseElement, (string)data);
-                    else
+                    switch (baseElement)
                     {
-                        data = ((string)data).Trim();
-                        if (_csvEncoded)
+                        case "text":
+                            _currentDictionary.Add("text", ((string)data).Replace("\r", ""));
+                            break;
+                        case "property":
+                            ((Dictionary)_currentArray[^1]).Add("value", ((string)data).Replace("\r", ""));
+                            break;
+                        default:
                         {
-                            var arr = new Array();
-                            foreach (var s in ((string)data).Split(',',StringSplitOptions.TrimEntries))
-                                arr.Add(uint.Parse(s));
-                            data = arr;
+                            data = ((string)data).Trim();
+                            if (_csvEncoded)
+                            {
+                                var arr = new Array();
+                                foreach (var s in ((string)data).Split(',',StringSplitOptions.TrimEntries))
+                                    arr.Add(uint.Parse(s));
+                                data = arr;
+                            }
+                            ((Dictionary)_currentArray[^1]).Add("data", data);
+                            break;
                         }
-                        ((Dictionary)_currentArray[^1]).Add("data", data);
                     }
                     continue;
                 }

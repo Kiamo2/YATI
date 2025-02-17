@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2024 Roland Helmerichs
+// Copyright (c) 2023-2025 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -1983,8 +1983,8 @@ public class TilemapCreator
                     ((CanvasItem)targetNode).TopLevel = bool.Parse(val);
                     break;
                 case "clip_children" when (type == "int"):
-                    if (int.Parse(val) < (int)CanvasItem.ClipChildrenMode.Max)
-                        ((CanvasItem)targetNode).ClipChildren = (CanvasItem.ClipChildrenMode)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < (int)CanvasItem.ClipChildrenMode.Max)
+                        ((CanvasItem)targetNode).ClipChildren = (CanvasItem.ClipChildrenMode)CommonUtils.SafeIntParse(val);
                     break;
                 case "light_mask" when (type == "string"):
                     ((CanvasItem)targetNode).LightMask = (int)CommonUtils.GetBitmaskIntegerFromString(val, 20);
@@ -1993,7 +1993,7 @@ public class TilemapCreator
                     ((CanvasItem)targetNode).VisibilityLayer = CommonUtils.GetBitmaskIntegerFromString(val, 20);
                     break;
                 case "z_index" when (type == "int"):
-                    ((CanvasItem)targetNode).ZIndex = int.Parse(val);
+                    ((CanvasItem)targetNode).ZIndex = CommonUtils.SafeIntParse(val);
                     break;
                 case "z_as_relative" when (type == "bool"):
                     ((CanvasItem)targetNode).ZAsRelative = bool.Parse(val);
@@ -2002,12 +2002,12 @@ public class TilemapCreator
                     ((CanvasItem)targetNode).YSortEnabled = bool.Parse(val);
                     break;
                 case "texture_filter" when (type == "int"):
-                    if (int.Parse(val) < (int)CanvasItem.TextureFilterEnum.Max)
-                        ((CanvasItem)targetNode).TextureFilter = (CanvasItem.TextureFilterEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < (int)CanvasItem.TextureFilterEnum.Max)
+                        ((CanvasItem)targetNode).TextureFilter = (CanvasItem.TextureFilterEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "texture_repeat" when (type == "int"):
-                    if (int.Parse(val) < (int)CanvasItem.TextureRepeatEnum.Max)
-                        ((CanvasItem)targetNode).TextureRepeat = (CanvasItem.TextureRepeatEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < (int)CanvasItem.TextureRepeatEnum.Max)
+                        ((CanvasItem)targetNode).TextureRepeat = (CanvasItem.TextureRepeatEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "material" when (type == "file"):
 					((CanvasItem)targetNode).Material = (Material)DataLoader.LoadResourceFromFile(val, _basePath);
@@ -2021,13 +2021,13 @@ public class TilemapCreator
 					((TileMapLayer)targetNode).TileSet = (TileSet)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "y_sort_origin" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
-                    ((TileMapLayer)targetNode).YSortOrigin = int.Parse(val);
+                    ((TileMapLayer)targetNode).YSortOrigin = CommonUtils.SafeIntParse(val);
                     break;
                 case "x_draw_order_reversed" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     ((TileMapLayer)targetNode).XDrawOrderReversed = bool.Parse(val);
                     break;
                 case "rendering_quadrant_size" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
-                    ((TileMapLayer)targetNode).RenderingQuadrantSize = int.Parse(val);
+                    ((TileMapLayer)targetNode).RenderingQuadrantSize = CommonUtils.SafeIntParse(val);
                     break;
                 case "collision_enabled" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     ((TileMapLayer)targetNode).CollisionEnabled = bool.Parse(val);
@@ -2036,21 +2036,21 @@ public class TilemapCreator
                     ((TileMapLayer)targetNode).UseKinematicBodies = bool.Parse(val);
                     break;
                 case "collision_visibility_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
-                    if (int.Parse(val) < 3)
-                        ((TileMapLayer)targetNode).CollisionVisibilityMode = (TileMapLayer.DebugVisibilityMode)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 3)
+                        ((TileMapLayer)targetNode).CollisionVisibilityMode = (TileMapLayer.DebugVisibilityMode)CommonUtils.SafeIntParse(val);
                     break;
                 case "navigation_enabled" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     ((TileMapLayer)targetNode).NavigationEnabled = bool.Parse(val);
                     break;
                 case "navigation_visibility_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
-                    if (int.Parse(val) < 3)
-                        ((TileMapLayer)targetNode).NavigationVisibilityMode = (TileMapLayer.DebugVisibilityMode)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 3)
+                        ((TileMapLayer)targetNode).NavigationVisibilityMode = (TileMapLayer.DebugVisibilityMode)CommonUtils.SafeIntParse(val);
                     break;
 
                 // CollisionObject2D properties
                 case "disable_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
-                    if (int.Parse(val) < 3)
-                        ((CollisionObject2D)targetNode).DisableMode = (CollisionObject2D.DisableModeEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 3)
+                        ((CollisionObject2D)targetNode).DisableMode = (CollisionObject2D.DisableModeEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "collision_layer" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
                     ((CollisionObject2D)targetNode).CollisionLayer = CommonUtils.GetBitmaskIntegerFromString(val, 32);
@@ -2066,10 +2066,10 @@ public class TilemapCreator
                     break;
 
                 // CollisionPolygon2D properties
-                case "build_mode" when type == "int" && hasChildren && int.Parse(val) < 2:
+                case "build_mode" when type == "int" && hasChildren && CommonUtils.SafeIntParse(val) < 2:
                     foreach (var child in targetNode.GetChildren())
                         if (child.GetType().IsAssignableTo(typeof(CollisionPolygon2D)))
-                            ((CollisionPolygon2D)child).BuildMode = (CollisionPolygon2D.BuildModeEnum)int.Parse(val);
+                            ((CollisionPolygon2D)child).BuildMode = (CollisionPolygon2D.BuildModeEnum)CommonUtils.SafeIntParse(val);
                     break;
 
                 // CollisionPolygon & CollisionShape2D properties
@@ -2110,11 +2110,11 @@ public class TilemapCreator
                     ((Area2D)targetNode).Monitorable = bool.Parse(val);
                     break;
                 case "priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).Priority = int.Parse(val, Inv);
+                    ((Area2D)targetNode).Priority = CommonUtils.SafeIntParse(val, Inv);
                     break;
                 case "gravity_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    if (int.Parse(val) < 5)
-                        ((Area2D)targetNode).GravitySpaceOverride = (Area2D.SpaceOverride)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 5)
+                        ((Area2D)targetNode).GravitySpaceOverride = (Area2D.SpaceOverride)CommonUtils.SafeIntParse(val);
                     break;
                 case "gravity_point" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     ((Area2D)targetNode).GravityPoint = bool.Parse(val);
@@ -2138,15 +2138,15 @@ public class TilemapCreator
                     ((Area2D)targetNode).Gravity = float.Parse(val, Inv);
                     break;
                 case "linear_damp_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    if (int.Parse(val) < 5)
-                        ((Area2D)targetNode).LinearDampSpaceOverride = (Area2D.SpaceOverride)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 5)
+                        ((Area2D)targetNode).LinearDampSpaceOverride = (Area2D.SpaceOverride)CommonUtils.SafeIntParse(val);
                     break;
                 case "linear_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     ((Area2D)targetNode).LinearDamp = float.Parse(val, Inv);
                     break;
                 case "angular_damp_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    if (int.Parse(val) < 5)
-                        ((Area2D)targetNode).AngularDampSpaceOverride = (Area2D.SpaceOverride)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 5)
+                        ((Area2D)targetNode).AngularDampSpaceOverride = (Area2D.SpaceOverride)CommonUtils.SafeIntParse(val);
                     break;
                 case "angular_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     ((Area2D)targetNode).AngularDamp = float.Parse(val, Inv);
@@ -2168,8 +2168,8 @@ public class TilemapCreator
                 
                 // Character2D properties
                 case "motion_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    if (int.Parse(val) < 2)
-                        ((CharacterBody2D)targetNode).MotionMode = (CharacterBody2D.MotionModeEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 2)
+                        ((CharacterBody2D)targetNode).MotionMode = (CharacterBody2D.MotionModeEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "up_direction_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).UpDirection = new Vector2(float.Parse(val, Inv), ((CharacterBody2D)targetNode).UpDirection.Y);
@@ -2199,8 +2199,8 @@ public class TilemapCreator
                     ((CharacterBody2D)targetNode).FloorSnapLength = float.Parse(val, Inv);
                     break;
                 case "platform_on_leave" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
-                    if (int.Parse(val) < 3)
-                        ((CharacterBody2D)targetNode).PlatformOnLeave = (CharacterBody2D.PlatformOnLeaveEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 3)
+                        ((CharacterBody2D)targetNode).PlatformOnLeave = (CharacterBody2D.PlatformOnLeaveEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "platform_floor_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(CharacterBody2D)):
                     ((CharacterBody2D)targetNode).PlatformFloorLayers = CommonUtils.GetBitmaskIntegerFromString(val, 32);
@@ -2229,8 +2229,8 @@ public class TilemapCreator
                     ((RigidBody2D)targetNode).Inertia = float.Parse(val, Inv);
                     break;
                 case "center_of_mass" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    if (int.Parse(val) < 2)
-                        ((RigidBody2D)targetNode).CenterOfMassMode = (RigidBody2D.CenterOfMassModeEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 2)
+                        ((RigidBody2D)targetNode).CenterOfMassMode = (RigidBody2D.CenterOfMassModeEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "physics_material_override" when (type == "file"):
 					((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)DataLoader.LoadResourceFromFile(val, _basePath);
@@ -2242,11 +2242,11 @@ public class TilemapCreator
                     ((RigidBody2D)targetNode).CustomIntegrator = bool.Parse(val);
                     break;
                 case "continuous_cd" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    if (int.Parse(val) < 3)
-                        ((RigidBody2D)targetNode).ContinuousCd = (RigidBody2D.CcdMode)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 3)
+                        ((RigidBody2D)targetNode).ContinuousCd = (RigidBody2D.CcdMode)CommonUtils.SafeIntParse(val);
                     break;
                 case "max_contacts_reported" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    ((RigidBody2D)targetNode).MaxContactsReported = int.Parse(val);
+                    ((RigidBody2D)targetNode).MaxContactsReported = CommonUtils.SafeIntParse(val);
                     break;
                 case "contact_monitor" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     ((RigidBody2D)targetNode).ContactMonitor = bool.Parse(val);
@@ -2264,8 +2264,8 @@ public class TilemapCreator
                     ((RigidBody2D)targetNode).Freeze = bool.Parse(val);
                     break;
                 case "freeze_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    if (int.Parse(val) < 2)
-                        ((RigidBody2D)targetNode).FreezeMode = (RigidBody2D.FreezeModeEnum)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 2)
+                        ((RigidBody2D)targetNode).FreezeMode = (RigidBody2D.FreezeModeEnum)CommonUtils.SafeIntParse(val);
                     break;
                 case "linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     ((RigidBody2D)targetNode).LinearVelocity = new Vector2(float.Parse(val, Inv), ((RigidBody2D)targetNode).LinearVelocity.Y);
@@ -2274,8 +2274,8 @@ public class TilemapCreator
                     ((RigidBody2D)targetNode).LinearVelocity = new Vector2(((RigidBody2D)targetNode).LinearVelocity.X, float.Parse(val, Inv));
                     break;
                 case "linear_damp_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    if (int.Parse(val) < 2)
-                        ((RigidBody2D)targetNode).LinearDampMode = (RigidBody2D.DampMode)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 2)
+                        ((RigidBody2D)targetNode).LinearDampMode = (RigidBody2D.DampMode)CommonUtils.SafeIntParse(val);
                     break;
                 case "linear_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     ((RigidBody2D)targetNode).LinearDamp = float.Parse(val, Inv);
@@ -2284,8 +2284,8 @@ public class TilemapCreator
                     ((RigidBody2D)targetNode).AngularVelocity = float.Parse(val, Inv);
                     break;
                 case "angular_damp_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
-                    if (int.Parse(val) < 2)
-                        ((RigidBody2D)targetNode).AngularDampMode = (RigidBody2D.DampMode)int.Parse(val);
+                    if (CommonUtils.SafeIntParse(val) < 2)
+                        ((RigidBody2D)targetNode).AngularDampMode = (RigidBody2D.DampMode)CommonUtils.SafeIntParse(val);
                     break;
                 case "angular_damp" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):
                     ((RigidBody2D)targetNode).AngularDamp = float.Parse(val, Inv);

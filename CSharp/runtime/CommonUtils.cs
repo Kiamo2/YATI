@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2024 Roland Helmerichs
+// Copyright (c) 2023-2025 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -65,7 +65,7 @@ public static class CommonUtils
             case "float":
                 return float.Parse(val, Inv);
             case "int":
-                return int.Parse(val);
+                return SafeIntParse(val);
             case "color":
             {
                 // If alpha is present it's oddly the first byte, so we have to shift it to the end
@@ -73,8 +73,14 @@ public static class CommonUtils
                 return val;
             }
             default:
-                return val;
+                // JSON parsing since Godot 4.4 adds ".0" to integers so remove that
+                return val.EndsWith(".0") ? val.Replace(".0", "") : val;
         }
+    }
+
+    public static int SafeIntParse(string val, IFormatProvider provider = null)
+    {
+        return int.Parse(val.EndsWith(".0") ? val.Replace(".0", "") : val, provider);
     }
     
     public static string CleanupPath(string path)
