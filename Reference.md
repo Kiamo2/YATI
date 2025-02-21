@@ -129,56 +129,58 @@ Property value is the assigned layer number.
 **Names:** The Tiled element name entry is mapped to the Godot element name.  
 If the Tiled name entry is empty a default Godot element name is created to avoid cryptic looking names.
 
-| Tiled Element              | Class or <br> godot_node_type | Property (type)        | Godot Element                             |
-|----------------------------|-------------------------------|------------------------|-------------------------------------------|
-| Tile layer                 |                               |                        | TileMapLayer                              |
-| Object layer               |                               |                        | Node2D                                    |
-| Group layer                |                               |                        | (Parent) Node2D                           |
-| Image layer                |                               |                        | TextureRect                               |
+| Tiled Element              | Class or <br> godot_node_type | Property (type)        | Godot Element                               |
+|----------------------------|-------------------------------|------------------------|---------------------------------------------|
+| Tile layer                 |                               |                        | TileMapLayer                                |
+| Object layer               |                               |                        | Node2D                                      |
+| Group layer                |                               |                        | (Parent) Node2D                             |
+| Image layer                |                               |                        | TextureRect                                 |
 ||
-| Tileset (tileset image)    |                               |                        | Atlas                                     |
-| Tileset (image collection) |                               |                        | One atlas per image                       |
-| Terrain Set ("wangset")    |                               |                        | Terrain Set                               |
-| Terrain ("color")          |                               |                        | Terrain                                   |
+| Tileset (tileset image)    |                               |                        | Atlas                                       |
+| Tileset (image collection) |                               |                        | One atlas per image                         |
+| Terrain Set ("wangset")    |                               |                        | Terrain Set                                 |
+| Terrain ("color")          |                               |                        | Terrain                                     |
 ||
-| Tile Collision polygon     |                               | physics_layer (int)    | Physics layer polygon                     |
-|                            |                               | navigation_layer (int) | Navigation layer polygon                  |
-|                            |                               | occlusion_layer (int)  | Occlusion layer polygon                   |
-| Tile Collision rectangle   |                               | physics_layer (int)    | Physics layer polygon                     |
-|                            |                               | navigation_layer (int) | Navigation layer polygon                  |
-|                            |                               | occlusion_layer (int)  | Occlusion layer polygon                   |
-| Tile collision ellipse     |                               |                        | n/a                                       |
-| Tile animation             |                               |                        | Tile animation (limited)                  |
+| Tile Collision polygon     |                               | physics_layer (int)    | Physics layer polygon                       |
+|                            |                               | navigation_layer (int) | Navigation layer polygon                    |
+|                            |                               | occlusion_layer (int)  | Occlusion layer polygon                     |
+| Tile Collision rectangle   |                               | physics_layer (int)    | Physics layer polygon                       |
+|                            |                               | navigation_layer (int) | Navigation layer polygon                    |
+|                            |                               | occlusion_layer (int)  | Occlusion layer polygon                     |
+| Tile collision ellipse     |                               |                        | n/a                                         |
+| Tile animation             |                               |                        | Tile animation (limited)                    |
 ||
-| Tile object                |                               |                        | Sprite2D                                  |
-|                            | area                          |                        | Area2D + Sprite2d + Coll.(*)              |
-|                            | staticbody                    |                        | StaticBody2D + Sprite2D + Coll.(*)        |
-|                            | characterbody                 |                        | CharacterBody2D + Sprite2D + Coll.(*)     |
-|                            | rigidbody                     |                        | RigidBody2D + Sprite2D + Coll.(*)         |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Polygon object             | (staticbody)                  |                        | StaticBody2D + CollisionPolygon2D         |
-|                            | area                          |                        | Area2D + CollisionPolygon2D               |
-|                            | navigation                    |                        | NavigationRegion2D                        |
-|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D      |
-|                            | polygon                       |                        | Polygon2D                                 |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Rectangle object           | (staticbody)                  |                        | StaticBody2D + Rectangle CollisionShape2D |
-|                            | area                          |                        | Area2D + Rectangle CollisionShape2D       |
-|                            | navigation                    |                        | NavigationRegion2D                        |
-|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D      |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Ellipse object             | (staticbody)                  |                        | StaticBody2D + Capsule CollisionShape2D   |
-|                            | area                          |                        | Area2D + Capsule CollisionShape2D         |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Polyline object            | (staticbody)                  |                        | StaticBody2D + Segment CollisionShape2D   |
-|                            | area                          |                        | Area2D + Segment CollisionShape2D         |
-|                            | line                          |                        | Line2D                                    |
-|                            | path                          |                        | Path2D                                    |
-| Point object               |                               |                        | Marker2D                                  |
-|                            | instance                      | res_path (file)        | Instantiated scene                        |
-| Text object                |                               |                        | Label                                     |
+| Tile object                |                               |                        | Sprite2D                                    |
+|                            | area                          |                        | Area2D + Sprite2d + Coll.(*)                |
+|                            | staticbody                    |                        | StaticBody2D + Sprite2D + Coll.(*)          |
+|                            | characterbody                 |                        | CharacterBody2D + Sprite2D + Coll.(*)       |
+|                            | rigidbody                     |                        | RigidBody2D + Sprite2D + Coll.(*)           |
+|                            | instance                      | res_path (file)        | Instantiated scene                          |
+|                            |                               | res_alignment (string) | Alignment of the instaiated Godot scene(**) |
+| Polygon object             | (staticbody)                  |                        | StaticBody2D + CollisionPolygon2D           |
+|                            | area                          |                        | Area2D + CollisionPolygon2D                 |
+|                            | navigation                    |                        | NavigationRegion2D                          |
+|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D        |
+|                            | polygon                       |                        | Polygon2D                                   |
+|                            | instance                      | res_path (file)        | Instantiated scene                          |
+| Rectangle object           | (staticbody)                  |                        | StaticBody2D + Rectangle CollisionShape2D   |
+|                            | area                          |                        | Area2D + Rectangle CollisionShape2D         |
+|                            | navigation                    |                        | NavigationRegion2D                          |
+|                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D        |
+|                            | instance                      | res_path (file)        | Instantiated scene                          |
+| Ellipse object             | (staticbody)                  |                        | StaticBody2D + Capsule CollisionShape2D     |
+|                            | area                          |                        | Area2D + Capsule CollisionShape2D           |
+|                            | instance                      | res_path (file)        | Instantiated scene                          |
+| Polyline object            | (staticbody)                  |                        | StaticBody2D + Segment CollisionShape2D     |
+|                            | area                          |                        | Area2D + Segment CollisionShape2D           |
+|                            | line                          |                        | Line2D                                      |
+|                            | path                          |                        | Path2D                                      |
+| Point object               |                               |                        | Marker2D                                    |
+|                            | instance                      | res_path (file)        | Instantiated scene                          |
+| Text object                |                               |                        | Label                                       |
 
-Coll.(*): All tile collision objects (except point), ellipse is approximated by capsule
+Coll.(*): All tile collision objects (except point), ellipse is approximated by capsule  
+**): Possible alignment values are 'bottomleft', 'bottom', 'bottomright', 'left', 'center', 'right', 'topleft', 'top', 'topright'
 
 ## Custom properties reference
 

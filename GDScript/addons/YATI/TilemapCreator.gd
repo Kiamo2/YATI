@@ -638,18 +638,29 @@ static func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float,
 	}.get(alignment, Vector2(width / 2.0, -height / 2.0))
 
 
-static func get_instance_offset(width: float, height: float, alignment: String) -> Vector2:
-	return {
-		"bottomleft": Vector2(0.0, -height),
-		"bottom": Vector2(-width / 2.0, -height),
-		"bottomright": Vector2(-width, -height),
-		"left": Vector2(0.0, -height / 2.0),
-		"center": Vector2(-width / 2.0, -height / 2.0),
-		"right": Vector2(-width, -height / 2.0),
-		"topleft": Vector2.ZERO,
-		"top": Vector2(-width / 2.0, 0.0),
-		"topright": Vector2(-width, 0.0),
-	}.get(alignment, Vector2.ZERO)
+static func get_instance_offset(width: float, height: float, r_alignment: String, c_alignment: String) -> Vector2:
+	var centered_alignment = {
+		"bottomleft": Vector2(width / 2.0, -height / 2.0),
+		"bottom": Vector2(0.0, -height / 2.0),
+		"bottomright": Vector2(-width / 2.0, -height / 2.0),
+		"left": Vector2(width / 2.0, 0.0),
+		"center": Vector2.ZERO,
+		"right": Vector2(-width / 2.0, 0.0),
+		"topleft": Vector2(width / 2.0, height / 2.0),
+		"top": Vector2(0.0, height / 2.0),
+		"topright": Vector2(-width / 2.0, height / 2.0),
+	}.get(c_alignment, Vector2.ZERO)
+	return centered_alignment + {
+		"bottomleft": Vector2(-width / 2.0, height / 2.0),
+		"bottom": Vector2(0.0, height / 2.0),
+		"bottomright": Vector2(width / 2.0, height / 2.0),
+		"left": Vector2(-width / 2.0, 0.0),
+		"center": Vector2.ZERO,
+		"right": Vector2(width / 2.0, 0.0),
+		"topleft": Vector2(-width / 2.0, -height / 2.0),
+		"top": Vector2(0.0, -height / 2.0),
+		"topright": Vector2(width / 2.0, -height / 2.0),
+	}.get(r_alignment, Vector2.ZERO)
 
 
 func convert_metadata_to_obj_properties(td: TileData, obj: Dictionary) -> void:
@@ -912,13 +923,20 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				# Error check
 				if scene == null: return
 
+				var res_path_extension = res_path.get_file().get_extension().to_lower()
+				var res_alignment = get_property(obj, "res_alignment", "string")
+
 				obj_sprite.owner = null
 				layer_node.remove_child(obj_sprite)
 				var instance = scene.instantiate()
 				layer_node.add_child(instance)
 				instance.owner = _base_node
 				instance.name = obj_name if obj_name != "" else res_path.get_file().get_basename()
-				instance.position = transpose_coords(obj_x, obj_y) + get_instance_offset(obj_width, obj_height, _current_object_alignment)
+				instance.position = transpose_coords(obj_x, obj_y)
+				if res_alignment != "":
+					instance.position += get_instance_offset(obj_width, obj_height, res_alignment, _current_object_alignment)
+				elif res_path_extension == "tmx" or res_path_extension == "tmj":
+					instance.position += get_instance_offset(obj_width, obj_height, "topleft", _current_object_alignment)
 				instance.rotation_degrees = obj_rot
 				instance.visible = obj_visible
 				instance.scale = obj_sprite.scale

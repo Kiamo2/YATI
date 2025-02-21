@@ -763,21 +763,34 @@ public class TilemapCreator
         };
     }
 
-    private static Vector2 GetInstanceOffset(float width, float height, string alignment)
+    private static Vector2 GetInstanceOffset(float width, float height, string rAlignment, string cAlignment)
     {
-        return alignment switch
+        var centeredAlignment = cAlignment switch
         {
-            "bottomleft" => new Vector2(0.0f, -height),
-            "bottom" => new Vector2(-width / 2.0f, -height),
-            "bottomright" => new Vector2(-width, -height),
-            "left" => new Vector2(0.0f, -height / 2.0f),
-            "center" => new Vector2(-width / 2.0f, -height / 2.0f),
-            "right" => new Vector2(-width, -height / 2.0f),
-            "topleft" => Vector2.Zero,
-            "top" => new Vector2(-width / 2.0f, 0.0f),
-            "topright" => new Vector2(-width, 0.0f),
+            "bottomleft" => new Vector2(width / 2.0f, -height / 2.0f),
+            "bottom" => new Vector2(0.0f, -height / 2.0f),
+            "bottomright" => new Vector2(-width / 2.0f, -height / 2.0f),
+            "left" => new Vector2(width / 2.0f, 0.0f),
+            "center" => Vector2.Zero,
+            "right" => new Vector2(-width / 2.0f, 0.0f),
+            "topleft" => new Vector2(width / 2.0f, height / 2.0f),
+            "top" => new Vector2(0.0f, height / 2.0f),
+            "topright" => new Vector2(-width /2.0f, height / 2.0f),
             _ => Vector2.Zero
         };
+        return centeredAlignment + (rAlignment switch
+        {
+            "bottomleft" => new Vector2(-width / 2.0f, height / 2.0f),
+            "bottom" => new Vector2(0.0f, height / 2.0f),
+            "bottomright" => new Vector2(width / 2.0f, height / 2.0f),
+            "left" => new Vector2(-width / 2.0f, 0.0f),
+            "center" => Vector2.Zero,
+            "right" => new Vector2(width / 2.0f, 0.0f),
+            "topleft" => new Vector2(-width / 2.0f, -height / 2.0f),
+            "top" => new Vector2(0.0f, -height / 2.0f),
+            "topright" => new Vector2(width /2.0f, -height / 2.0f),
+            _ => Vector2.Zero
+        });
     }
 
     private void ConvertMetaDataToObjProperties(TileData td, Dictionary obj)
@@ -1111,13 +1124,20 @@ public class TilemapCreator
                     // Error check
                     if (scene == null) return;
 
+                    var resPathExtension = resPath.GetFile().GetExtension().ToLower();
+                    var resAlignment = GetProperty(obj, "res_alignment", "string");
+
                     var instance = scene.Instantiate();
                     objSprite.Owner = null;
                     layerNode.RemoveChild(objSprite);
                     layerNode.AddChild(instance);
                     instance.Owner = _baseNode;
                     instance.Name = (objName != "") ? objName : resPath.GetFile().GetBaseName();
-                    ((Node2D)instance).Position = TransposeCoords(objX, objY) + GetInstanceOffset(objWidth, objHeight, _currentObjectAlignment);
+                    ((Node2D)instance).Position = TransposeCoords(objX, objY);
+                    if (resAlignment != "")
+                        ((Node2D)instance).Position += GetInstanceOffset(objWidth, objHeight, resAlignment, _currentObjectAlignment);
+                    else if (resPathExtension is "tmx" or "tmj")
+                        ((Node2D)instance).Position += GetInstanceOffset(objWidth, objHeight, "topleft", _currentObjectAlignment);
                     ((Node2D)instance).RotationDegrees = objRot;
                     ((Node2D)instance).Visible = objVisible;
                     ((Node2D)instance).Scale = objSprite.Scale;

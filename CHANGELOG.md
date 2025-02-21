@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.9] - 2025-02-21
+
+### Fixed
+
+- Starting with version 2.1.4 I had screwed up instance tile placements.  
+(Fortunately, almost no one has stumbled across it...)  
+This is now fixed.
+
+### Added
+
+- In addition to instance property 'res_path' now a property 'res_alignment' can be used to correct misalignments.  
+Misalignments can occur if the alignment of an instance is different to its representing (Tiled) tile.  
+
 ## [2.1.8] - 2025-02-17
 
 ### Fixed
