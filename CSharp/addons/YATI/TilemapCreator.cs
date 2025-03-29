@@ -2323,11 +2323,17 @@ public class TilemapCreator
                     break;
                 
                 // NavigationRegion2D properties
+                case "navigation_polygon" when type == "file" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    ((NavigationRegion2D)targetNode).NavigationPolygon = (NavigationPolygon)DataLoader.LoadResourceFromFile(val, _basePath);
+                    break;
                 case "enabled" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
                     ((NavigationRegion2D)targetNode).Enabled = bool.Parse(val);
                     break;
                 case "navigation_layers" when type == "string" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
                     ((NavigationRegion2D)targetNode).NavigationLayers = CommonUtils.GetBitmaskIntegerFromString(val, 32);
+                    break;
+                case "use_edge_connection" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    ((NavigationRegion2D)targetNode).Enabled = bool.Parse(val);
                     break;
                 case "enter_cost" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
                     ((NavigationRegion2D)targetNode).EnterCost = float.Parse(val, Inv);
@@ -2336,6 +2342,122 @@ public class TilemapCreator
                     ((NavigationRegion2D)targetNode).TravelCost = float.Parse(val, Inv);
                     break;
 
+                // NavigationPolygon properties
+                case "parsed_geometry_type"
+                    when type is "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    if (CommonUtils.SafeIntParse(val) < 3) {
+                            var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                            navPoly.ParsedGeometryType = (NavigationPolygon.ParsedGeometryTypeEnum)CommonUtils.SafeIntParse(val);
+                    }
+                    break;
+                case "parsed_collision_mask"
+                    when type is "string" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.ParsedCollisionMask = CommonUtils.GetBitmaskIntegerFromString(val, 32);
+                    }
+                    break;
+                case "source_geometry_mode"
+                    when type is "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    if (CommonUtils.SafeIntParse(val) < 3) {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.SourceGeometryMode = (NavigationPolygon.SourceGeometryModeEnum)CommonUtils.SafeIntParse(val);
+                    }
+                    break;
+                case "source_geometry_group_name"
+                    when type is "string" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.SourceGeometryGroupName = val;
+                    }
+                    break;
+                case "cell_size" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.CellSize = float.Parse(val, Inv);
+                    }
+                    break;
+                case "border_size" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.BorderSize = float.Parse(val, Inv);
+                    }
+                    break;
+                case "agent_radius" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.AgentRadius = float.Parse(val, Inv);
+                    }
+                    break;
+                case "baking_rect_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        var bakingRect = navPoly.BakingRect;
+                        var brPos = bakingRect.Position;
+                        brPos.X = float.Parse(val, Inv);
+                        bakingRect.Position = brPos;
+                        navPoly.BakingRect = bakingRect;
+                    }
+                    break;
+                case "baking_rect_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        var bakingRect = navPoly.BakingRect;
+                        var brPos = bakingRect.Position;
+                        brPos.Y = float.Parse(val, Inv);
+                        bakingRect.Position = brPos;
+                        navPoly.BakingRect = bakingRect;
+                    }
+                    break;
+                case "baking_rect_w" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        var bakingRect = navPoly.BakingRect;
+                        var brSize = bakingRect.Size;
+                        brSize.X = float.Parse(val, Inv);
+                        bakingRect.Size = brSize;
+                        navPoly.BakingRect = bakingRect;
+                    }
+                    break;
+                case "baking_rect_h" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        var bakingRect = navPoly.BakingRect;
+                        var brSize = bakingRect.Size;
+                        brSize.Y = float.Parse(val, Inv);
+                        bakingRect.Size = brSize;
+                        navPoly.BakingRect = bakingRect;
+                    }
+                    break;
+                case "baking_rect_offset_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        var bakingRectOffset = navPoly.BakingRectOffset;
+                        bakingRectOffset.X = float.Parse(val, Inv);
+                        navPoly.BakingRectOffset = bakingRectOffset;
+                    }
+                    break;
+                case "baking_rect_offset_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        var bakingRectOffset = navPoly.BakingRectOffset;
+                        bakingRectOffset.Y = float.Parse(val, Inv);
+                        navPoly.BakingRectOffset = bakingRectOffset;
+                    }
+                    break;
+                case "resource_local_to_scene" when type is "bool" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.ResourceLocalToScene = bool.Parse(val);
+                    }
+                    break;
+                case "resource_name" when type == "string" && targetNodeClass.IsAssignableTo(typeof(NavigationRegion2D)):
+                    {
+                        var navPoly = ((NavigationRegion2D)targetNode).NavigationPolygon;
+                        navPoly.ResourceName = val;
+                    }
+                    break;
+                
                 // LightOccluder2D properties
                 case "sdf_collision" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(LightOccluder2D)):
                     ((LightOccluder2D)targetNode).SdfCollision = bool.Parse(val);

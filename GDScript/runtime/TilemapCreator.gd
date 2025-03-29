@@ -1840,14 +1840,87 @@ func handle_properties(target_node: Node, properties: Array):
 			target_node.constant_torque = float(val)
 				
 		# NavigationRegion2D properties
+		elif name.to_lower() == "navigation_polygon" and type == "file" and target_node is NavigationRegion2D:
+			target_node.navigation_polygon = DataLoader.load_resource_from_file(val, _base_path)
 		elif name.to_lower() == "enabled" and type == "bool" and target_node is NavigationRegion2D:
 			target_node.enabled = val.to_lower() == "true"
 		elif name.to_lower() == "navigation_layers" and type == "string" and target_node is NavigationRegion2D:
 			target_node.navigation_layers = CommonUtils.get_bitmask_integer_from_string(val, 32)
+		elif name.to_lower() == "use_edge_connection" and type == "bool" and target_node is NavigationRegion2D:
+			target_node.use_edge_connection = val.to_lower() == "true"
 		elif name.to_lower() == "enter_cost" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
 			target_node.enter_cost = float(val)
 		elif name.to_lower() == "travel_cost" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
 			target_node.travel_cost = float(val)
+
+		# NavigationPolygon properties
+		elif name.to_lower() == "parsed_geometry_type" and type == "int" and target_node is NavigationRegion2D:
+			if int(val) < 3:
+				var nav_poly = target_node.navigation_polygon
+				nav_poly.parsed_geometry_type = int(val)
+		elif name.to_lower() == "parsed_collision_mask" and type == "string" and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.parsed_collision_mask = CommonUtils.get_bitmask_integer_from_string(val, 32)
+		elif name.to_lower() == "source_geometry_mode" and type == "int" and target_node is NavigationRegion2D:
+			if int(val) < 3:
+				var nav_poly = target_node.navigation_polygon
+				nav_poly.source_geometry_mode = int(val)
+		elif name.to_lower() == "source_geometry_group_name" and type == "string" and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.source_geometry_group_name = val
+		elif name.to_lower() == "cell_size" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.cell_size = float(val)
+		elif name.to_lower() == "border_size" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.border_size = float(val)
+		elif name.to_lower() == "agent_radius" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.agent_radius = float(val)
+		elif name.to_lower() == "baking_rect_x" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			var baking_rect = nav_poly.baking_rect
+			var br_pos = baking_rect.position
+			br_pos.x = float(val)
+			baking_rect.position = br_pos
+			nav_poly.baking_rect = baking_rect
+		elif name.to_lower() == "baking_rect_y" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			var baking_rect = nav_poly.baking_rect
+			var br_pos = baking_rect.position
+			br_pos.y = float(val)
+			baking_rect.position = br_pos
+			nav_poly.baking_rect = baking_rect
+		elif name.to_lower() == "baking_rect_w" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			var baking_rect = nav_poly.baking_rect
+			var br_size = baking_rect.size
+			br_size.x = float(val)
+			baking_rect.size = br_size
+			nav_poly.baking_rect = baking_rect
+		elif name.to_lower() == "baking_rect_h" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			var baking_rect = nav_poly.baking_rect
+			var br_size = baking_rect.size
+			br_size.y = float(val)
+			baking_rect.size = br_size
+			nav_poly.baking_rect = baking_rect
+		elif name.to_lower() == "baking_rect_offset_x" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			var baking_rect_offset = nav_poly.baking_rect_offset
+			baking_rect_offset.x = float(val)
+			nav_poly.baking_rect_offset = baking_rect_offset
+		elif name.to_lower() == "baking_rect_offset_y" and (type == "float" or type == "int") and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			var baking_rect_offset = nav_poly.baking_rect_offset
+			baking_rect_offset.y = float(val)
+			nav_poly.baking_rect_offset = baking_rect_offset
+		elif name.to_lower() == "resource_local_to_scene" and type == "bool" and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.resource_local_to_scene = val.to_lower() == "true"
+		elif name.to_lower() == "resource_name" and type == "string" and target_node is NavigationRegion2D:
+			var nav_poly = target_node.navigation_polygon
+			nav_poly.resource_name = val
 
 		# LightOccluder2D properties
 		elif name.to_lower() == "sdf_collision" and type == "bool" and target_node is LightOccluder2D:
