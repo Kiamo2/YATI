@@ -470,7 +470,11 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 			var occ_p = OccluderPolygon2D.new()
 			occ_p.polygon = polygon
 			ensure_layer_existing(layer_type.OCCLUSION, occ)
-			current_tile.set_occluder(occ, occ_p)
+			if Engine.get_version_info()["hex"] >= 0x040400:
+				current_tile.set_occluder_polygons_count(occ, 1)
+				current_tile.set_occluder_polygon(occ, 0, occ_p)
+			else:
+				current_tile.set_occluder(occ, occ_p)
 
 		var phys = get_special_property(obj, "physics_layer")
 		# If no property is specified assume collision (i.e. default)
@@ -636,6 +640,12 @@ func handle_tileset_properties(properties: Array):
 			layer_index = int(name.substr(14))
 			ensure_layer_existing(layer_type.OCCLUSION, layer_index)
 			_tileset.set_occlusion_layer_sdf_collision(layer_index, val.to_lower() == "true")
+		elif name.to_lower() == "uv_clipping" and type == "bool":
+			_tileset.uv_clipping = val.to_lower() == "true"
+		elif name.to_lower() == "resource_local_to_scene" and type == "bool":
+			_tileset.resource_local_to_scene = val.to_lower() == "true"
+		elif name.to_lower() == "resource_name" and type == "string":
+			_tileset.resource_name = val
 		elif name.to_lower() != GODOT_ATLAS_ID_PROPERTY:
 			_tileset.set_meta(name, CommonUtils.get_right_typed_value(type, val))
 

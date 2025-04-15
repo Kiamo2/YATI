@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.11] - 2025-04-15
+
+### Added
+
+- Added support for 'AnimatableBody2D' (very similar to 'StaticBody2D')
+
+### Fixed
+
+- Added some missing tileset properties (probably rarely used, if at all)
+- Fixed issue #70 (get rid of obsolete warnings since Godot 4.4 concerning OccluderPolygons)
+
 ## [2.1.10] - 2025-03-29
 
 ### Added

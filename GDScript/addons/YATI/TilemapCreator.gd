@@ -82,6 +82,7 @@ enum _godot_type {
 	BODY,
 	CBODY,
 	RBODY,
+	ABODY,
 	AREA,
 	NAVIGATION,
 	OCCLUDER,
@@ -483,8 +484,14 @@ func create_polygons_on_alternative_tiles(source_data: TileData, target_data: Ti
 		target_data.set_navigation_polygon(layer_id, navigation_polygon)
 	var occlusion_layers_count = _tileset.get_occlusion_layers_count()
 	for layer_id in range(occlusion_layers_count):
-		var occ = source_data.get_occluder(layer_id)
-		if occ == null: continue
+		var occ: OccluderPolygon2D
+		if _godot_version >= 0x040400:
+			var occ_count = source_data.get_occluder_polygons_count(layer_id)
+			if occ_count == 0: continue
+			occ = source_data.get_occluder_polygon(layer_id, 0)
+		else:
+			occ = source_data.get_occluder(layer_id)
+			if occ == null: continue
 		var pts = occ.polygon
 		var pts_new: PackedVector2Array
 		var i = 0
@@ -502,7 +509,11 @@ func create_polygons_on_alternative_tiles(source_data: TileData, target_data: Ti
 			i += 1
 		var occluder_polygon = OccluderPolygon2D.new()
 		occluder_polygon.polygon = pts_new
-		target_data.set_occluder(layer_id, occluder_polygon)
+		if _godot_version >= 0x040400:
+			target_data.set_occluder_polygons_count(layer_id, 1)
+			target_data.set_occluder_polygon(layer_id, 0, occluder_polygon)
+		else:
+			target_data.set_occluder(layer_id, occluder_polygon)
 		
 
 func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_width: int):
@@ -598,6 +609,7 @@ static func get_godot_type(godot_type_string: String):
 		"staticbody": _godot_type.BODY,
 		"characterbody": _godot_type.CBODY,
 		"rigidbody": _godot_type.RBODY,
+		"animatablebody": _godot_type.ABODY,
 		"area": _godot_type.AREA,
 		"navigation": _godot_type.NAVIGATION,
 		"occluder": _godot_type.OCCLUDER,
@@ -961,6 +973,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				_godot_type.AREA: Area2D.new(),
 				_godot_type.CBODY: CharacterBody2D.new(),
 				_godot_type.RBODY: RigidBody2D.new(),
+				_godot_type.ABODY: AnimatableBody2D.new(),
 				_godot_type.BODY: StaticBody2D.new(),
 			}.get(godot_type, null)
 			if parent != null:
@@ -1046,12 +1059,16 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			if obj.has("properties"):
 				handle_properties(marker, obj["properties"])
 		elif obj.has("polygon"):
-			if godot_type == _godot_type.BODY or godot_type == _godot_type.AREA:
+			if godot_type == _godot_type.BODY or godot_type == _godot_type.ABODY or godot_type == _godot_type.AREA:
 				var co: CollisionObject2D
 				if godot_type == _godot_type.AREA:
 					co = Area2D.new()
 					layer_node.add_child(co)
 					co.name = obj_name + " (Area)" if obj_name != "" else "Area"
+				elif godot_type == _godot_type.ABODY:
+					co = AnimatableBody2D.new()
+					layer_node.add_child(co)
+					co.name = obj_name + " (AB)" if obj_name != "" else "AnimatableBody"
 				else:
 					co = StaticBody2D.new()
 					layer_node.add_child(co)
@@ -1171,6 +1188,10 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 					co = Area2D.new()
 					layer_node.add_child(co)
 					co.name = obj_name + " (Area)" if obj_name != "" else "Area"
+				elif godot_type == _godot_type.ABODY:
+					co = AnimatableBody2D.new()
+					layer_node.add_child(co)
+					co.name = obj_name + " (AB)" if obj_name != "" else "AnimatableBody"
 				else:
 					co = StaticBody2D.new()
 					layer_node.add_child(co)
@@ -1197,12 +1218,16 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 				if obj.has("properties"):
 					handle_properties(co, obj["properties"])
 		else:
-			if godot_type == _godot_type.BODY or godot_type == _godot_type.AREA:
+			if godot_type == _godot_type.BODY or godot_type == _godot_type.ABODY or godot_type == _godot_type.AREA:
 				var co: CollisionObject2D
 				if godot_type == _godot_type.AREA:
 					co = Area2D.new()
 					layer_node.add_child(co)
 					co.name = obj_name + " (Area)" if obj_name != "" else "Area"
+				elif godot_type == _godot_type.ABODY:
+					co = AnimatableBody2D.new()
+					layer_node.add_child(co)
+					co.name = obj_name + " (AB)" if obj_name != "" else "AnimatableBody"
 				else:
 					co = StaticBody2D.new()
 					layer_node.add_child(co)
@@ -1584,7 +1609,7 @@ func get_object_group(index: int):
 
 func handle_properties(target_node: Node, properties: Array):
 	var has_children = false
-	if target_node is StaticBody2D or target_node is Area2D or target_node is CharacterBody2D or target_node is RigidBody2D:
+	if target_node is StaticBody2D or target_node is Area2D or target_node is CharacterBody2D or target_node is RigidBody2D or target_node is AnimatableBody2D:
 		has_children = target_node.get_child_count() > 0 
 	for property in properties:
 		var name: String = property.get("name", "")
@@ -1647,6 +1672,12 @@ func handle_properties(target_node: Node, properties: Array):
 		# TileMapLayer properties
 		elif name.to_lower() == "tile_set" and type == "file" and target_node is TileMapLayer:
 			target_node.tile_set = DataLoader.load_resource_from_file(val, _base_path)
+
+		# Experimental only! Not sure if properly functioning
+		elif name.to_lower() == "tileset_resource_path" and type == "string" and target_node is TileMapLayer:
+			var tileset = target_node.tile_set
+			tileset.resource_path = val
+
 		elif name.to_lower() == "y_sort_origin" and type == "int" and target_node is TileMapLayer:
 			target_node.y_sort_origin = int(val)
 		elif name.to_lower() == "x_draw_order_reversed" and type == "bool" and target_node is TileMapLayer:
@@ -1746,6 +1777,10 @@ func handle_properties(target_node: Node, properties: Array):
 			target_node.constant_linear_velocity = Vector2(target_node.constant_linear_velocity.x, float(val))
 		elif name.to_lower() == "constant_angular_velocity" and (type == "float" or type == "int") and target_node is StaticBody2D:
 			target_node.constant_angular_velocity = float(val)
+
+		# AnimatableBody2D properties
+		elif name.to_lower() == "sync_to_physics" and type == "bool" and target_node is AnimatableBody2D:
+			target_node.sync_to_physics = val.to_lower() == "true"
 
 		# CharacterBody2D properties
 		elif name.to_lower() == "motion_mode" and type == "int" and target_node is CharacterBody2D:

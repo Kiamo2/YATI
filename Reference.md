@@ -153,6 +153,7 @@ If the Tiled name entry is empty a default Godot element name is created to avoi
 | Tile object                |                               |                        | Sprite2D                                    |
 |                            | area                          |                        | Area2D + Sprite2d + Coll.(*)                |
 |                            | staticbody                    |                        | StaticBody2D + Sprite2D + Coll.(*)          |
+|                            | animatablebody                |                        | AnimatableBody2D + Sprite2D + Coll.(*)      |
 |                            | characterbody                 |                        | CharacterBody2D + Sprite2D + Coll.(*)       |
 |                            | rigidbody                     |                        | RigidBody2D + Sprite2D + Coll.(*)           |
 |                            | instance                      | res_path (file)        | Instantiated scene                          |
@@ -288,6 +289,8 @@ This seems to be convenient as providing all of these properties would greatly i
 |                     | Constant Linear Velocity           |                                           | constant_linear_velocity_x              | float        |                                                                                                                                     |
 |                     |                                    |                                           | constant_linear_velocity_y              | float        |                                                                                                                                     |
 |                     | Constant Angular Velocity          |                                           | constant_angular_velocity               | float        |                                                                                                                                     |
+|                     |
+| AnimatableBody2D    | Sync To Physics                    | Objects with class "animatablebody"       | sync_to_physics                         | bool         |                                                                                                                                     |
 |                     |
 | Area2D              | Monitoring                         | Objects with class "area"                 | monitoring                              | bool         |                                                                                                                                     |
 |                     | Monitorable                        |                                           | monitorable                             | bool         |                                                                                                                                     |

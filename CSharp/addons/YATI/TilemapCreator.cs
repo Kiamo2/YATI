@@ -97,6 +97,7 @@ public class TilemapCreator
         Body,
         CBody,
         RBody,
+        ABody,
         Area,
         Navigation,
         Occluder,
@@ -586,8 +587,14 @@ public class TilemapCreator
         var occlusionLayersCount = _tileset.GetOcclusionLayersCount();
         for (var layerId = 0; layerId < occlusionLayersCount; layerId++)
         {
+#if GODOT4_4_0_OR_GREATER
+            var occCount = sourceData.GetOccluderPolygonsCount(layerId);
+            if (occCount == 0) continue;
+            var occ = sourceData.GetOccluderPolygon(layerId, 0);
+#else
             var occ = sourceData.GetOccluder(layerId);
             if (occ == null) continue;
+#endif
             var pts = occ.Polygon;
             var ptsNew = new Vector2[pts.Length];
             var i = 0;
@@ -605,7 +612,12 @@ public class TilemapCreator
             }
             var occluderPolygon = new OccluderPolygon2D();
             occluderPolygon.Polygon = ptsNew;
+#if GODOT4_4_0_OR_GREATER
+            targetData.SetOccluderPolygonsCount(layerId, 1);
+            targetData.SetOccluderPolygon(layerId, 0, occluderPolygon);
+#else
             targetData.SetOccluder(layerId, occluderPolygon);
+#endif
         }
     }
 
@@ -715,6 +727,7 @@ public class TilemapCreator
             "staticbody" => GodotType.Body,
             "characterbody" => GodotType.CBody,
             "rigidbody" => GodotType.RBody,
+            "animatablebody" => GodotType.ABody,
             "area" => GodotType.Area,
             "navigation" => GodotType.Navigation,
             "occluder" => GodotType.Occluder,
@@ -1167,6 +1180,7 @@ public class TilemapCreator
                     GodotType.Area => new Area2D(),
                     GodotType.CBody => new CharacterBody2D(),
                     GodotType.RBody => new RigidBody2D(),
+                    GodotType.ABody => new AnimatableBody2D(),
                     GodotType.Body => new StaticBody2D(),
                     _ => null
                 };
@@ -1270,7 +1284,7 @@ public class TilemapCreator
             {
                 switch (godotType)
                 {
-                    case GodotType.Body or GodotType.Area:
+                    case GodotType.Body or GodotType.ABody or GodotType.Area:
                     {
                         CollisionObject2D co;
                         if (godotType == GodotType.Area)
@@ -1278,6 +1292,12 @@ public class TilemapCreator
                             co = new Area2D();
                             layerNode.AddChild(co);
                             co.Name= (objName != "") ? objName + " (Area)" : "Area";
+                        }
+                        else if (godotType == GodotType.ABody)
+                        {
+                            co = new AnimatableBody2D();
+                            layerNode.AddChild(co);
+                            co.Name= (objName != "") ? objName + " (AB)" : "AnimatableBody";
                         }
                         else
                         {
@@ -1432,6 +1452,12 @@ public class TilemapCreator
                             layerNode.AddChild(co);
                             co.Name= (objName != "") ? objName + " (Area)" : "Area";
                         }
+                        else if (godotType == GodotType.ABody)
+                        {
+                            co = new AnimatableBody2D();
+                            layerNode.AddChild(co);
+                            co.Name= (objName != "") ? objName + " (AB)" : "AnimatableBody";
+                        }
                         else
                         {
                             co = new StaticBody2D();
@@ -1473,7 +1499,7 @@ public class TilemapCreator
             {
                 switch (godotType)
                 {
-                    case GodotType.Body or GodotType.Area:
+                    case GodotType.Body or GodotType.ABody or GodotType.Area:
                     {
                         CollisionObject2D co;
                         if (godotType == GodotType.Area)
@@ -1481,6 +1507,12 @@ public class TilemapCreator
                             co = new Area2D();
                             layerNode.AddChild(co);
                             co.Name= (objName != "") ? objName + " (Area)" : "Area";
+                        }
+                        else if (godotType == GodotType.ABody)
+                        {
+                            co = new AnimatableBody2D();
+                            layerNode.AddChild(co);
+                            co.Name= (objName != "") ? objName + " (AB)" : "AnimatableBody";
                         }
                         else
                         {
@@ -1958,7 +1990,8 @@ public class TilemapCreator
         var targetNodeClass = targetNode.GetType();
         var hasChildren = false;
         if (targetNodeClass == typeof(StaticBody2D) || targetNodeClass == typeof(Area2D) || 
-            targetNodeClass == typeof(CharacterBody2D) || targetNodeClass == typeof(RigidBody2D))
+            targetNodeClass == typeof(CharacterBody2D) || targetNodeClass == typeof(RigidBody2D) ||
+            targetNodeClass == typeof(AnimatableBody2D))
             hasChildren = targetNode.GetChildCount() > 0;
         foreach (var property in properties)
         {
@@ -2042,6 +2075,13 @@ public class TilemapCreator
                 case "tile_set" when type == "file" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
 					((TileMapLayer)targetNode).TileSet = (TileSet)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
+
+                // Experimental only! Not sure if properly functioning
+                case "tileset_resource_path" when type == "string" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
+                    var tileset = ((TileMapLayer)targetNode).TileSet;
+                    tileset.ResourcePath = val;
+                    break;
+
                 case "y_sort_origin" when type == "int" && targetNodeClass.IsAssignableTo(typeof(TileMapLayer)):
                     ((TileMapLayer)targetNode).YSortOrigin = CommonUtils.SafeIntParse(val);
                     break;
@@ -2186,6 +2226,11 @@ public class TilemapCreator
                     break;
                 case "constant_angular_velocity" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
                     ((StaticBody2D)targetNode).ConstantAngularVelocity = float.Parse(val, Inv);
+                    break;
+                
+                // AnimatableBody2D properties
+                case "sync_to_physics" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(AnimatableBody2D)):
+                    ((AnimatableBody2D)targetNode).SyncToPhysics = bool.Parse(val);
                     break;
                 
                 // Character2D properties

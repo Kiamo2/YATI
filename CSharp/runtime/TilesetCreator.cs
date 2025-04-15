@@ -569,7 +569,12 @@ public class TilesetCreator
                 var occP = new OccluderPolygon2D();
                 occP.Polygon = polygon;
                 EnsureLayerExisting(LayerType.Occlusion, occ);
+#if GODOT4_4_0_OR_GREATER
+                currentTile.SetOccluderPolygonsCount(occ, 1);
+                currentTile.SetOccluderPolygon(occ, 0, occP);
+#else
                 currentTile.SetOccluder(occ, occP);
+#endif
             }
 
             var phys = GetSpecialProperty(obj, "physics_layer");
@@ -799,8 +804,24 @@ public class TilesetCreator
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
             }
-            else if (name.ToLower() != GodotAtlasIdProperty)
-                _tileset.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
+            else switch (name.ToLower())
+            {
+                case "uv_clipping" when type == "bool":
+                    _tileset.SetUVClipping(bool.Parse(val));
+                    break;
+                case "resource_local_to_scene" when type == "bool":
+                    _tileset.ResourceLocalToScene = bool.Parse(val);
+                    break;
+                case "resource_name" when type == "string":
+                    _tileset.ResourceName = val;
+                    break;
+                default:
+                {
+                    if (name.ToLower() != GodotAtlasIdProperty)
+                        _tileset.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
+                    break;
+                }
+            }
         }
     }
 
