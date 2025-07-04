@@ -84,5 +84,39 @@ public static class CommonUtils
     {
         return int.Parse(val.EndsWith(".0") ? val.Replace(".0", "") : val, provider);
     }
+    
+    public static string CleanupPath(string path)
+    {
+        while (true)
+        {
+            var pathArr = path.Split('/');
+            var isClean = true;
+            for (var i = 1; i < pathArr.Length; i++)
+            {
+                if (pathArr[i] == "..")
+                {
+                    pathArr[i] = string.Empty;
+                    pathArr[i - 1] = string.Empty;
+                    isClean = false;
+                    break;
+                }
+
+                if (pathArr[i] != ".") continue;
+                pathArr[i] = string.Empty;
+                isClean = false;
+            }
+
+            var newPath = string.Empty;
+            foreach (var t in pathArr)
+            {
+                if (t == string.Empty) continue;
+                if (newPath != string.Empty) newPath += '/';
+                if (t != string.Empty) newPath += t;
+            }
+
+            if (isClean) return newPath;
+            path = newPath;
+        }
+    }
 }
 #endif

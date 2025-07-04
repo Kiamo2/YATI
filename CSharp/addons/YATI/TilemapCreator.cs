@@ -2020,8 +2020,11 @@ public class TilemapCreator
                     break;
 
                 // v1.6.6: script resource and godot_script property
-                case GodotScriptProperty when (type == "file"):
-                    targetNode.SetScript((Script)ResourceLoader.Load(val, "Script"));
+                case GodotScriptProperty when type is "file" or "string":
+                    var path = val;
+                    if (type == "file")
+                        path = CommonUtils.CleanupPath(_basePath.Replace("res://", "") + "/" + val);
+                    targetNode.SetScript((Script)ResourceLoader.Load(path, "Script"));
                     break;
                 
                 // CanvasItem properties

@@ -1632,8 +1632,11 @@ func handle_properties(target_node: Node, properties: Array):
 				target_node.add_to_group(group.strip_edges(), true)
 
 		# v1.6.6: script resource and godot_script property
-		elif name.to_lower() == GODOT_SCRIPT_PROPERTY and type == "file":
-			target_node.set_script(load(val))
+		elif name.to_lower() == GODOT_SCRIPT_PROPERTY and (type == "file" or type == "string"):
+			var path = val
+			if type == "file":
+				path = CommonUtils.cleanup_path(_base_path.replace("res://", "") + "/" + val)
+			target_node.set_script(load(path))
 
 		# CanvasItem properties
 		elif name.to_lower() == "modulate" and type == "string":
