@@ -172,7 +172,7 @@ public class TilemapCreator
 			GD.PrintErr($"FATAL ERROR: Tiled map file '{sourceFile}' not found.");
 			return null;
 		}
-		var baseDictionary = DictionaryBuilder.GetDictionary(mapContent, _basePath);
+		var baseDictionary = DictionaryBuilder.GetDictionary(mapContent, sourceFile);
         _mapOrientation = (string)baseDictionary.GetValueOrDefault("orientation", "orthogonal");
         _mapWidth = (int)baseDictionary.GetValueOrDefault("width", 0);
         _mapHeight = (int)baseDictionary.GetValueOrDefault("height", 0);
