@@ -105,6 +105,7 @@ public class TilemapCreator
         Path,
         Polygon,
         Instance,
+        Parallax,
         Unknown
     }
 
@@ -369,8 +370,27 @@ public class TilemapCreator
             }
             case "objectgroup":
             {
-                var layerNode = new Node2D();
-                HandleParallaxes(parent, layerNode, layer);
+                var nodeType = GetGodotNodeType(layer);
+
+                Node2D layerNode;
+                if (nodeType == GodotType.Parallax)
+                {
+                    layerNode = new Parallax2D();
+                    parent.AddChild(layerNode);
+                    layerNode.Owner = _baseNode;
+                    if (layer.ContainsKey("parallaxx") || layer.ContainsKey("parallaxy"))
+                    {
+                        var parX = (float)layer.GetValueOrDefault("parallaxx", 1.0f);
+                        var parY = (float)layer.GetValueOrDefault("parallaxy", 1.0f);
+                        ((Parallax2D)layerNode).ScrollScale = new Vector2(parX, parY);
+                    }
+                }
+                else
+                {
+                    layerNode = new Node2D();
+                    // Leave the old handling for the time being
+                    HandleParallaxes(parent, layerNode, layer);
+                }
 
                 if (layer.TryGetValue("name", out var name))
                     layerNode.Name = (string)name;
@@ -396,8 +416,28 @@ public class TilemapCreator
             }
             case "group":
             {
-                var groupNode = new Node2D();
-                HandleParallaxes(parent, groupNode, layer);
+                var nodeType = GetGodotNodeType(layer);
+
+                Node2D groupNode;
+                if (nodeType == GodotType.Parallax)
+                {
+                    groupNode = new Parallax2D();
+                    parent.AddChild(groupNode);
+                    groupNode.Owner = _baseNode;
+                    if (layer.ContainsKey("parallaxx") || layer.ContainsKey("parallaxy"))
+                    {
+                        var parX = (float)layer.GetValueOrDefault("parallaxx", 1.0f);
+                        var parY = (float)layer.GetValueOrDefault("parallaxy", 1.0f);
+                        ((Parallax2D)groupNode).ScrollScale = new Vector2(parX, parY);
+                    }
+                }
+                else
+                {
+                    groupNode = new Node2D();
+                    // Leave the old handling for the time being
+                    HandleParallaxes(parent, groupNode, layer);
+                }
+
                 groupNode.Name = (string)layer.GetValueOrDefault("name", "group");
                 if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
                     groupNode.Modulate = new Color(tintColor, layerOpacity);
@@ -587,7 +627,7 @@ public class TilemapCreator
         var occlusionLayersCount = _tileset.GetOcclusionLayersCount();
         for (var layerId = 0; layerId < occlusionLayersCount; layerId++)
         {
-#if GODOT4_4_0_OR_GREATER
+#if GODOT4_4_OR_GREATER
             var occCount = sourceData.GetOccluderPolygonsCount(layerId);
             if (occCount == 0) continue;
             var occ = sourceData.GetOccluderPolygon(layerId, 0);
@@ -612,7 +652,7 @@ public class TilemapCreator
             }
             var occluderPolygon = new OccluderPolygon2D();
             occluderPolygon.Polygon = ptsNew;
-#if GODOT4_4_0_OR_GREATER
+#if GODOT4_4_OR_GREATER
             targetData.SetOccluderPolygonsCount(layerId, 1);
             targetData.SetOccluderPolygon(layerId, 0, occluderPolygon);
 #else
@@ -736,6 +776,7 @@ public class TilemapCreator
             "path" => GodotType.Path,
             "polygon" => GodotType.Polygon,
             "instance" => GodotType.Instance,
+            "parallax" => GodotType.Parallax,
             _ => GodotType.Unknown
         };
     }
@@ -757,6 +798,17 @@ public class TilemapCreator
         }
 
         return ret;
+    }
+
+    private static GodotType GetGodotNodeType(Dictionary obj)
+    {
+        var classString = (string)obj.GetValueOrDefault("class", "");
+        if (classString == "")
+            classString = (string)obj.GetValueOrDefault("type", "");
+        var godotNodeTypePropertyString = GetGodotNodeTypeProperty(obj, out var godotNodeTypePropFound);
+        if (!godotNodeTypePropFound)
+            godotNodeTypePropertyString = classString;
+        return GetGodotType(godotNodeTypePropertyString);
     }
 
     private static void SetSpriteOffset(Sprite2D objSprite, float width, float height, string alignment)
@@ -2112,6 +2164,59 @@ public class TilemapCreator
                         ((TileMapLayer)targetNode).NavigationVisibilityMode = (TileMapLayer.DebugVisibilityMode)CommonUtils.SafeIntParse(val);
                     break;
 
+                // Parallax2D properties
+                case "scroll_scale_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).ScrollScale = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).ScrollScale.Y);
+                    break;
+                case "scroll_scale_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).ScrollScale = new Vector2(((Parallax2D)targetNode).ScrollScale.X, float.Parse(val, Inv));
+                    break;
+                case "scroll_offset_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).ScrollOffset = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).ScrollOffset.Y);
+                    break;
+                case "scroll_offset_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).ScrollOffset = new Vector2(((Parallax2D)targetNode).ScrollOffset.X, float.Parse(val, Inv));
+                    break;
+                case "repeat_size_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).RepeatSize = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).RepeatSize.Y);
+                    break;
+                case "repeat_size_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).RepeatSize = new Vector2(((Parallax2D)targetNode).RepeatSize.X, float.Parse(val, Inv));
+                    break;
+                case "autoscroll_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).Autoscroll = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).Autoscroll.Y);
+                    break;
+                case "autoscroll_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).Autoscroll = new Vector2(((Parallax2D)targetNode).Autoscroll.X, float.Parse(val, Inv));
+                    break;
+                case "repeat_times" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).RepeatTimes = CommonUtils.SafeIntParse(val);
+                    break;
+                case "limit_begin_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).LimitBegin = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).LimitBegin.Y);
+                    break;
+                case "limit_begin_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).LimitBegin = new Vector2(((Parallax2D)targetNode).LimitBegin.X, float.Parse(val, Inv));
+                    break;
+                case "limit_end_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).LimitEnd = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).LimitEnd.Y);
+                    break;
+                case "limit_end_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).LimitEnd = new Vector2(((Parallax2D)targetNode).LimitEnd.X, float.Parse(val, Inv));
+                    break;
+                case "follow_viewport" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).FollowViewport = bool.Parse(val);
+                    break;
+                case "ignore_camera_scroll" when type == "bool" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).IgnoreCameraScroll = bool.Parse(val);
+                    break;
+                case "screen_offset_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).ScreenOffset = new Vector2(float.Parse(val, Inv), ((Parallax2D)targetNode).ScreenOffset.Y);
+                    break;
+                case "screen_offset_y" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Parallax2D)):
+                    ((Parallax2D)targetNode).ScreenOffset = new Vector2(((Parallax2D)targetNode).ScreenOffset.X, float.Parse(val, Inv));
+                    break;
+                
                 // CollisionObject2D properties
                 case "disable_mode" when type == "int" && targetNodeClass.IsAssignableTo(typeof(CollisionObject2D)):
                     if (CommonUtils.SafeIntParse(val) < 3)

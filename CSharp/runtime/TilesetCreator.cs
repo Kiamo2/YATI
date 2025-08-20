@@ -569,7 +569,7 @@ public class TilesetCreator
                 var occP = new OccluderPolygon2D();
                 occP.Polygon = polygon;
                 EnsureLayerExisting(LayerType.Occlusion, occ);
-#if GODOT4_4_0_OR_GREATER
+#if GODOT4_4_OR_GREATER
                 currentTile.SetOccluderPolygonsCount(occ, 1);
                 currentTile.SetOccluderPolygon(occ, 0, occP);
 #else

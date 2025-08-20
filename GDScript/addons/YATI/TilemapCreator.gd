@@ -90,6 +90,7 @@ enum _godot_type {
 	PATH,
 	POLYGON,
 	INSTANCE,
+	PARALLAX,
 	UNKNOWN
 }
 
@@ -319,8 +320,21 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			handle_properties(_tilemap_layer, layer["properties"])
 
 	elif layer_type == "objectgroup":
-		var layer_node = Node2D.new()
-		handle_parallaxes(parent, layer_node, layer)
+		var node_type = get_godot_node_type(layer)
+
+		var layer_node
+		if node_type == _godot_type.PARALLAX:
+			layer_node = Parallax2D.new()
+			parent.add_child(layer_node)
+			layer_node.owner = _base_node
+			if layer.has("parallaxx") or layer.has("parallaxy"):
+				var par_x = layer.get("parallaxx", 0.0)
+				var par_y = layer.get("parallaxy", 0.0)
+				layer_node.scroll_scale = Vector2(par_x, par_y)
+		else:
+			layer_node = Node2D.new()
+			# Leave the old handling for the time being
+			handle_parallaxes(parent, layer_node, layer)
 		
 		if "name" in layer:
 			layer_node.name = layer["name"]
@@ -343,8 +357,22 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			handle_properties(layer_node, layer["properties"])
 
 	elif layer_type == "group":
-		var group_node = Node2D.new()
-		handle_parallaxes(parent, group_node, layer)
+		var node_type = get_godot_node_type(layer)
+
+		var group_node
+		if node_type == _godot_type.PARALLAX:
+			group_node = Parallax2D.new()
+			parent.add_child(group_node)
+			group_node.owner = _base_node
+			if layer.has("parallaxx") or layer.has("parallaxy"):
+				var par_x = layer.get("parallaxx", 0.0)
+				var par_y = layer.get("parallaxy", 0.0)
+				group_node.scroll_scale = Vector2(par_x, par_y)
+		else:
+			group_node = Node2D.new()
+			# Leave the old handling for the time being
+			handle_parallaxes(parent, group_node, layer)
+
 		group_node.name = layer.get("name", "group")
 		if layer_opacity < 1.0 or tint_color != "#ffffff":
 			group_node.modulate = Color(tint_color, layer_opacity)
@@ -616,7 +644,8 @@ static func get_godot_type(godot_type_string: String):
 		"line": _godot_type.LINE,
 		"path": _godot_type.PATH,
 		"polygon": _godot_type.POLYGON,
-		"instance": _godot_type.INSTANCE
+		"instance": _godot_type.INSTANCE,
+		"parallax": _godot_type.PARALLAX
 	}.get(gts, _godot_type.UNKNOWN)
 	return godot_type
 
@@ -634,6 +663,18 @@ static func get_godot_node_type_property(obj: Dictionary):
 				ret = val
 				break
 	return [ret, property_found]
+
+
+static func get_godot_node_type(obj: Dictionary):
+	var class_string = obj.get("class", "")
+	if class_string == "":
+		class_string = obj.get("type", "")
+	var search_result = get_godot_node_type_property(obj)
+	var godot_node_type_property_string = search_result[0]
+	var godot_node_type_prop_found = search_result[1]
+	if not godot_node_type_prop_found:
+		godot_node_type_property_string = class_string
+	return get_godot_type(godot_node_type_property_string)
 
 
 static func set_sprite_offset(obj_sprite: Sprite2D, width: float, height: float, alignment: String):
@@ -1699,7 +1740,43 @@ func handle_properties(target_node: Node, properties: Array):
 		elif name.to_lower() == "navigation_visibility_mode" and type == "int" and target_node is TileMapLayer:
 			if int(val) < 3:
 				target_node.navigation_visibility_mode = int(val)
-		
+
+		# Parallax2D properties
+		elif name.to_lower() == "scroll_scale_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.scroll_scale = Vector2(float(val), target_node.scroll_scale.y)
+		elif name.to_lower() == "scroll_scale_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.scroll_scale = Vector2(target_node.scroll_scale.x, float(val))
+		elif name.to_lower() == "scroll_offset_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.scroll_offset = Vector2(float(val), target_node.scroll_offset.y)
+		elif name.to_lower() == "scroll_offset_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.scroll_offset = Vector2(target_node.scroll_offset.x, float(val))
+		elif name.to_lower() == "repeat_size_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.repeat_size = Vector2(float(val), target_node.repeat_size.y)
+		elif name.to_lower() == "repeat_size_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.repeat_size = Vector2(target_node.repeat_size.x, float(val))
+		elif name.to_lower() == "autoscroll_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.autoscroll = Vector2(float(val), target_node.autoscroll.y)
+		elif name.to_lower() == "autoscroll_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.autoscroll = Vector2(target_node.autoscroll.x, float(val))
+		elif name.to_lower() == "repeat_times" and type == "int" and target_node is Parallax2D:
+			target_node.repeat_times = int(val)
+		elif name.to_lower() == "limit_begin_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.limit_begin = Vector2(float(val), target_node.limit_begin.y)
+		elif name.to_lower() == "limit_begin_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.limit_begin = Vector2(target_node.limit_begin.x, float(val))
+		elif name.to_lower() == "limit_end_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.limit_end = Vector2(float(val), target_node.limit_end.y)
+		elif name.to_lower() == "limit_end_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.limit_end = Vector2(target_node.limit_end.x, float(val))
+		elif name.to_lower() == "follow_viewport" and type == "bool" and target_node is Parallax2D:
+			target_node.follow_viewport = val.to_lower() == "true"
+		elif name.to_lower() == "ignore_camera_scroll" and type == "bool" and target_node is Parallax2D:
+			target_node.ignore_camera_scroll = val.to_lower() == "true"
+		elif name.to_lower() == "screen_offset_x" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.screen_offset = Vector2(float(val), target_node.screen_offset.y)
+		elif name.to_lower() == "screen_offset_y" and (type == "float" or type == "int") and target_node is Parallax2D:
+			target_node.screen_offset = Vector2(target_node.screen_offset.x, float(val))
+
 		# CollisionObject2D properties
 		elif name.to_lower() == "disable_mode" and type == "int" and target_node is CollisionObject2D:
 			if int(val) < 3:

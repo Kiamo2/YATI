@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-08-20
+
+### Fixed
+- Fixed issue #75
+- Fixed issue #76
+
+### Added
+
+- Added support for the new Godot Parallax2D node.  
+Tiled group or object layers qualified as class 'parallax' will be imported as Godot Parallax2D nodes.  
+\+ Godot's Parallax2D node properties can be set by custom properties.
+
 ## [2.1.12] - 2025-07-04
 
 ### Fixed
