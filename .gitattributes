@@ -3,6 +3,7 @@ CSharp/addons/YATI/DictionaryFromXml.cs linguist-detectable=false
 CSharp/addons/YATI/Importer.cs linguist-detectable=false
 CSharp/addons/YATI/PostProcessing.cs linguist-detectable=false
 CSharp/addons/YATI/TilesetCreator.cs linguist-detectable=false
+CSharp/addons/YATI/CommonUtils.cs linguist-detectable=false
 CSharp/runtime/DictionaryBuilder.cs linguist-detectable=false
 CSharp/runtime/DictionaryFromXml.cs linguist-detectable=false
 CSharp/runtime/Importer.cs linguist-detectable=false
