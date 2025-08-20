@@ -4,10 +4,13 @@ CSharp/addons/YATI/Importer.cs linguist-detectable=false
 CSharp/addons/YATI/PostProcessing.cs linguist-detectable=false
 CSharp/addons/YATI/TilesetCreator.cs linguist-detectable=false
 CSharp/addons/YATI/CommonUtils.cs linguist-detectable=false
+CSharp/addons/YATI/CustomTypes.cs linguist-detectable=false
 CSharp/runtime/DictionaryBuilder.cs linguist-detectable=false
 CSharp/runtime/DictionaryFromXml.cs linguist-detectable=false
 CSharp/runtime/Importer.cs linguist-detectable=false
 CSharp/runtime/TilesetCreator.cs linguist-detectable=false
+CSharp/runtime/CommonUtils.cs linguist-detectable=false
+CSharp/runtime/CustomTypes.cs linguist-detectable=false
 
 # Exclude all top-level files and directories (except addons) from ZIP downloads.
 # This makes installing through the AssetLib easier, because no files and folders need to be unchecked.
