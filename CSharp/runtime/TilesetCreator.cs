@@ -308,7 +308,7 @@ public class TilesetCreator
                 // Tile with its own image -> separate atlas source
                 _currentAtlasSource = new TileSetAtlasSource();
                 var addedSourceId = _tileset.AddSource(_currentAtlasSource, GetSpecialProperty(tile, GodotAtlasIdProperty));
-                RegisterAtlasSource(addedSourceId, 1, tileId, Vector2I.Zero);
+                RegisterAtlasSource(addedSourceId, 1, tileId, _tileOffset);
 
                 var texturePath = (string)imagePath;
                 if (texturePath.GetExtension().ToLower() is "tmx" or "tmj")

@@ -264,7 +264,7 @@ func handle_tiles(tiles: Array):
 			# Tile with its own image -> separate atlas source
 			_current_atlas_source = TileSetAtlasSource.new()
 			var added_source_id = _tileset.add_source(_current_atlas_source, get_special_property(tile, GODOT_ATLAS_ID_PROPERTY))
-			register_atlas_source(added_source_id, 1, tile_id, Vector2i.ZERO)
+			register_atlas_source(added_source_id, 1, tile_id, _tile_offset)
 
 			var texture_path = tile["image"]
 			var ext = texture_path.get_extension().to_lower()
