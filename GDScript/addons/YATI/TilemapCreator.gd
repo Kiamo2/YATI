@@ -790,7 +790,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	if obj.has("template"):
 		var template_dict: Dictionary
 		var template_file = obj["template"]
-		var template_path = _base_path.path_join(template_file).get_base_dir()
+		var template_path = _base_path.path_join(template_file)
 		var template_content = DataLoader.get_tiled_file_content(template_file, _base_path)
 		if template_content == null:
 			printerr("ERROR: Template file '" + template_file + "' not found. -> Continuing but result may be unusable")
