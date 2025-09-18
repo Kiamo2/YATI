@@ -947,7 +947,7 @@ public class TilemapCreator
         {
 			Dictionary templateDict;
             var templateFile = (string)tplVal;
-            var templatePath = _basePath.PathJoin(templateFile).GetBaseDir();
+            var templatePath = _basePath.PathJoin(templateFile);
 			var templateContent = DataLoader.GetTiledFileContent(templateFile, _basePath);
 			if (templateContent == null)
 			{
