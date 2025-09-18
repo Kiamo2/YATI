@@ -396,13 +396,13 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 	var objects = object_group["objects"] as Array
 	for obj in objects:
 		if obj.has("point") and obj["point"]:
-			# print_rich("[color="+WARNING_COLOR+"] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
+			# print_rich("[color="+WARNING_COLOR+"] -- 'Point' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
 			# CommonUtils.warning_count += 1
-			break
+			continue
 		if obj.has("ellipse") and obj["ellipse"]:
-			# print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]")
+			# print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
 			# CommonUtils.warning_count += 1
-			break
+			continue
 
 		if _ct != null:
 			_ct.merge_custom_properties(obj, "object")

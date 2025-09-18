@@ -790,7 +790,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 	if obj.has("template"):
 		var template_dict: Dictionary
 		var template_file = obj["template"]
-		var template_path = _base_path.path_join(template_file)
+		var template_file_full_path = _base_path.path_join(template_file)
 		var template_content = DataLoader.get_tiled_file_content(template_file, _base_path)
 		if template_content == null:
 			printerr("ERROR: Template file '" + template_file + "' not found. -> Continuing but result may be unusable")
@@ -803,7 +803,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 		if template_dict.has("tilesets"):
 			var tilesets = template_dict["tilesets"]
 			var tileset_creator = preload("TilesetCreator.gd").new()
-			tileset_creator.set_base_path(template_path)
+			tileset_creator.set_base_path(template_file_full_path)
 			tileset_creator.set_map_parameters(Vector2i(_map_tile_width, _map_tile_height))
 			if _map_wangset_to_terrain:
 				tileset_creator.map_wangset_to_terrain()
@@ -811,7 +811,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 		if template_dict.has("objects"):
 			for template_obj in template_dict["objects"]:
-				template_obj["template_dir_path"] = template_path
+				template_obj["template_dir_path"] = template_file_full_path.get_base_dir()
 
 				# v1.5.3 Fix according to Carlo M (dogezen)
 				# override and merge properties defined in obj with properties defined in template

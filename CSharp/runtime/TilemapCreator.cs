@@ -945,7 +945,7 @@ public class TilemapCreator
         {
 			Dictionary templateDict;
             var templateFile = (string)tplVal;
-            var templatePath = _basePath.PathJoin(templateFile).GetBaseDir();
+            var templateFileFullPath = _basePath.PathJoin(templateFile);
 			var templateContent = DataLoader.GetTiledFileContent(templateFile, _basePath);
 			if (templateContent == null)
 			{
@@ -964,7 +964,7 @@ public class TilemapCreator
                 //foreach (var tileSet in tileSets)
                 //    templateFirstGids.Add((int)tileSet["firstgid"]);
                 var tilesetCreator = new TilesetCreator();
-                tilesetCreator.SetBasePath(templatePath);
+                tilesetCreator.SetBasePath(templateFileFullPath);
                 tilesetCreator.SetMapParameters(new Vector2I(_mapTileWidth, _mapTileHeight));
                 if (_mapWangsetToTerrain)
                     tilesetCreator.MapWangsetToTerrain();
@@ -975,7 +975,7 @@ public class TilemapCreator
             {
                 foreach (var templateObj in (Array<Dictionary>)objs)
                 {
-                    templateObj["template_dir_path"] = templatePath;
+                    templateObj["template_dir_path"] = templateFileFullPath.GetBaseDir();
                     
                     // v1.5.3 Fix according to Carlo M (dogezen)
                     // override and merge properties defined in obj with properties defined in template

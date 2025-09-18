@@ -7,8 +7,8 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 
 Tested on Windows 10 with Godot 4.4.1 and Tiled 1.11.0 (Tiled maps from older Tiled versions may work too)
 
-Latest version: 2.2.1 (needs Godot 4.3.0 or higher)  
-Downloads: [GDScript version](../../releases/download/v2.2.1/v2.2.1-gdscript.zip) / [CSharp version](../../releases/download/v2.2.1/v2.2.1-csharp.zip)
+Latest version: 2.2.2 (needs Godot 4.3.0 or higher)  
+Downloads: [GDScript version](../../releases/download/v2.2.2/v2.2.2-gdscript.zip) / [CSharp version](../../releases/download/v2.2.2/v2.2.2-csharp.zip)
 
 Latest version for Godot 4.2.x: 1.7.1  
 Version 1.7.1 downloads: [GDScript version](../../releases/download/v1.7.1/v1.7.1-gdscript.zip) / [CSharp version](../../releases/download/v1.7.1/v1.7.1-csharp.zip)
@@ -20,7 +20,7 @@ For installation and usage please refer to the [runtime document](Runtime.md)
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v2.2.1/v2.2.1-gdscript.zip) or the [CSharp version](../../releases/download/v2.2.1/v2.2.1-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v2.2.2/v2.2.2-gdscript.zip) or the [CSharp version](../../releases/download/v2.2.2/v2.2.2-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
 
@@ -66,7 +66,10 @@ For details please refer to the [reference document](Reference.md)
 
 ## Limitations & Particularities
 
-1. Ellipses are not available in Godot. Where appropriate a capsule is used instead. (Where not appropriate it's skipped)
+1. Ellipses are not available in Godot. Where appropriate (on objects) a capsule is used instead.<p>
+Where not appropriate (on tiles inside Godot tilesets) they are skipped.<p>
+Also skipped are Points on tiles inside Godot tilesets.<p>
+**Please note:** If Points or Ellipses on tiles in Godot tilesets are skipped no warning is issued as both are valid if a tile is used as an object. 
 2. Tileset animation in Godot requires involved tiles being equidistant and either horizontally or vertically arranged.<p>
 In Tiled you can randomly choose every frame tile, such animations won't map and are skipped.
 3. Godot 4 seems to make a left-down render - at least the 'perspective walls' example from the Tiled github site suggests this.  

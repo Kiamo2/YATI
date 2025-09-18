@@ -477,16 +477,16 @@ public class TilesetCreator
         {
             if (obj.ContainsKey("point") && (bool)obj["point"])
             {
-                //GD.PrintRich($"[color={WarningColor}] -- 'Point' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
+                //GD.PrintRich($"[color={WarningColor}] -- 'Point' on tile {tileId} skipped as there is no corresponding element in Godot 4.[/color]");
                 //CommonUtils.WarningCount++;
-                break;
+                continue;
             }
 
             if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
             {
-                //GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' has currently no corresponding tileset element in Godot 4. -> Skipped[/color]");
+                //GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' on tile {tileId} skipped as there is no corresponding element in Godot 4.[/color]");
                 //CommonUtils.WarningCount++;
-                break;
+                continue;
             }
 
             _ct?.MergeCustomProperties(obj, "object");
