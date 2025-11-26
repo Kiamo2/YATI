@@ -362,19 +362,19 @@ public class TilesetCreator
                 if (currentTile == null)
                     //Error occurred
                     continue;
+                
+                if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
+                {
+                    var diffX = _tileSize.X - _mapTileSize.X;
+                    if (diffX % 2 != 0)
+                        diffX -= 1;
+                    var diffY = _tileSize.Y - _mapTileSize.Y;
+                    if (diffY % 2 != 0)
+                        diffY += 1;
+                    currentTile.TextureOrigin = new Vector2I(-diffX / 2, diffY / 2) - _tileOffset;
+                }
             }
-
-            if (_tileSize.X != _mapTileSize.X || _tileSize.Y != _mapTileSize.Y)
-            {
-                var diffX = _tileSize.X - _mapTileSize.X;
-                if (diffX % 2 != 0)
-                    diffX -= 1;
-                var diffY = _tileSize.Y - _mapTileSize.Y;
-                if (diffY % 2 != 0)
-                    diffY += 1;
-                currentTile.TextureOrigin = new Vector2I(-diffX / 2, diffY / 2) - _tileOffset;
-            }
-
+            
             if (tile.TryGetValue("probability", out var probVal))
                 currentTile.Probability = (float)probVal;
             if (tile.TryGetValue("animation", out var animVal))

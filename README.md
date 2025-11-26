@@ -7,8 +7,8 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 
 Tested on Windows 10 with Godot 4.4.1 and Tiled 1.11.0 (Tiled maps from older Tiled versions may work too)
 
-Latest version: 2.2.2 (needs Godot 4.3.0 or higher)  
-Downloads: [GDScript version](../../releases/download/v2.2.2/v2.2.2-gdscript.zip) / [CSharp version](../../releases/download/v2.2.2/v2.2.2-csharp.zip)
+Latest version: 2.2.3 (needs Godot 4.3.0 or higher)  
+Downloads: [GDScript version](../../releases/download/v2.2.3/v2.2.3-gdscript.zip) / [CSharp version](../../releases/download/v2.2.3/v2.2.3-csharp.zip)
 
 Latest version for Godot 4.2.x: 1.7.1  
 Version 1.7.1 downloads: [GDScript version](../../releases/download/v1.7.1/v1.7.1-gdscript.zip) / [CSharp version](../../releases/download/v1.7.1/v1.7.1-csharp.zip)
@@ -20,7 +20,7 @@ For installation and usage please refer to the [runtime document](Runtime.md)
 
 The addon is available in GDScript as well as in C# for the Mono version of Godot 4.
 
-- Download either the [GDScript version](../../releases/download/v2.2.2/v2.2.2-gdscript.zip) or the [CSharp version](../../releases/download/v2.2.2/v2.2.2-csharp.zip)
+- Download either the [GDScript version](../../releases/download/v2.2.3/v2.2.3-gdscript.zip) or the [CSharp version](../../releases/download/v2.2.3/v2.2.3-csharp.zip)
 - Move the unzipped addon folder with its entire content to your Godot project folder
 - After starting your project in Godot the plugin should appear at Project>>Project Settings...>>Plugins
 

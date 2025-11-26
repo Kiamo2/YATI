@@ -301,15 +301,15 @@ func handle_tiles(tiles: Array):
 				#Error occurred
 				continue
 
-		if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
-			var diff_x = _tile_size.x - _map_tile_size.x
-			if diff_x % 2 != 0:
-				diff_x -= 1
-			var diff_y = _tile_size.y - _map_tile_size.y
-			if diff_y % 2 != 0:
-				diff_y += 1
-			@warning_ignore("integer_division")
-			current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
+			if _tile_size.x != _map_tile_size.x or _tile_size.y != _map_tile_size.y:
+				var diff_x = _tile_size.x - _map_tile_size.x
+				if diff_x % 2 != 0:
+					diff_x -= 1
+				var diff_y = _tile_size.y - _map_tile_size.y
+				if diff_y % 2 != 0:
+					diff_y += 1
+				@warning_ignore("integer_division")
+				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
 				
 		if tile.has("probability"):
 			current_tile.probability = tile["probability"]
