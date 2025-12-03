@@ -150,6 +150,7 @@ If the Tiled name entry is empty a default Godot element name is created to avoi
 |                            |                               | navigation_layer (int) | Navigation layer polygon                    |
 |                            |                               | occlusion_layer (int)  | Occlusion layer polygon                     |
 | Tile collision ellipse     |                               |                        | n/a                                         |
+| Tile collision capsule     |                               |                        | n/a                                         |
 | Tile animation             |                               |                        | Tile animation (limited)                    |
 ||
 | Tile object                |                               |                        | Sprite2D                                    |
@@ -172,6 +173,9 @@ If the Tiled name entry is empty a default Godot element name is created to avoi
 |                            | occluder                      |                        | LightOccluder2D + OcclusionPolygon2D        |
 |                            | instance                      | res_path (file)        | Instantiated scene                          |
 | Ellipse object             | (staticbody)                  |                        | StaticBody2D + Capsule CollisionShape2D     |
+|                            | area                          |                        | Area2D + Capsule CollisionShape2D           |
+|                            | instance                      | res_path (file)        | Instantiated scene                          |
+| Capsule object             | (staticbody)                  |                        | StaticBody2D + Capsule CollisionShape2D     |
 |                            | area                          |                        | Area2D + Capsule CollisionShape2D           |
 |                            | instance                      | res_path (file)        | Instantiated scene                          |
 | Polyline object            | (staticbody)                  |                        | StaticBody2D + Segment CollisionShape2D     |

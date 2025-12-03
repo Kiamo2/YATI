@@ -109,6 +109,9 @@ public class DictionaryFromXml
             case "ellipse":
                 _currentDictionary.Add("ellipse", true);
                 return Error.Ok;
+            case "capsule":
+                _currentDictionary.Add("capsule", true);
+                return Error.Ok;
         }
 
         var dictKey = elementName;

@@ -311,7 +311,10 @@ func handle_tiles(tiles: Array):
 					diff_y += 1
 				@warning_ignore("integer_division")
 				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - _tile_offset
-				
+
+		if _tile_offset != Vector2i.ZERO and current_tile.texture_origin == Vector2i.ZERO:
+			current_tile.texture_origin -= _tile_offset
+
 		if tile.has("probability"):
 			current_tile.probability = tile["probability"]
 		if tile.has("animation"):
@@ -401,6 +404,10 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 			continue
 		if obj.has("ellipse") and obj["ellipse"]:
 			# print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
+			# CommonUtils.warning_count += 1
+			continue
+		if obj.has("capsule") and obj["capsule"]:
+			# print_rich("[color="+WARNING_COLOR+"] -- 'Capsule' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
 			# CommonUtils.warning_count += 1
 			continue
 

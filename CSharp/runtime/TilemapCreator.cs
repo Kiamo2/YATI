@@ -740,8 +740,9 @@ public class TilemapCreator
                             var diffY = tileSize.Y - _mapTileHeight;
                             if (diffY % 2 != 0)
                                 diffY += 1;
-                            tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
+                            tileData.TextureOrigin = new Vector2I(-diffX/2, diffY/2);
                         }
+                        tileData.TextureOrigin -= tileOffset;
 
                         var srcData = atlasSource.GetTileData(atlasCoords, 0);
                         CreatePolygonsOnAlternativeTiles(srcData, tileData, altId);
@@ -761,15 +762,13 @@ public class TilemapCreator
         return gts switch
         {
             "" => GodotType.Empty,
-            "collision" => GodotType.Body,
-            "staticbody" => GodotType.Body,
+            "collision" or "staticbody" => GodotType.Body,
             "characterbody" => GodotType.CBody,
             "rigidbody" => GodotType.RBody,
             "animatablebody" => GodotType.ABody,
             "area" => GodotType.Area,
             "navigation" => GodotType.Navigation,
-            "occluder" => GodotType.Occluder,
-            "occlusion" => GodotType.Occluder,
+            "occluder" or "occlusion" => GodotType.Occluder,
             "line" => GodotType.Line,
             "path" => GodotType.Path,
             "polygon" => GodotType.Polygon,
@@ -1577,11 +1576,20 @@ public class TilemapCreator
                         var collisionShape = new CollisionShape2D();
                         co.AddChild(collisionShape);
                         collisionShape.Owner = _baseNode;
-                        if (obj.ContainsKey("ellipse"))
+                        if (obj.ContainsKey("capsule") || obj.ContainsKey("ellipse"))
                         {
                             var capsuleShape = new CapsuleShape2D();
-                            capsuleShape.Height = objHeight;
-                            capsuleShape.Radius = objWidth / 2.0f;
+                            if (objHeight >= objWidth)
+                            {
+                            	capsuleShape.Height = objHeight;
+                            	capsuleShape.Radius = objWidth / 2.0f;
+                            }
+                            else
+                            {
+                                capsuleShape.Height = objWidth;
+                                capsuleShape.Radius = objHeight / 2.0f;
+                                objRot += 90;
+                            }
                             collisionShape.Shape = capsuleShape;
                             collisionShape.Name = (objName != "") ? objName : "Capsule Shape";
                         }
@@ -1606,9 +1614,17 @@ public class TilemapCreator
                                 _isoScale = new Vector2(scale, scale);
                             }
 
-                            collisionShape.Skew = _isoSkew;
+                            if ((objHeight >= objWidth) || (collisionShape.Shape.GetType() == typeof(RectangleShape2D)))
+                            {
+                                collisionShape.Skew = _isoSkew;
+                                objRot += _isoRot;
+                            }
+                            else
+                            {
+                                collisionShape.Skew = -_isoSkew;
+                                objRot += -90 - _isoRot;
+                            }
                             collisionShape.Scale = _isoScale;
-                            objRot += _isoRot;
                         }
 
                         collisionShape.Position = TransposeCoords(objWidth / 2.0f, objHeight / 2.0f, true);
@@ -1621,6 +1637,10 @@ public class TilemapCreator
                             HandleProperties(co, (Array<Dictionary>)props);
                         break;
                     }
+                    case GodotType.Navigation when obj.ContainsKey("capsule"):
+                        GD.PrintRich($"[color={WarningColor}] -- Capsule is unusable for NavigationRegion2D. -> Skipped[/color]");
+                        CommonUtils.WarningCount++;
+                        break;
                     case GodotType.Navigation when obj.ContainsKey("ellipse"):
                         GD.PrintRich($"[color={WarningColor}] -- Ellipse is unusable for NavigationRegion2D. -> Skipped[/color]");
                         CommonUtils.WarningCount++;
@@ -1654,6 +1674,10 @@ public class TilemapCreator
                             HandleProperties(navRegion, (Array<Dictionary>)props);
                         break;
                     }
+                    case GodotType.Occluder when obj.ContainsKey("capsule"):
+                        GD.PrintRich($"[color={WarningColor}] -- Capsule is unusable for LightOccluder2D. -> Skipped[/color]");
+                        CommonUtils.WarningCount++;
+                        break;
                     case GodotType.Occluder when obj.ContainsKey("ellipse"):
                         GD.PrintRich($"[color={WarningColor}] -- Ellipse is unusable for LightOccluder2D. -> Skipped[/color]");
                         CommonUtils.WarningCount++;
@@ -1679,6 +1703,10 @@ public class TilemapCreator
                             HandleProperties(lightOcc, (Array<Dictionary>)props);
                         break;
                     }
+                    case GodotType.Polygon when obj.ContainsKey("capsule"):
+                        GD.PrintRich($"[color={WarningColor}] -- Capsule is unusable for Polygon2D. -> Skipped[/color]");
+                        CommonUtils.WarningCount++;
+                        break;
                     case GodotType.Polygon when obj.ContainsKey("ellipse"):
                         GD.PrintRich($"[color={WarningColor}] -- Ellipse is unusable for Polygon2D. -> Skipped[/color]");
                         CommonUtils.WarningCount++;
@@ -1827,11 +1855,20 @@ public class TilemapCreator
                 collisionShape.Position = new Vector2(posX, posY);
                 collisionShape.Scale = scale;
                 Shape2D shape;
-                if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
+                if ((obj.ContainsKey("capsule") && (bool)obj["capsule"]) || (obj.ContainsKey("ellipse") && (bool)obj["ellipse"]))
                 {
                     shape = new CapsuleShape2D();
+                    if (h >= w)
+                    {
                     ((CapsuleShape2D)shape).Height = h / scale.Y;
                     ((CapsuleShape2D)shape).Radius = w / 2.0f / scale.X;
+                    }
+                    else
+                    {
+                        ((CapsuleShape2D)shape).Height = w / scale.Y;
+                        ((CapsuleShape2D)shape).Radius = h / 2.0f / scale.X;
+                        rot += 90;
+                    }
                     collisionShape.Name = (objName != "") ? objName : "Capsule Shape";
                 }
                 else
@@ -1856,6 +1893,13 @@ public class TilemapCreator
 
                     var effectiveRot = _isoRot;
                     var effectiveSkew = _isoSkew;
+                    if ((w > h) && (shape.GetType() == typeof(CapsuleShape2D)))
+                    {
+                        effectiveRot = - _isoRot;
+                        effectiveSkew = - _isoSkew;
+                        rot -= 90;
+                    }
+                    
                     if (flippedH)
                     {
                         effectiveRot = -effectiveRot;

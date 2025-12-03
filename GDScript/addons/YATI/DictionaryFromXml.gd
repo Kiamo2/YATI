@@ -92,6 +92,9 @@ func simple_element(element_name: String, attribs: Dictionary):
 	if element_name == "ellipse":
 		_current_dictionary["ellipse"] = true
 		return OK
+	if element_name == "capsule":
+		_current_dictionary["capsule"] = true
+		return OK
 
 	var dict_key = element_name
 	if (element_name == "objectgroup" and (not _is_map or _in_tileset)) or (element_name == "text") or (element_name == "tileoffset") or (element_name == "grid"):

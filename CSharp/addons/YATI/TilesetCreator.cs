@@ -375,6 +375,9 @@ public class TilesetCreator
                 }
             }
             
+            if (_tileOffset != Vector2I.Zero && currentTile.TextureOrigin == Vector2I.Zero)
+                currentTile.TextureOrigin -= _tileOffset;
+				
             if (tile.TryGetValue("probability", out var probVal))
                 currentTile.Probability = (float)probVal;
             if (tile.TryGetValue("animation", out var animVal))
@@ -485,6 +488,13 @@ public class TilesetCreator
             if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
             {
                 //GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' on tile {tileId} skipped as there is no corresponding element in Godot 4.[/color]");
+                //CommonUtils.WarningCount++;
+                continue;
+            }
+
+            if (obj.ContainsKey("capsule") && (bool)obj["capsule"])
+            {
+                //GD.PrintRich($"[color={WarningColor}] -- 'Capsule' on tile {tileId} skipped as there is no corresponding element in Godot 4.[/color]");
                 //CommonUtils.WarningCount++;
                 continue;
             }
