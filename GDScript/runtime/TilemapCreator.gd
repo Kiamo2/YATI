@@ -540,7 +540,7 @@ func create_polygons_on_alternative_tiles(source_data: TileData, target_data: Ti
 			target_data.set_occluder_polygons_count(layer_id, 1)
 			target_data.set_occluder_polygon(layer_id, 0, occluder_polygon)
 		else:
-		target_data.set_occluder(layer_id, occluder_polygon)
+			target_data.set_occluder(layer_id, occluder_polygon)
 		
 
 func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_width: int):
