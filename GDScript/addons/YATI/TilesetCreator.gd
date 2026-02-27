@@ -440,6 +440,22 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 				var p_coord = transpose_coords(pt["x"], pt["y"])
 				var p_coord_rot = Vector2(p_coord.x * cos_a - p_coord.y * sin_a, p_coord.x * sin_a + p_coord.y * cos_a)
 				polygon.append(object_base_coords + p_coord_rot)
+		elif obj.has("ellipse") and obj["ellipse"]:
+			# Approximate ellipse as a polygon (Godot 4 has no native ellipse collision)
+			var cx: float = (obj.get("width", 0.0) / 2.0)
+			var cy: float = (obj.get("height", 0.0) / 2.0)
+			var segments: int = 12
+			polygon = []
+
+			for i in range(segments):
+				var angle := TAU * float(i) / float(segments)
+				var pt := Vector2(cx + cx * cos(angle), cy + cy * sin(angle))
+				var pt_trans = transpose_coords(pt.x, pt.y)
+				var pt_rot := Vector2(
+					pt_trans.x * cos_a - pt_trans.y * sin_a,
+					pt_trans.x * sin_a + pt_trans.y * cos_a
+				)
+				polygon.append(object_base_coords + pt_rot)
 		else:
 			# Should be a simple rectangle
 			polygon = [Vector2(), Vector2(), Vector2(), Vector2()]
