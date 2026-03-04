@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed potential misplacement of tile collision shapes in case of image collection tilesets
 
 ### Added
-- Added polygonal approximation of ellipse and capsule collision shapes on tiles
+- Added polygonal approximation of ellipse and capsule collision shapes on tiles 
   Ellipse was done by 'pmaerksch', thank you Philip!
 
 ## [2.2.4] - 2025-12-03
