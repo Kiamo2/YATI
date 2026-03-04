@@ -67,9 +67,8 @@ For details please refer to the [reference document](Reference.md)
 ## Limitations & Particularities
 
 1. Ellipses are not available in Godot. Where appropriate (on objects) a capsule is used instead.<p>
-Where not appropriate (on tiles inside Godot tilesets) they are skipped.<p>
-Also skipped are Points on tiles inside Godot tilesets.<p>
-**Please note:** If Points or Ellipses on tiles in Godot tilesets are skipped no warning is issued as both are valid if a tile is used as an object. 
+On tiles inside Godot tilesets ellipses and capsules are approximated by polygons.<p>
+Points on tiles inside Godot tilesets are skipped.<p>
 2. Tileset animation in Godot requires involved tiles being equidistant and either horizontally or vertically arranged.<p>
 In Tiled you can randomly choose every frame tile, such animations won't map and are skipped.
 3. Godot 4 seems to make a left-down render - at least the 'perspective walls' example from the Tiled github site suggests this.  
