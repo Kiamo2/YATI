@@ -149,8 +149,8 @@ If the Tiled name entry is empty a default Godot element name is created to avoi
 | Tile Collision rectangle   |                               | physics_layer (int)    | Physics layer polygon                       |
 |                            |                               | navigation_layer (int) | Navigation layer polygon                    |
 |                            |                               | occlusion_layer (int)  | Occlusion layer polygon                     |
-| Tile collision ellipse     |                               |                        | n/a                                         |
-| Tile collision capsule     |                               |                        | n/a                                         |
+| Tile collision ellipse     |                               |                        | same as polygon (approximated)              |
+| Tile collision capsule     |                               |                        | same as polygon (approximated)              |
 | Tile animation             |                               |                        | Tile animation (limited)                    |
 ||
 | Tile object                |                               |                        | Sprite2D                                    |
