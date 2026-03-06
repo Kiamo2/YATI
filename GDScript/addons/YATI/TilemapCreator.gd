@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023-2025 Roland Helmerichs
+# Copyright (c) 2023-2026 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -278,8 +278,7 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		if layer_name != "":
 			_tilemap_layer.name = layer_name
 		_tilemap_layer.visible = layer_visible
-		if layer_offset_x > 0 or layer_offset_y > 0:
-			_tilemap_layer.position = Vector2(layer_offset_x, layer_offset_y)
+		_tilemap_layer.position = Vector2(layer_offset_x, layer_offset_y)
 		if layer_opacity < 1.0 or tint_color != "#ffffff":
 			_tilemap_layer.modulate = Color(tint_color, layer_opacity)
 		_tilemap_layer.tile_set = _tileset

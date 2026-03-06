@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - Fixed potential misplacement of tile collision shapes in case of image collection tilesets
+- Fixed issue #87
 
 ### Added
 - Added polygonal approximation of ellipse and capsule collision shapes on tiles  
