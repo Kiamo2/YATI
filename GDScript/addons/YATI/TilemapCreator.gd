@@ -422,6 +422,10 @@ func handle_parallaxes(parent: Node, layer_node: Node, layer_dict: Dictionary):
 		var px_name = layer_dict.get("name", "")
 		parallax_node.name = px_name + " (PL)" if px_name != "" else "ParallaxLayer"
 		parallax_node.motion_scale = Vector2(par_x, par_y)
+		var mirror_x = layer_dict.get("imagewidth", 0) if layer_dict.get("repeatx", 0) else 0
+		var mirror_y = layer_dict.get("imageheight", 0) if layer_dict.get("repeaty", 0) else 0
+		if mirror_x != 0 or mirror_y != 0:
+			parallax_node.motion_mirroring = Vector2(mirror_x, mirror_y)
 		parallax_node.add_child(layer_node)
 	else:
 		parent.add_child(layer_node)
