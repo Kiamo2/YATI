@@ -51,9 +51,7 @@ var _tileset = null
 var _current_tileset_orientation: String
 var _current_object_alignment: String
 var _base_node = null
-var _parallax_background = null
 var _background = null
-var _parallax_layer_existing = false
 
 var _base_path = ""
 var _base_name = ""
@@ -205,10 +203,6 @@ func create(source_file: String):
 	_base_node = Node2D.new()
 	_base_name = source_file.get_file().get_basename()
 	_base_node.name = _base_name
-	_parallax_background = ParallaxBackground.new()
-	_base_node.add_child(_parallax_background)
-	_parallax_background.name = _base_name + " (PBG)"
-	_parallax_background.owner = _base_node
 	if _background_color != "":
 		_background = ColorRect.new()
 		_background.color = Color(_background_color)
@@ -235,9 +229,6 @@ func create(source_file: String):
 
 	if base_dictionary.has("properties"):
 		handle_properties(_base_node, base_dictionary["properties"])
-
-	if _parallax_background.get_child_count() == 0:
-		_base_node.remove_child(_parallax_background)
 
 	# Remove internal helper custom data
 	if _tileset.get_custom_data_layers_count() > 0:
@@ -407,21 +398,18 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 
 func handle_parallaxes(parent: Node, layer_node: Node, layer_dict: Dictionary):
 	if layer_dict.has("parallaxx") or layer_dict.has("parallaxy"):
-		if not _parallax_layer_existing:
-			if _background != null:
-				_background.owner = null
-				_background.reparent(_parallax_background)
-				_background.owner = _base_node
-			_parallax_layer_existing = true
-	
 		var par_x = layer_dict.get("parallaxx", 0.0)
 		var par_y = layer_dict.get("parallaxy", 0.0)
-		var parallax_node = ParallaxLayer.new()
-		_parallax_background.add_child(parallax_node)
+		var parallax_node = Parallax2D.new()
+		parent.add_child(parallax_node)
 		parallax_node.owner = _base_node
 		var px_name = layer_dict.get("name", "")
-		parallax_node.name = px_name + " (PL)" if px_name != "" else "ParallaxLayer"
-		parallax_node.motion_scale = Vector2(par_x, par_y)
+		parallax_node.name = px_name + " (P2D)" if px_name != "" else "Parallax2D"
+		parallax_node.scroll_scale = Vector2(par_x, par_y)
+		var mirror_x = layer_dict.get("imagewidth", 0) if layer_dict.get("repeatx", 0) else 0
+		var mirror_y = layer_dict.get("imageheight", 0) if layer_dict.get("repeaty", 0) else 0
+		if mirror_x != 0 or mirror_y != 0:
+			parallax_node.repeat_size = Vector2(mirror_x, mirror_y)
 		parallax_node.add_child(layer_node)
 	else:
 		parent.add_child(layer_node)
