@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023-2025 Roland Helmerichs
+# Copyright (c) 2023-2026 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -292,6 +292,8 @@ func handle_tiles(tiles: Array):
 			if tile.has("y"):
 				tile_offset_y = tile["y"]
 			_current_atlas_source.margins = Vector2i(tile_offset_x, tile_offset_y)
+			# For single image tiles the tileset's tilesize is misleading, use the texture size
+			_tile_size = _current_atlas_source.texture_region_size
 
 			_current_atlas_source.create_tile(Vector2(0, 0))
 			current_tile = _current_atlas_source.get_tile_data(Vector2(0, 0), 0)
@@ -402,14 +404,6 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 			# print_rich("[color="+WARNING_COLOR+"] -- 'Point' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
 			# CommonUtils.warning_count += 1
 			continue
-		if obj.has("ellipse") and obj["ellipse"]:
-			# print_rich("[color="+WARNING_COLOR+"] -- 'Ellipse' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
-			# CommonUtils.warning_count += 1
-			continue
-		if obj.has("capsule") and obj["capsule"]:
-			# print_rich("[color="+WARNING_COLOR+"] -- 'Capsule' on tile " + str(tile_id) + " skipped as there is no corresponding element in Godot 4.[/color]")
-			# CommonUtils.warning_count += 1
-			continue
 
 		if _ct != null:
 			_ct.merge_custom_properties(obj, "object")
@@ -440,6 +434,63 @@ func handle_objectgroup(object_group: Dictionary, current_tile: TileData, tile_i
 				var p_coord = transpose_coords(pt["x"], pt["y"])
 				var p_coord_rot = Vector2(p_coord.x * cos_a - p_coord.y * sin_a, p_coord.x * sin_a + p_coord.y * cos_a)
 				polygon.append(object_base_coords + p_coord_rot)
+		elif obj.has("ellipse") and obj["ellipse"]:
+			# Approximate ellipse as a polygon (Godot 4 has no native ellipse collision)
+			var cx: float = (obj.get("width", 0.0) / 2.0)
+			var cy: float = (obj.get("height", 0.0) / 2.0)
+			const segments: int = 12
+			polygon = []
+			for i in range(segments):
+				var angle := TAU * float(i) / float(segments)
+				var pt := Vector2(cx + cx * cos(angle), cy + cy * sin(angle))
+				var pt_trans = transpose_coords(pt.x, pt.y)
+				var pt_rot := Vector2(
+					pt_trans.x * cos_a - pt_trans.y * sin_a,
+					pt_trans.x * sin_a + pt_trans.y * cos_a
+				)
+				polygon.append(object_base_coords + pt_rot)
+		elif obj.has("capsule") and obj["capsule"]:
+			# Approximate capsule as a polygon (Godot 4 has no native capsule collision)
+			var height: float = obj.get("height", 0.0)
+			var width: float = obj.get("width", 0.0)
+			var r: float = width / 2.0
+			if width > height:
+				r = height / 2.0
+			const segments: int = 12 # must be dividable by 4!
+			polygon = []
+			for i in range(segments):
+				var angle := TAU * float(i) / float(segments)
+				var pt := Vector2(width/2.0 + r * cos(angle), height/2.0 + r * sin(angle))
+				polygon.append(pt)
+			if abs(width - height) > 0.01:
+				polygon.append(Vector2.ZERO)
+				polygon.append(Vector2.ZERO)
+			if height > width and polygon.size() > segments:
+				var y_offs: float = (height - width) / 2.0
+				polygon[segments+1].x = polygon[0].x
+				polygon[segments+1].y = polygon[0].y - y_offs
+				for i in range(segments, segments/2, -1):
+					polygon[i].x = polygon[i-1].x
+					polygon[i].y = polygon[i-1].y - y_offs
+				for i in range(segments/2 + 1):
+					polygon[i].y += y_offs
+			if width > height and polygon.size() > segments:
+				var x_offs: float = (width - height) / 2.0
+				for i in range(segments+1, segments*3/4 + 1, -1):
+					polygon[i].y = polygon[i-2].y
+					polygon[i].x = polygon[i-2].x + x_offs
+				for i in range(segments*3/4 + 1, segments/4, -1):
+					polygon[i].y = polygon[i-1].y
+					polygon[i].x = polygon[i-1].x - x_offs
+				for i in range(segments/4 + 1):
+					polygon[i].x += x_offs
+			for i in range(polygon.size()):
+				var pt_trans = transpose_coords(polygon[i].x, polygon[i].y)
+				var pt_rot := Vector2(
+					pt_trans.x * cos_a - pt_trans.y * sin_a,
+					pt_trans.x * sin_a + pt_trans.y * cos_a
+				)
+				polygon[i] = object_base_coords + pt_rot
 		else:
 			# Should be a simple rectangle
 			polygon = [Vector2(), Vector2(), Vector2(), Vector2()]

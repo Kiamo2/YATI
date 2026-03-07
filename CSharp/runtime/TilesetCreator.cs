@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2023-2025 Roland Helmerichs
+// Copyright (c) 2023-2026 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -349,6 +349,8 @@ public class TilesetCreator
                 if (tile.TryGetValue("y", out var offsetY))
                     tileOffsetY = (int)offsetY;
                 _currentAtlasSource.Margins = new Vector2I(tileOffsetX, tileOffsetY);
+                // For single image tiles the tileset's tilesize is misleading, use the texture size
+                _tileSize = _currentAtlasSource.TextureRegionSize;
 
                 _currentAtlasSource.CreateTile(Vector2I.Zero);
                 currentTile = _currentAtlasSource.GetTileData(Vector2I.Zero, 0);
@@ -483,20 +485,6 @@ public class TilesetCreator
                 continue;
             }
 
-            if (obj.ContainsKey("ellipse") && (bool)obj["ellipse"])
-            {
-                //GD.PrintRich($"[color={WarningColor}] -- 'Ellipse' on tile {tileId} skipped as there is no corresponding element in Godot 4.[/color]");
-                //CommonUtils.WarningCount++;
-                continue;
-            }
-
-            if (obj.ContainsKey("capsule") && (bool)obj["capsule"])
-            {
-                //GD.PrintRich($"[color={WarningColor}] -- 'Capsule' on tile {tileId} skipped as there is no corresponding element in Godot 4.[/color]");
-                //CommonUtils.WarningCount++;
-                continue;
-            }
-
             _ct?.MergeCustomProperties(obj, "object");
 
             var objectBaseCoords = new Vector2((float)obj["x"], (float)obj["y"]);
@@ -534,6 +522,74 @@ public class TilesetCreator
                     var pCoordRot = new Vector2(pCoord.X * cosA - pCoord.Y * sinA, pCoord.X * sinA + pCoord.Y * cosA);
                     polygon[i] = objectBaseCoords + pCoordRot;
                     i++;
+                }
+            }
+            else if (obj.TryGetValue("ellipse", out var isEllipse) && (bool)isEllipse)
+            {
+                // Approximate ellipse as a polygon (Godot 4 has no native ellipse collision)
+                var cx = (float)obj.GetValueOrDefault("height", 0.0f) / 2.0f;
+                var cy = (float)obj.GetValueOrDefault("width", 0.0f) / 2.0f;
+                const int segments = 12;
+                polygon = new Vector2[segments];
+                for (var i = 0; i < segments; i++)
+                {
+                    var angle = (float)Math.Tau * i / segments;
+                    var pt = new Vector2(cx + cx * (float)Math.Cos(angle), cy + cy * (float)Math.Sin(angle));
+                    var ptTrans = TransposeCoords(pt.X, pt.Y);
+                    var ptRot = new Vector2(ptTrans.X * cosA - ptTrans.Y * sinA, ptTrans.X * sinA + ptTrans.Y * cosA);
+                    polygon[i] = objectBaseCoords + ptRot;
+                }
+            }
+            else if (obj.TryGetValue("capsule", out var isCapsule) && (bool)isCapsule)
+            {
+                // Approximate capsule as a polygon (Godot 4 has no native capsule collision)
+                var height = (float)obj.GetValueOrDefault("height", 0.0f);
+                var width = (float)obj.GetValueOrDefault("width", 0.0f);
+                var r = width / 2.0f;
+                if (width > height)
+                    r = height / 2.0f;
+                const int segments = 12; // must be dividable by 4!
+                polygon = Math.Abs(width - height) < 0.01f ? new Vector2[segments] : new Vector2[segments+2];
+                for (var i = 0; i < segments; i++)
+                {
+                    var angle = (float)Math.Tau * i / segments;
+                    var pt = new Vector2(width/2.0f + r * (float)Math.Cos(angle), height/2.0f + r * (float)Math.Sin(angle));
+                    polygon[i] = pt;
+                }
+                if (height > width && polygon.Length > segments)
+                {
+                    var yOffs = (height - width) / 2.0f;
+                    polygon[segments+1].X = polygon[0].X;
+                    polygon[segments+1].Y = polygon[0].Y - yOffs;
+                    for (var i = segments; i > segments/2; i--)
+                    {
+                        polygon[i].X = polygon[i-1].X;
+                        polygon[i].Y = polygon[i-1].Y - yOffs;
+                    }
+                    for (var i = 0; i <= segments/2; i++)
+                        polygon[i].Y += yOffs;
+                }
+                else if (width > height && polygon.Length > segments)
+                {
+                    var xOffs = (width - height) / 2.0f;
+                    for (var i = segments+1; i > segments*3/4 + 1; i--)
+                    {
+                        polygon[i].Y = polygon[i-2].Y;
+                        polygon[i].X = polygon[i-2].X + xOffs;
+                    }
+                    for (var i = segments*3/4 + 1; i > segments/4; i--)
+                    {
+                        polygon[i].Y = polygon[i-1].Y;
+                        polygon[i].X = polygon[i-1].X - xOffs;
+                    }
+                    for (var i = 0; i <= segments/4; i++)
+                        polygon[i].X += xOffs;
+                }
+                for (var i = 0; i < polygon.Length; i++)
+                {
+                    var ptTrans = TransposeCoords(polygon[i].X, polygon[i].Y);
+                    var ptRot = new Vector2(ptTrans.X * cosA - ptTrans.Y * sinA, ptTrans.X * sinA + ptTrans.Y * cosA);
+                    polygon[i] = objectBaseCoords + ptRot;
                 }
             }
             else
