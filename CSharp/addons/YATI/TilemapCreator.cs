@@ -459,22 +459,73 @@ public class TilemapCreator
             }
             case "imagelayer":
             {
-                var textureRect = new TextureRect();
-                HandleParallaxes(parent, textureRect, layer);
-                
-                textureRect.Name = (string)layer.GetValueOrDefault("name", "image");
-                textureRect.Position = new Vector2(layerOffsetX, layerOffsetY);
+                var nodeType = GetGodotNodeType(layer);
 
-                var imagewidth = (int)layer.GetValueOrDefault("imagewidth", 0);
-                var imageheight = (int)layer.GetValueOrDefault("imageheight", 0);
-                textureRect.Size = new Vector2(imagewidth, imageheight);
-                if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
-                    textureRect.Modulate = new Color(tintColor, layerOpacity);
-                textureRect.Visible = layerVisible;
-                textureRect.Texture = DataLoader.LoadImage((string)layer["image"], _basePath);
+                if (nodeType == GodotType.Parallax)
+                {
+                    var px2D = new Parallax2D();
+                    parent.AddChild(px2D);
+                    px2D.Owner = _baseNode;
+                    px2D.Name = (string)layer.GetValueOrDefault("name", "parallax");
+                    if (layer.ContainsKey("parallaxx") || layer.ContainsKey("parallaxy"))
+                    {
+                        var parX = (float)layer.GetValueOrDefault("parallaxx", 1.0f);
+                        var parY = (float)layer.GetValueOrDefault("parallaxy", 1.0f);
+                        px2D.ScrollScale = new Vector2(parX, parY);
+                    }
+                    if (layer.ContainsKey("repeatx") && (string)layer["repeatx"] == "1")
+                    {
+                        var repeatSizeX = (int)layer.GetValueOrDefault("imagewidth", 0);
+                        if (repeatSizeX > 0)
+                        {
+                            px2D.RepeatSize = new Vector2(repeatSizeX, px2D.RepeatSize.Y);
+                            px2D.RepeatTimes = 2;
+                        }
+                    }
+                    if (layer.ContainsKey("repeaty") && (string)layer["repeaty"] == "1")
+                    {
+                        var repeatSizeY = (int)layer.GetValueOrDefault("imageheight", 0);
+                        if (repeatSizeY > 0)
+                        {
+                            px2D.RepeatSize = new Vector2(px2D.RepeatSize.X, repeatSizeY);
+                            px2D.RepeatTimes = 2;
+                        }
+                    }
+                    var textureRect = new TextureRect();
+                    textureRect.Name = ((string)layer["image"]).GetFile().GetBaseName();
+                    textureRect.Position = new Vector2(layerOffsetX, layerOffsetY);
+                    var imagewidth = (int)layer.GetValueOrDefault("imagewidth", 0);
+                    var imageheight = (int)layer.GetValueOrDefault("imageheight", 0);
+                    textureRect.Size = new Vector2(imagewidth, imageheight);
+                    if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                        textureRect.Modulate = new Color(tintColor, layerOpacity);
+                    textureRect.Visible = layerVisible;
+                    textureRect.Texture = DataLoader.LoadImage((string)layer["image"], _basePath);
 
-                if (layer.TryGetValue("properties", out var props))
-                    HandleProperties(textureRect, (Array<Dictionary>)props);
+                    px2D.AddChild(textureRect);
+                    textureRect.Owner = _baseNode;
+
+                    if (layer.TryGetValue("properties", out var props))
+                        HandleProperties(px2D, (Array<Dictionary>)props);
+                }
+                else
+                {
+                    var textureRect = new TextureRect();
+                    // Leave the old handling for the time being
+                    HandleParallaxes(parent, textureRect, layer);
+                    textureRect.Name = (string)layer.GetValueOrDefault("name", "image");
+                    textureRect.Position = new Vector2(layerOffsetX, layerOffsetY);
+                    var imagewidth = (int)layer.GetValueOrDefault("imagewidth", 0);
+                    var imageheight = (int)layer.GetValueOrDefault("imageheight", 0);
+                    textureRect.Size = new Vector2(imagewidth, imageheight);
+                    if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                        textureRect.Modulate = new Color(tintColor, layerOpacity);
+                    textureRect.Visible = layerVisible;
+                    textureRect.Texture = DataLoader.LoadImage((string)layer["image"], _basePath);
+
+                    if (layer.TryGetValue("properties", out var props))
+                        HandleProperties(textureRect, (Array<Dictionary>)props);
+                }
                 
                 break;
             }
@@ -504,6 +555,14 @@ public class TilemapCreator
             var pxName = (string)layerDict.GetValueOrDefault("name", "");
             parallaxNode.Name = (pxName != "") ? pxName + " (PL)" : "ParallaxLayer";
             parallaxNode.MotionScale = new Vector2(parX, parY);
+            var mirrorX = 0.0f;
+            var mirrorY = 0.0f;
+            if (layerDict.ContainsKey("repeatx") && (string)layerDict["repeatx"] == "1")
+                mirrorX = (float)layerDict.GetValueOrDefault("imagewidth", 0.0f);
+            if (layerDict.ContainsKey("repeaty") && (string)layerDict["repeaty"] == "1")
+                mirrorY = (float)layerDict.GetValueOrDefault("imageheight", 0.0f);
+            if (mirrorX > 0.0f || mirrorY > 0.0f)
+                parallaxNode.MotionMirroring = new Vector2(mirrorX, mirrorY);
             parallaxNode.AddChild(layerNode);
         }
         else

@@ -281,6 +281,7 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 		if layer_opacity < 1.0 or tint_color != "#ffffff":
 			_tilemap_layer.modulate = Color(tint_color, layer_opacity)
 		_tilemap_layer.tile_set = _tileset
+		# Leave the old handling for the time being
 		handle_parallaxes(parent, _tilemap_layer, layer)
 		if _map_orientation == "isometric" or _map_orientation == "staggered":
 			_tilemap_layer.y_sort_enabled = true
@@ -326,8 +327,8 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			parent.add_child(layer_node)
 			layer_node.owner = _base_node
 			if layer.has("parallaxx") or layer.has("parallaxy"):
-				var par_x = layer.get("parallaxx", 0.0)
-				var par_y = layer.get("parallaxy", 0.0)
+				var par_x = layer.get("parallaxx", 1.0)
+				var par_y = layer.get("parallaxy", 1.0)
 				layer_node.scroll_scale = Vector2(par_x, par_y)
 		else:
 			layer_node = Node2D.new()
@@ -363,8 +364,8 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			parent.add_child(group_node)
 			group_node.owner = _base_node
 			if layer.has("parallaxx") or layer.has("parallaxy"):
-				var par_x = layer.get("parallaxx", 0.0)
-				var par_y = layer.get("parallaxy", 0.0)
+				var par_x = layer.get("parallaxx", 1.0)
+				var par_y = layer.get("parallaxy", 1.0)
 				group_node.scroll_scale = Vector2(par_x, par_y)
 		else:
 			group_node = Node2D.new()
@@ -387,22 +388,60 @@ func handle_layer(layer: Dictionary, parent: Node2D):
 			handle_properties(group_node, layer["properties"])
 
 	elif layer_type == "imagelayer":
-		var texture_rect = TextureRect.new()
-		handle_parallaxes(parent, texture_rect, layer)
+		var node_type = get_godot_node_type(layer)
 
-		texture_rect.name = layer.get("name", "image")
-		texture_rect.position = Vector2(layer_offset_x, layer_offset_y)
+		if node_type == _godot_type.PARALLAX:
+			var px_2d = Parallax2D.new()
+			parent.add_child(px_2d)
+			px_2d.owner = _base_node
+			px_2d.name = layer.get("name", "parallax")
+			if layer.has("parallaxx") or layer.has("parallaxy"):
+				var par_x = layer.get("parallaxx", 1.0)
+				var par_y = layer.get("parallaxy", 1.0)
+				px_2d.scroll_scale = Vector2(par_x, par_y)
+			if layer.has("repeatx") and layer["repeatx"] == 1:
+				var repeat_size_x = layer.get("imagewidth", 0)
+				if repeat_size_x > 0:
+					px_2d.repeat_size = Vector2(repeat_size_x, px_2d.repeat_size.y)
+					px_2d.repeat_times = 2
+			if layer.has("repeaty") and layer["repeaty"] == 1:
+				var repeat_size_y = layer.get("imageheight", 0)
+				if repeat_size_y > 0:
+					px_2d.repeat_size = Vector2(px_2d.repeat_size.x, repeat_size_y)
+					px_2d.repeat_times = 2
+			var texture_rect = TextureRect.new()
+			texture_rect.name = layer["image"].get_file().get_basename()
+			texture_rect.position = Vector2(layer_offset_x, layer_offset_y)
+			var imagewidth = layer.get("imagewidth", 0)
+			var imageheight = layer.get("imageheight", 0)
+			texture_rect.size = Vector2(imagewidth, imageheight)
+			if layer_opacity < 1.0 or tint_color != "#ffffff":
+				texture_rect.modulate = Color(tint_color, layer_opacity)
+			texture_rect.visible = layer_visible
+			texture_rect.texture = DataLoader.load_image(layer["image"], _base_path)
 
-		var imagewidth = layer.get("imagewidth", 0)
-		var imageheight = layer.get("imageheight", 0)
-		texture_rect.size = Vector2(imagewidth, imageheight)
-		if layer_opacity < 1.0 or tint_color != "#ffffff":
-			texture_rect.modulate = Color(tint_color, layer_opacity)
-		texture_rect.visible = layer_visible
-		texture_rect.texture = DataLoader.load_image(layer["image"], _base_path)
+			px_2d.add_child(texture_rect)
+			texture_rect.owner = _base_node
 
-		if layer.has("properties"):
-			handle_properties(texture_rect, layer["properties"])
+			if layer.has("properties"):
+				handle_properties(px_2d, layer["properties"])
+		else:
+			var texture_rect = TextureRect.new()
+			handle_parallaxes(parent, texture_rect, layer)
+
+			texture_rect.name = layer.get("name", "image")
+			texture_rect.position = Vector2(layer_offset_x, layer_offset_y)
+
+			var imagewidth = layer.get("imagewidth", 0)
+			var imageheight = layer.get("imageheight", 0)
+			texture_rect.size = Vector2(imagewidth, imageheight)
+			if layer_opacity < 1.0 or tint_color != "#ffffff":
+				texture_rect.modulate = Color(tint_color, layer_opacity)
+			texture_rect.visible = layer_visible
+			texture_rect.texture = DataLoader.load_image(layer["image"], _base_path)
+
+			if layer.has("properties"):
+				handle_properties(texture_rect, layer["properties"])
 
 func handle_parallaxes(parent: Node, layer_node: Node, layer_dict: Dictionary):
 	if layer_dict.has("parallaxx") or layer_dict.has("parallaxy"):
@@ -421,6 +460,10 @@ func handle_parallaxes(parent: Node, layer_node: Node, layer_dict: Dictionary):
 		var px_name = layer_dict.get("name", "")
 		parallax_node.name = px_name + " (PL)" if px_name != "" else "ParallaxLayer"
 		parallax_node.motion_scale = Vector2(par_x, par_y)
+		var mirror_x = layer_dict.get("imagewidth", 0) if layer_dict.get("repeatx", 0) else 0
+		var mirror_y = layer_dict.get("imageheight", 0) if layer_dict.get("repeaty", 0) else 0
+		if mirror_x != 0 or mirror_y != 0:
+			parallax_node.motion_mirroring = Vector2(mirror_x, mirror_y)
 		parallax_node.add_child(layer_node)
 	else:
 		parent.add_child(layer_node)

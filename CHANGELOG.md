@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.6] - 2026-03-08
+
+### Fixed
+- GDScript version only: Fixed wrong default values for scroll_scale  
+  (Could affect group and object layers qualified as class 'parallax')
+
+### Added
+- Set motion_mirroring on ParallaxLayers based on Image layer's repeatx/y setting
+  was added by 'pmaerksch', thank you Philip!  
+  (Please note: ParallaxLayer is deprecated since Godot version 4.4 but still working)
+- Image layers can now also be qualified with class or godot_node_type ‘parallax’.  
+  The TextureRect is then placed as a child under a Parallax2D node.
+
 ## [2.2.5] - 2026-03-04
 
 ### Fixed
