@@ -20,15 +20,34 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-func import(source_file: String, project_file: String = ""):
+func import(source_file: String, options: Dictionary = {}):
 	var tilemapCreator = preload("TilemapCreator.gd").new()
-	tilemapCreator.set_add_class_as_metadata(true)
-	if project_file != "":
+	if options.get("use_default_filter", false) == true:
+		tilemapCreator.set_use_default_filter(true)
+	if options.get("add_class_as_metadata", true) == true:
+		tilemapCreator.set_add_class_as_metadata(true)
+	if options.get("add_id_as_metadata", false) == true:
+		tilemapCreator.set_add_id_as_metadata(true)
+	if options.get("no_alternative_tiles", false) == true:
+		tilemapCreator.set_no_alternative_tiles(true)
+	if options.get("map_wangset_to_terrain", false) == true:
+		tilemapCreator.set_map_wangset_to_terrain(true)
+	if options.has("custom_data_prefix") and options["custom_data_prefix"] != "":
+		tilemapCreator.set_custom_data_prefix(options["custom_data_prefix"])
+	if options.has("tiled_project_file") and options["tiled_project_file"] != "":
 		var ct = CustomTypes.new()
-		ct.load_custom_types(project_file)
+		ct.load_custom_types(options["tiled_project_file"])
 		tilemapCreator.set_custom_types(ct)
-	return tilemapCreator.create(source_file)
+	if options.has("save_tileset_to") and options["save_tileset_to"] != "":
+		tilemapCreator.set_save_tileset_to(options["save_tileset_to"])
+	var node2D = tilemapCreator.create(source_file)
+	if node2D == null:
+		return null
+	if options.has("post_processor") and options["post_processor"] != "":
+		var post_proc = preload("PostProcessing.gd").new()
+		node2D = post_proc.call_post_process(node2D, options["post_processor"])
+	return node2D
 
-func import_from_zip(zip_file: String, source_file_in_zip: String, project_file_in_zip: String = ""):
+func import_from_zip(zip_file: String, source_file_in_zip: String, options: Dictionary = {}):
 	DataLoader.zip_file = zip_file
-	return import(source_file_in_zip, project_file_in_zip)
+	return import(source_file_in_zip, options)
