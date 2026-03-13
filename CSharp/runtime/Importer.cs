@@ -21,27 +21,71 @@
 // SOFTWARE.
 
 using Godot;
+using Godot.Collections;
 
 namespace YATI;
 
 public static class Importer
 {
-	public static Node2D Import(string sourceFile, string projectFile = "")
+	public static Node2D Import(string sourceFile, Dictionary options = null)
 	{
+		options ??= new Dictionary();
+		
 		var tilemapCreator = new TilemapCreator();
-		tilemapCreator.SetAddClassAsMetadata(true);
-		if (projectFile != "" && FileAccess.FileExists(projectFile))
+		
+		if (options.ContainsKey("use_default_filter") && (bool)options["use_default_filter"])
+			tilemapCreator.SetUseDefaultFilter(true);
+		if (!options.ContainsKey("add_class_as_metadata") || (bool)options["add_class_as_metadata"])
+			tilemapCreator.SetAddClassAsMetadata(true);
+		if (options.ContainsKey("add_id_as_metadata") && (bool)options["add_id_as_metadata"])
+			tilemapCreator.SetAddIdAsMetadata(true);
+		if (options.ContainsKey("no_alternative_tiles") && (bool)options["no_alternative_tiles"])
+			tilemapCreator.SetNoAlternativeTiles(true);
+		if (options.ContainsKey("map_wangset_to_terrain") && (bool)options["map_wangset_to_terrain"])
+			tilemapCreator.SetMapWangsetToTerrain(true);
+		if (options.ContainsKey("custom_data_prefix") && (string)options["custom_data_prefix"] != "")
+			tilemapCreator.SetCustomDataPrefix((string)options["custom_data_prefix"]);
+		if (options.ContainsKey("tiled_project_file") && (string)options["tiled_project_file"] != "")
 		{
 			var ct = new CustomTypes();
-			ct.LoadCustomTypes(projectFile);
+			ct.LoadCustomTypes((string)options["tiled_project_file"]);
 			tilemapCreator.SetCustomTypes(ct);
 		}
-		return tilemapCreator.Create(sourceFile);
+		if (options.ContainsKey("save_tileset_to") && (string)options["save_tileset_to"] != "")
+			tilemapCreator.SetSaveTilesetTo((string)options["save_tileset_to"]);
+
+		var node2D = tilemapCreator.Create(sourceFile);
+		if (node2D == null)
+			return null;
+
+		if (options.ContainsKey("post_processor") && (string)options["post_processor"] != "")
+		{
+			var postProc = new PostProcessing();
+			node2D = postProc.CallPostProcess(node2D, (string)options["post_processor"]);
+		}
+
+		return node2D;
+	}
+
+	public static Node2D Import(string sourceFile, string projectFile = "")
+	{
+		var options = new Dictionary();
+		if (projectFile != "")
+			options["tiled_project_file"] = projectFile;
+		return Import(sourceFile, options);
+	}
+
+	public static Node2D ImportFromZip(string zipFile, string sourceFileInZip, Dictionary options = null)
+	{
+		DataLoader.ZipFile = zipFile;
+		return Import(sourceFileInZip, options);
 	}
 
 	public static Node2D ImportFromZip(string zipFile, string sourceFileInZip, string projectFileInZip = "")
 	{
-		DataLoader.ZipFile = zipFile;
-		return Import(sourceFileInZip, projectFileInZip);
+		var options = new Dictionary();
+		if (projectFileInZip != "")
+			options["tiled_project_file"] = projectFileInZip;
+		return ImportFromZip(zipFile, sourceFileInZip, options);
 	}
 }
