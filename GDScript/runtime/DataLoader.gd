@@ -25,7 +25,7 @@ class_name DataLoader
 static var zip_file: String
 
 static func get_tiled_file_content(file_name: String, base_path: String):
-    if zip_file == null:
+    if not zip_file:
         return get_tiled_file_content_from_file(file_name, base_path)
     else:
         return get_tiled_file_content_from_zip(file_name, base_path)
@@ -57,7 +57,7 @@ static func get_tiled_file_content_from_zip(file_name: String, base_path: String
     return null
 
 static func load_image(file_name: String, base_path: String):
-    if zip_file == null:
+    if not zip_file:
         return load_image_from_file(file_name, base_path)
     else:
         return load_image_from_zip(file_name, base_path)
