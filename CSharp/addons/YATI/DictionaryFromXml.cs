@@ -1,6 +1,6 @@
 ﻿// MIT License
 //
-// Copyright (c) 2023-2025 Roland Helmerichs
+// Copyright (c) 2023-2026 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -146,6 +146,15 @@ public class DictionaryFromXml
                 var dict = new Dictionary();
                 InsertAttributes(dict, attributes);
                 _currentArray.Add(dict);
+                if (dict.TryGetValue("type", out var type))
+                {
+                    if ((string)type == "list")
+                    {
+                        _currentDictionary = dict;
+                        _currentArray = new Array();
+                        _currentDictionary.Add("value", _currentArray);                        
+                    }
+                }
                 break;
             }
             default:
@@ -173,14 +182,16 @@ public class DictionaryFromXml
 
                 if ((dictKey != "animation") && (dictKey != "properties"))
                     dictKey += "s";
-                if (_currentDictionary.TryGetValue(dictKey, out var dictVal))
+
+                if (dictKey != "items")
                 {
-                    _currentArray = (Array)dictVal;
-                }
-                else
-                {
-                    _currentArray = new Array();
-                    _currentDictionary[dictKey] = _currentArray;
+                    if (_currentDictionary.TryGetValue(dictKey, out var dictVal))
+                        _currentArray = (Array)dictVal;
+                    else
+                    {
+                        _currentArray = new Array();
+                        _currentDictionary[dictKey] = _currentArray;
+                    }
                 }
 
                 if ((dictKey != "animation") && (dictKey != "properties"))
@@ -300,9 +311,7 @@ public class DictionaryFromXml
         {
             var val = key switch
             {
-                "infinite" => value == "1",
-                "visible" => value == "1",
-                "wrap" => value == "1",
+                "infinite" or "visible" or "wrap" => value == "1",
                 _ => (Variant)value
             };
 

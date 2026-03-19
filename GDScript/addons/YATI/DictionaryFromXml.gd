@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023-2025 Roland Helmerichs
+# Copyright (c) 2023-2026 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -119,6 +119,11 @@ func simple_element(element_name: String, attribs: Dictionary):
 			var dict = {}
 			insert_attributes(dict, attribs)
 			_current_array.append(dict)
+			if dict.has("type"):
+				if dict["type"] == "list":
+					_current_dictionary = dict
+					_current_array = []
+					_current_dictionary["value"] = _current_array
 		else:
 			if dict_key == "objectgroup" or dict_key == "imagelayer":
 				# to be later added to the layer attributes (by insert_attributes)
@@ -135,11 +140,12 @@ func simple_element(element_name: String, attribs: Dictionary):
 				dict_key = "layer"
 			if dict_key != "animation" and dict_key != "properties":
 				dict_key = dict_key + "s"
-			if _current_dictionary.has(dict_key):
-				_current_array = _current_dictionary[dict_key]
-			else:
-				_current_array = []
-				_current_dictionary[dict_key] = _current_array
+			if dict_key != "items":
+				if _current_dictionary.has(dict_key):
+					_current_array = _current_dictionary[dict_key]
+				else:
+					_current_array = []
+					_current_dictionary[dict_key] = _current_array
 			if dict_key != "animation" and dict_key != "properties":
 				_current_dictionary = {}
 				_current_array.append(_current_dictionary)

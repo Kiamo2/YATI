@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2023-2025 Roland Helmerichs
+// Copyright (c) 2023-2026 Roland Helmerichs
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,17 @@ public static class Importer
 	public static Node2D Import(string sourceFile, string projectFile = "")
 	{
 		var tilemapCreator = new TilemapCreator();
+		
+		// Options you might want to set (just uncomment)
+		//
+		//tilemapCreator.SetUseDefaultFilter(true);
 		tilemapCreator.SetAddClassAsMetadata(true);
+		//tilemapCreator.SetAddIdAsMetadata(true);
+		//tilemapCreator.SetNoAlternativeTiles(true);
+		//tilemapCreator.SetMapWangsetToTerrain(true);
+		tilemapCreator.SetCustomDataPrefix("data_");
+		//tilemapCreator.SetSaveTilesetTo("");
+
 		if (projectFile != "" && FileAccess.FileExists(projectFile))
 		{
 			var ct = new CustomTypes();
@@ -43,5 +53,21 @@ public static class Importer
 	{
 		DataLoader.ZipFile = zipFile;
 		return Import(sourceFileInZip, projectFileInZip);
+	}
+
+	// If you don't need post-processing better comment out or remove the methods below and also remove PostProcessing.cs to minimize useless code in your build
+	public static Node2D ImportWithPostProcessing(string sourceFile, string postProcFile, string projectFile = "")
+	{
+		var node2D = Import(sourceFile, projectFile);
+		var postProc = new PostProcessing();
+		return postProc.CallPostProcess(node2D, postProcFile);
+	}
+	
+	public static Node2D ImportFromZipWithPostProcessing(string zipFile, string sourceFileInZip, string postProcFileInZip, string projectFileInZip = "")
+	{
+		DataLoader.ZipFile = zipFile;
+		var node2D = Import(sourceFileInZip, projectFileInZip);
+		var postProc = new PostProcessing();
+		return postProc.CallPostProcess(node2D, postProcFileInZip);
 	}
 }

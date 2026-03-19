@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2023-2025 Roland Helmerichs
+# Copyright (c) 2023-2026 Roland Helmerichs
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,17 @@
 
 func import(source_file: String, project_file: String = ""):
 	var tilemapCreator = preload("TilemapCreator.gd").new()
+
+	# Options you might want to set (just uncomment)
+	#
+	#tilemapCreator.set_use_default_filter(true);
 	tilemapCreator.set_add_class_as_metadata(true)
+	#tilemapCreator.set_add_id_as_metadata(true);
+	#tilemapCreator.set_no_alternative_tiles(true);
+	#tilemapCreator.set_map_wangset_to_terrain(true);
+	tilemapCreator.set_custom_data_prefix("data_");
+	#tilemapCreator.set_save_tileset_to("");
+
 	if project_file != "":
 		var ct = CustomTypes.new()
 		ct.load_custom_types(project_file)
@@ -32,3 +42,15 @@ func import(source_file: String, project_file: String = ""):
 func import_from_zip(zip_file: String, source_file_in_zip: String, project_file_in_zip: String = ""):
 	DataLoader.zip_file = zip_file
 	return import(source_file_in_zip, project_file_in_zip)
+
+# If you don't need post-processing better comment out or remove the methods below and also remove PostProcessing.gd to minimize useless code in your build
+func import_with_post_processing(source_file: String, post_proc_file:String, project_file: String = ""):
+	var node_2d = import(source_file, project_file)
+	var post_proc = preload("PostProcessing.gd").new()
+	return post_proc.call_post_process(node_2d, post_proc_file)
+
+func import_from_zip_with_post_processing(zip_file: String, source_file_in_zip: String, post_proc_file_in_zip:String, project_file_in_zip: String = ""):
+	DataLoader.zip_file = zip_file
+	var node_2d = import(source_file_in_zip, project_file_in_zip)
+	var post_proc = preload("PostProcessing.gd").new()
+	return post_proc.call_post_process(node_2d, post_proc_file_in_zip)

@@ -581,7 +581,16 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 	for property in properties:
 		var name = property.get("name", "")
 		var type = property.get("type", "string")
-		var val = str(property.get("value", ""))
+		var list_val = ""
+		var val: String = ""
+		if type == "list":
+			list_val = []
+			for item in property["value"]:
+				var item_type: String = item["type"]
+				var item_val: String = str(item.get("value", ""))
+				list_val.append(CommonUtils.get_right_typed_value(item_type, item_val))
+		else:
+			val = str(property.get("value", ""))
 		if name == "": continue
 		if name.to_lower() == "texture_origin_x" and  type == "int":
 			current_tile.texture_origin = Vector2i(int(val), current_tile.texture_origin.y)
@@ -648,14 +657,26 @@ func handle_tile_properties(properties: Array, current_tile: TileData):
 				current_tile.set_custom_data(name, CommonUtils.get_right_typed_value(type, val))
 
 			if _custom_data_prefix == "" or not name.to_lower().begins_with(_custom_data_prefix):
-				current_tile.set_meta(name, CommonUtils.get_right_typed_value(type, val))
+				if type == "list":
+					current_tile.set_meta(name, list_val)
+				else:
+					current_tile.set_meta(name, CommonUtils.get_right_typed_value(type, val))
 
 
 func handle_tileset_properties(properties: Array):
 	for property in properties:
 		var name = property.get("name", "")
 		var type = property.get("type", "string")
-		var val = str(property.get("value", ""))
+		var list_val = ""
+		var val: String = ""
+		if type == "list":
+			list_val = []
+			for item in property["value"]:
+				var item_type: String = item["type"]
+				var item_val: String = str(item.get("value", ""))
+				list_val.append(CommonUtils.get_right_typed_value(item_type, item_val))
+		else:
+			val = str(property.get("value", ""))
 		if name == "": continue
 		var layer_index
 		if name.to_lower() == "collision_layer" and type == "string":
@@ -705,7 +726,10 @@ func handle_tileset_properties(properties: Array):
 		elif name.to_lower() == "resource_name" and type == "string":
 			_tileset.resource_name = val
 		elif name.to_lower() != GODOT_ATLAS_ID_PROPERTY:
-			_tileset.set_meta(name, CommonUtils.get_right_typed_value(type, val))
+			if type == "list":
+				_tileset.set_meta(name, list_val)
+			else:
+				_tileset.set_meta(name, CommonUtils.get_right_typed_value(type, val))
 
 
 func ensure_layer_existing(tp: layer_type, layer: int):

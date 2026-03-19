@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.7] - 2026-03-19
+
+### Fixed
+- Fixed issue #93 (Thank you Ricky!)
+- C# only: Ellipse approximation (introduced in 2.2.6) was slipped up (my bad). Fixed now
+- Fixed wrong placement of rectangle and ellipse collision shapes if rotated (seems no one ever noticed)
+
+### Added
+- Support for list properties introduced with Tiled 1.12
+- Object type properties referencing polygons, polylines, rectangles or points are now created as  
+Packed Array of Vector2 metadata (i.e. containing the polygon/polyline/rect coords)  
+or in case of point as Vector2 metadata (i.e. containing the point coord)
+- Runtime versions: The importer script was extended for easier customization regarding  
+editor options (including the post-processing option)
+
 ## [2.2.6] - 2026-03-08
 
 ### Fixed

@@ -71,7 +71,7 @@ public class TilemapCreator
     private string _baseName;
     private string _encoding;
     private string _compression;
-    private readonly Array<int> _firstGids = new ();
+    private readonly Array<int> _firstGids = [];
     private List<Dictionary> _atlasSources;
     private bool _useDefaultFilter;
     private bool _mapWangsetToTerrain;
@@ -82,6 +82,7 @@ public class TilemapCreator
     private string _tilesetSavePath = "";
     private Dictionary _objectGroups;
     private CustomTypes _ct;
+    private Dictionary _baseDictionary;
 
     private float _isoRot;
     private float _isoSkew;
@@ -171,20 +172,20 @@ public class TilemapCreator
 			GD.PrintErr($"FATAL ERROR: Tiled map file '{sourceFile}' not found.");
 			return null;
 		}
-		var baseDictionary = DictionaryBuilder.GetDictionary(mapContent, sourceFile);
-        _mapOrientation = (string)baseDictionary.GetValueOrDefault("orientation", "orthogonal");
-        _mapWidth = (int)baseDictionary.GetValueOrDefault("width", 0);
-        _mapHeight = (int)baseDictionary.GetValueOrDefault("height", 0);
-        _mapTileWidth = (int)baseDictionary.GetValueOrDefault("tilewidth", 0);
-        _mapTileHeight = (int)baseDictionary.GetValueOrDefault("tileheight", 0);
-        _infinite = (bool)baseDictionary.GetValueOrDefault("infinite", false);
+		_baseDictionary = DictionaryBuilder.GetDictionary(mapContent, sourceFile);
+        _mapOrientation = (string)_baseDictionary.GetValueOrDefault("orientation", "orthogonal");
+        _mapWidth = (int)_baseDictionary.GetValueOrDefault("width", 0);
+        _mapHeight = (int)_baseDictionary.GetValueOrDefault("height", 0);
+        _mapTileWidth = (int)_baseDictionary.GetValueOrDefault("tilewidth", 0);
+        _mapTileHeight = (int)_baseDictionary.GetValueOrDefault("tileheight", 0);
+        _infinite = (bool)_baseDictionary.GetValueOrDefault("infinite", false);
         //_parallaxOriginX = (int)baseDictionary.GetValueOrDefault("parallaxoriginx", 0);
         //_parallaxOriginY = (int)baseDictionary.GetValueOrDefault("parallaxoriginy", 0);
-        _backgroundColor = (string)baseDictionary.GetValueOrDefault("backgroundcolor", "");
+        _backgroundColor = (string)_baseDictionary.GetValueOrDefault("backgroundcolor", "");
 
-        _ct?.MergeCustomProperties(baseDictionary, "map");
+        _ct?.MergeCustomProperties(_baseDictionary, "map");
 
-        if (baseDictionary.TryGetValue("tilesets", out var tsVal))
+        if (_baseDictionary.TryGetValue("tilesets", out var tsVal))
         {
             var tileSets = (Array<Dictionary>)tsVal;
             foreach (var tileSet in tileSets)
@@ -214,8 +215,8 @@ public class TilemapCreator
                 break;
             case "staggered":
             {
-                var staggerAxis = (string)baseDictionary.GetValueOrDefault("staggeraxis", "y");
-                var staggerIndex = (string)baseDictionary.GetValueOrDefault("staggerindex", "odd");
+                var staggerAxis = (string)_baseDictionary.GetValueOrDefault("staggeraxis", "y");
+                var staggerIndex = (string)_baseDictionary.GetValueOrDefault("staggerindex", "odd");
                 _tileset.TileShape = TileSet.TileShapeEnum.Isometric;
                 _tileset.TileLayout = staggerIndex == "odd" ? TileSet.TileLayoutEnum.Stacked : TileSet.TileLayoutEnum.StackedOffset;
                 _tileset.TileOffsetAxis = staggerAxis == "x" ? TileSet.TileOffsetAxisEnum.Vertical : TileSet.TileOffsetAxisEnum.Horizontal;
@@ -223,8 +224,8 @@ public class TilemapCreator
             }
             case "hexagonal":
             {
-                var staggerAxis = (string)baseDictionary.GetValueOrDefault("staggeraxis", "y");
-                var staggerIndex = (string)baseDictionary.GetValueOrDefault("staggerindex", "odd");
+                var staggerAxis = (string)_baseDictionary.GetValueOrDefault("staggeraxis", "y");
+                var staggerIndex = (string)_baseDictionary.GetValueOrDefault("staggerindex", "odd");
                 _tileset.TileShape = TileSet.TileShapeEnum.Hexagon;
                 _tileset.TileLayout = staggerIndex == "odd" ? TileSet.TileLayoutEnum.Stacked : TileSet.TileLayoutEnum.StackedOffset;
                 _tileset.TileOffsetAxis = staggerAxis == "x" ? TileSet.TileOffsetAxisEnum.Vertical : TileSet.TileOffsetAxisEnum.Horizontal;
@@ -249,7 +250,7 @@ public class TilemapCreator
             _background.Owner = _baseNode;
         }
 
-        if (baseDictionary.TryGetValue("layers", out var layers))
+        if (_baseDictionary.TryGetValue("layers", out var layers))
             foreach (var layer in (Array<Dictionary>)layers)
                 HandleLayer(layer, _baseNode);
         
@@ -270,7 +271,7 @@ public class TilemapCreator
             }
         }
         
-        if (baseDictionary.TryGetValue("properties", out var mapProps))
+        if (_baseDictionary.TryGetValue("properties", out var mapProps))
             HandleProperties(_baseNode, (Array<Dictionary>)mapProps);
         
         if (_parallaxBackground.GetChildCount() == 0)
@@ -284,7 +285,7 @@ public class TilemapCreator
 
         var ret = (Node2D)_baseNode.GetChild(0);
         RecursivelyChangeOwner(ret, ret);
-        if (baseDictionary.TryGetValue("properties", out mapProps))
+        if (_baseDictionary.TryGetValue("properties", out mapProps))
             HandleProperties(ret, (Array<Dictionary>)mapProps);
         ret.Name = _baseName;
         return ret;
@@ -914,6 +915,13 @@ public class TilemapCreator
         });
     }
 
+    private static Vector2 GetPositionOffset(float width, float height, float rotation)
+    {
+        var origPoint = new Vector2(-width / 2.0f, -height / 2.0f);
+        var rotRad = rotation * MathF.PI / 180.0f;
+        var newPoint = origPoint.Rotated(rotRad);
+        return origPoint - newPoint;
+    }
     private void ConvertMetaDataToObjProperties(TileData td, Dictionary obj)
     {
         var metaList = td.GetMetaList();
@@ -1355,7 +1363,7 @@ public class TilemapCreator
             };
             var fontFamily = (string)txt.GetValueOrDefault("fontfamily", "Sans-Serif");
             var font = new SystemFont();
-            font.FontNames = new[] { fontFamily };
+            font.FontNames = [fontFamily];
             font.Oversampling = 5.0f;
             objText.AddThemeFontOverride("font", font);
             var fontSize = (int)txt.GetValueOrDefault("pixelsize", 16);
@@ -1635,6 +1643,7 @@ public class TilemapCreator
                         var collisionShape = new CollisionShape2D();
                         co.AddChild(collisionShape);
                         collisionShape.Owner = _baseNode;
+                        var objRotOrig = objRot;
                         if (obj.ContainsKey("capsule") || obj.ContainsKey("ellipse"))
                         {
                             var capsuleShape = new CapsuleShape2D();
@@ -1687,6 +1696,7 @@ public class TilemapCreator
                         }
 
                         collisionShape.Position = TransposeCoords(objWidth / 2.0f, objHeight / 2.0f, true);
+                        collisionShape.Position += GetPositionOffset(objWidth, objHeight, objRotOrig);
                         collisionShape.RotationDegrees = objRot;
                         if (_addClassAsMetadata && classString != "")
                             co.SetMeta("class", classString);
@@ -2034,6 +2044,19 @@ public class TilemapCreator
         return polygon;
     }
 
+    private static Vector2[] GetRotatedPolygon(Vector2[] polygon, float rotation)
+    {
+        var ret = new Vector2[polygon.Length];
+        var rotRad = rotation * MathF.PI / 180.0f;
+        var i = 0;
+        foreach (var vertex in polygon)
+        {
+            ret[i] = vertex.Rotated(rotRad);
+            i++;
+        }
+        return ret;
+    }
+
     private Vector2 TransposeCoords(float x, float y, bool noOffsetX = false)
     {
         if (_mapOrientation == "isometric")
@@ -2138,6 +2161,106 @@ public class TilemapCreator
         return ret;
     }
 
+    private Dictionary GetObject(int index)
+    {
+        if (!_baseDictionary.TryGetValue("layers", out var layers)) return null;
+        foreach (var layer in (Array<Dictionary>)layers)
+        {
+            if (!layer.TryGetValue("objects", out var objects)) continue;
+            foreach (var obj in (Array<Dictionary>)objects)
+                if (index == (int)obj.GetValueOrDefault("id", 0))
+                    return obj;
+        }
+        return null;
+    }
+
+    private Variant GetObjectPolygon(int objId)
+    {
+        var obj = GetObject(objId);
+        if (obj == null)
+            return 0;
+        var objX = (float)obj.GetValueOrDefault("x", 0.0f);
+        var objY = (float)obj.GetValueOrDefault("y", 0.0f);
+        var objRot = (float)obj.GetValueOrDefault("rotation", 0.0f);
+        Variant ret = 0;
+        if (obj.TryGetValue("polygon", out var polygon))
+        {
+            var pg = GetRotatedPolygon(PolygonFromArray((Array<Dictionary>)polygon), objRot);
+            var i = 0;
+            foreach (var unused in pg)
+            {
+                pg[i] += new Vector2(objX, objY);
+                i++;
+            }
+            ret = pg;
+        }
+        else if (obj.TryGetValue("polyline", out var polyline))
+        {
+            var pl = GetRotatedPolygon(PolygonFromArray((Array<Dictionary>)polyline), objRot);
+            var i = 0;
+            foreach (var unused in pl)
+            {
+                pl[i] += new Vector2(objX, objY);
+                i++;
+            }
+            ret = pl;
+        }
+        else if (obj.TryGetValue("point", out _))
+        {
+            ret = new Vector2(objX, objY);
+        }
+        else if (!obj.ContainsKey("ellipse") && !obj.ContainsKey("capsule"))
+        {
+            // Should be a rectangle
+            var objWidth = (float)obj.GetValueOrDefault("width", 0.0f);
+            var objHeight = (float)obj.GetValueOrDefault("height", 0.0f);
+            var rect = new Vector2[4];
+            rect[0] = new Vector2(0.0f, 0.0f);
+            rect[1] = new Vector2(objWidth, 0.0f);
+            rect[2] = new Vector2(objWidth, objHeight);
+            rect[3] = new Vector2(0.0f, objHeight);
+            var rotRect = GetRotatedPolygon(rect, objRot);
+            var i = 0;
+            foreach (var unused in rotRect)
+            {
+                rotRect[i] += new Vector2(objX, objY);
+                i++;
+            }
+            ret = rotRect;
+        }
+        return ret;
+    }
+
+    private void HandleListProperty(Variant currentArray, Array<Dictionary> currentValue)
+    {
+        foreach (var item in currentValue)
+        {
+            var itemType = (string)item.GetValueOrDefault("type", "string");
+            var itemVal = item["value"];
+            switch (itemType)
+            {
+                case "list":
+                {
+                    Variant listVal = new Array();
+                    ((Array)currentArray).Add(listVal);
+                    HandleListProperty(listVal, (Array<Dictionary>)itemVal);
+                    break;
+                }
+                case "object":
+                {
+                    var obj = GetObjectPolygon(CommonUtils.SafeIntParse((string)itemVal));
+                    ((Array)currentArray).Add(obj.VariantType != Variant.Type.Int
+                        ? obj
+                        : CommonUtils.GetRightTypedValue(itemType, (string)itemVal));
+                    break;
+                }
+                default:
+                    ((Array)currentArray).Add(CommonUtils.GetRightTypedValue(itemType, (string)itemVal));
+                    break;
+            }
+        }
+    }
+    
     private void HandleProperties(Node targetNode, Array<Dictionary> properties)
     {
         var targetNodeClass = targetNode.GetType();
@@ -2150,7 +2273,15 @@ public class TilemapCreator
         {
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
-            var val = (string)property.GetValueOrDefault("value", "");
+            Variant listVal = "";
+            var val = "";
+            if (type == "list")
+            {
+                listVal = new Array();
+                HandleListProperty(listVal,(Array<Dictionary>)property["value"]);
+            }
+            else
+                val = (string)property.GetValueOrDefault("value", "");
             if (name == "" || name.ToLower() == GodotNodeTypeProperty || name.ToLower() == "res_path") continue;
             if (name.StartsWith("__") && hasChildren)
             {
@@ -2741,7 +2872,14 @@ public class TilemapCreator
                 // Other properties are added as Metadata
                 default:
                 {
-                    targetNode.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
+                    if (type == "object")
+                    {
+                        var obj = GetObjectPolygon(CommonUtils.SafeIntParse(val));
+                        targetNode.SetMeta(name,
+                            obj.VariantType != Variant.Type.Int ? obj : CommonUtils.GetRightTypedValue(type, val));
+                    }
+                    else
+                        targetNode.SetMeta(name, type == "list" ? listVal : CommonUtils.GetRightTypedValue(type, val));
                     break;
                 }
             }

@@ -527,13 +527,13 @@ public class TilesetCreator
             else if (obj.TryGetValue("ellipse", out var isEllipse) && (bool)isEllipse)
             {
                 // Approximate ellipse as a polygon (Godot 4 has no native ellipse collision)
-                var cx = (float)obj.GetValueOrDefault("height", 0.0f) / 2.0f;
-                var cy = (float)obj.GetValueOrDefault("width", 0.0f) / 2.0f;
+                var cx = (float)obj.GetValueOrDefault("width", 0.0f) / 2.0f;
+                var cy = (float)obj.GetValueOrDefault("height", 0.0f) / 2.0f;
                 const int segments = 12;
                 polygon = new Vector2[segments];
                 for (var i = 0; i < segments; i++)
                 {
-                    var angle = (float)Math.Tau * i / segments;
+                    var angle = MathF.Tau * i / segments;
                     var pt = new Vector2(cx + cx * (float)Math.Cos(angle), cy + cy * (float)Math.Sin(angle));
                     var ptTrans = TransposeCoords(pt.X, pt.Y);
                     var ptRot = new Vector2(ptTrans.X * cosA - ptTrans.Y * sinA, ptTrans.X * sinA + ptTrans.Y * cosA);
@@ -708,7 +708,20 @@ public class TilesetCreator
         {
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
-            var val = (string)property.GetValueOrDefault("value", "");
+            Variant listVal = "";
+            var val = "";
+            if (type == "list")
+            {
+                listVal = new Array();
+                foreach (var item in (Array)property["value"])
+                {
+                    var itemType = (string)((Dictionary)item)["type"];
+                    var itemVal = (string)((Dictionary)item)["value"];
+                    ((Array)listVal).Add(CommonUtils.GetRightTypedValue(itemType, itemVal));
+                }
+            }
+            else
+                val = (string)property.GetValueOrDefault("value", "");
             if (name == "") continue;
 
             if (name.ToLower() == "texture_origin_x" && type == "int")
@@ -801,7 +814,7 @@ public class TilesetCreator
                 }
 
                 if (_customDataPrefix == "" || !name.ToLower().StartsWith(_customDataPrefix))
-                    currentTile.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
+                    currentTile.SetMeta(name, type == "list" ? listVal : CommonUtils.GetRightTypedValue(type, val));
             }
         }
     }
@@ -812,7 +825,20 @@ public class TilesetCreator
         {
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
-            var val = (string)property.GetValueOrDefault("value", "");
+            Variant listVal = "";
+            var val = "";
+            if (type == "list")
+            {
+                listVal = new Array();
+                foreach (var item in (Array)property["value"])
+                {
+                    var itemType = (string)((Dictionary)item)["type"];
+                    var itemVal = (string)((Dictionary)item)["value"];
+                    ((Array)listVal).Add(CommonUtils.GetRightTypedValue(itemType, itemVal));
+                }
+            }
+            else
+                val = (string)property.GetValueOrDefault("value", "");
             if (name == "") continue;
             int layerIndex;
             if (name.ToLower() == "collision_layer" && type == "string")
@@ -884,7 +910,7 @@ public class TilesetCreator
                 default:
                 {
                     if (name.ToLower() != GodotAtlasIdProperty)
-                        _tileset.SetMeta(name, CommonUtils.GetRightTypedValue(type, val));
+                        _tileset.SetMeta(name, type == "list" ? listVal : CommonUtils.GetRightTypedValue(type, val));
                     break;
                 }
             }
