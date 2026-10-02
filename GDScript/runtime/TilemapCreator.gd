@@ -244,6 +244,7 @@ func create(source_file: String):
 
 	if _parallax_background.get_child_count() == 0:
 		_base_node.remove_child(_parallax_background)
+		_parallax_background.queue_free()
 
 	# Remove internal helper custom data
 	if _tileset.get_custom_data_layers_count() > 0:
@@ -1036,6 +1037,7 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 				obj_sprite.owner = null
 				layer_node.remove_child(obj_sprite)
+				obj_sprite.queue_free()
 				var instance = scene.instantiate()
 				layer_node.add_child(instance)
 				instance.owner = _base_node
