@@ -1751,9 +1751,10 @@ func get_object(index: int):
 
 
 func get_object_polygon(obj_id: int):
-	var obj: Dictionary = get_object(obj_id)
-	if obj == null:
+	var obj_ = get_object(obj_id)
+	if obj_ == null:
 		return null
+	var obj = obj_ as Dictionary
 	var obj_x = obj.get("x", 0.0)
 	var obj_y = obj.get("y", 0.0)
 	var obj_rot = obj.get("rotation", 0.0)
@@ -1774,7 +1775,7 @@ func get_object_polygon(obj_id: int):
 		ret = PackedVector2Array(pl)
 	elif obj.has("point"):
 		ret = Vector2(obj_x, obj_y)
-	elif not obj.has("ellipse") and not obj.has("capsule"):
+	elif not obj.has("ellipse") and not obj.has("capsule") and not obj.has("gid"):
 		# Should be a rectangle
 		var obj_width = obj.get("width", 0.0)
 		var obj_height = obj.get("height", 0.0)

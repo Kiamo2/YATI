@@ -34,6 +34,7 @@ public class DictionaryFromXml
     private XmlParserCtrl _xml;
     private string _currentElement;
     private int _currentGroupLevel;
+    private int _currentPropertiesLevel;
     private readonly Dictionary _result = new Dictionary();
     private Dictionary _currentDictionary;
     private Array _currentArray;
@@ -68,12 +69,26 @@ public class DictionaryFromXml
             if (_currentElement == null) { err = Error.ParseError; break; }
             if (_xml.IsEnd())
             {
-                if (_currentElement == "group")
-                    _currentGroupLevel--;
+                switch (_currentElement)
+                {
+                    case "group":
+                        _currentGroupLevel--;
+                        break;
+                    case "properties":
+                        _currentPropertiesLevel--;
+                        break;
+                }
                 continue;
             }
-            if (_currentElement == "group" && !_xml.IsEmpty())
+            switch (_currentElement)
+            {
+                case "group" when !_xml.IsEmpty():
                 _currentGroupLevel++;
+                    break;
+                case "properties" when !_xml.IsEmpty():
+                    _currentPropertiesLevel++;
+                    break;
+            }
             var cAttributes = _xml.GetAttributes();
             var dictionaryBookmark = _currentDictionary;
             err = _xml.IsEmpty() ? SimpleElement(_currentElement, cAttributes) : NestedElement(_currentElement, cAttributes);
@@ -142,15 +157,28 @@ public class DictionaryFromXml
             {
                 // i.e. will be part of the superior array (animation or properties)
                 var dict = new Dictionary();
-                InsertAttributes(dict, attributes);
+                if (_currentPropertiesLevel > 1)
+                {
+                    _currentArray = new Array();
+                    _currentDictionary[attributes["name"]] = _currentArray;
+                    InsertAttributes(dict, attributes, true);
+                }
+                else
+                    InsertAttributes(dict, attributes);
                 _currentArray.Add(dict);
                 if (dict.TryGetValue("type", out var type))
                 {
-                    if ((string)type == "list")
+                    switch ((string)type)
                     {
-                        _currentDictionary = dict;
-                        _currentArray = new Array();
-                        _currentDictionary.Add("value", _currentArray);                        
+                        case "list":
+                            _currentDictionary = dict;
+                            _currentArray = new Array();
+                            _currentDictionary.Add("value", _currentArray);
+                            break;
+                        case "class":
+                            _currentDictionary = new Dictionary();
+                            dict.Add("value", _currentDictionary);
+                            break;
                     }
                 }
                 break;
@@ -183,6 +211,8 @@ public class DictionaryFromXml
 
                 if (dictKey != "items")
                 {
+                    if (dictKey == "properties" && _currentPropertiesLevel > 1)
+                        break;
                     if (_currentDictionary.TryGetValue(dictKey, out var dictVal))
                         _currentArray = (Array)dictVal;
                     else
@@ -209,6 +239,18 @@ public class DictionaryFromXml
                 else if (attributes.Count > 0)
                     InsertAttributes(_currentDictionary, attributes);
 
+                if (dictKey == "items")
+                {
+                    if (attributes.TryGetValue("type", out var typeVal))
+                    {
+                        if (typeVal == "list")
+                        {
+                            _currentArray = new Array();
+                            _currentDictionary["value"] = _currentArray;
+                        }
+                    }
+                }
+                
                 break;
             }
         }
@@ -250,14 +292,24 @@ public class DictionaryFromXml
             if (_currentElement == null) return Error.ParseError;
             if (_xml.IsEnd())
             {
-                if (_currentElement == "group")
-                    _currentGroupLevel--;
+                switch (_currentElement)
+                {
+                    case "group":
+                        _currentGroupLevel--;
+                        break;
+                    case "properties":
+                        _currentPropertiesLevel--;
+                        break;
+                }
                 continue;
             }
             switch (_currentElement)
             {
                 case "group" when !_xml.IsEmpty():
                     _currentGroupLevel++;
+                    break;
+                case "properties" when !_xml.IsEmpty():
+                    _currentPropertiesLevel++;
                     break;
                 case "<data>":
                 {
@@ -303,10 +355,12 @@ public class DictionaryFromXml
         return err;
     }
 
-    private void InsertAttributes(Dictionary targetDictionary, Dictionary<string, string> attributes)
+    private void InsertAttributes(Dictionary targetDictionary, Dictionary<string, string> attributes, bool noName = false)
     {
         foreach (var (key, value) in attributes)
         {
+            if (noName && key == "name")
+                continue;
             var val = key switch
             {
                 "infinite" or "visible" or "wrap" => value == "1",

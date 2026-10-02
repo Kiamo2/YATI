@@ -2216,7 +2216,7 @@ public class TilemapCreator
         {
             ret = new Vector2(objX, objY);
         }
-        else if (!obj.ContainsKey("ellipse") && !obj.ContainsKey("capsule"))
+        else if (!obj.ContainsKey("ellipse") && !obj.ContainsKey("capsule") && !obj.ContainsKey("gid"))
         {
             // Should be a rectangle
             var objWidth = (float)obj.GetValueOrDefault("width", 0.0f);

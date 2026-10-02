@@ -26,6 +26,7 @@ extends RefCounted
 var _xml = preload("XmlParserCtrl.gd").new()
 var _current_element = ""
 var _current_group_level: int = 0
+var _current_properties_level: int = 0
 var _result = {}
 var _current_dictionary = _result
 var _current_array = []
@@ -57,9 +58,13 @@ func create(tiled_file_content: PackedByteArray, source_file_name: String):
 		if _xml.is_end():
 			if _current_element == "group":
 				_current_group_level -= 1
+			if _current_element == "properties":
+				_current_properties_level += 1
 			continue
 		if _current_element == "group" and not _xml.is_empty():
 			_current_group_level += 1
+		if _current_element == "properties" and not _xml.is_empty():
+			_current_properties_level += 1
 		var c_attributes = _xml.get_attributes()
 		var dictionary_bookmark = _current_dictionary
 		if _xml.is_empty():
@@ -117,13 +122,21 @@ func simple_element(element_name: String, attribs: Dictionary):
 		elif dict_key == "frame" or dict_key == "property":
 			# i.e. will be part of the superior array (animation or properties)
 			var dict = {}
-			insert_attributes(dict, attribs)
+			if _current_properties_level > 1:
+				_current_array = []
+				_current_dictionary[attribs["name"]] = _current_array
+				insert_attributes(dict, attribs, true)
+			else:
+				insert_attributes(dict, attribs)
 			_current_array.append(dict)
 			if dict.has("type"):
 				if dict["type"] == "list":
 					_current_dictionary = dict
 					_current_array = []
 					_current_dictionary["value"] = _current_array
+				elif dict["type"] == "class":
+					_current_dictionary = {}
+					dict["value"] = _current_dictionary
 		else:
 			if dict_key == "objectgroup" or dict_key == "imagelayer":
 				# to be later added to the layer attributes (by insert_attributes)
@@ -141,6 +154,8 @@ func simple_element(element_name: String, attribs: Dictionary):
 			if dict_key != "animation" and dict_key != "properties":
 				dict_key = dict_key + "s"
 			if dict_key != "items":
+				if dict_key == "properties" and _current_properties_level > 1:
+					return OK
 				if _current_dictionary.has(dict_key):
 					_current_array = _current_dictionary[dict_key]
 				else:
@@ -158,6 +173,10 @@ func simple_element(element_name: String, attribs: Dictionary):
 			else:
 				if attribs.size() > 0:
 					insert_attributes(_current_dictionary, attribs)
+			if dict_key == "items":
+				if attribs.has("type") and attribs["type"] == "list":
+					_current_array = []
+					_current_dictionary["value"] = _current_array
 	return OK        
 
 
@@ -188,9 +207,13 @@ func nested_element(element_name: String, attribs: Dictionary):
 		if _xml.is_end():
 			if _current_element == "group":
 				_current_group_level -= 1
+			if _current_element == "properties":
+				_current_properties_level -= 1
 			continue
 		if _current_element == "group" and not _xml.is_empty():
 			_current_group_level += 1
+		if _current_element == "properties" and not _xml.is_empty():
+			_current_properties_level += 1
 		if _current_element == "<data>":
 			var data = _xml.get_data()
 			if base_element == "text":
@@ -222,8 +245,10 @@ func nested_element(element_name: String, attribs: Dictionary):
 		_in_tileset = false
 	return err
 	
-func insert_attributes(target_dictionary: Dictionary, attribs: Dictionary):
+func insert_attributes(target_dictionary: Dictionary, attribs: Dictionary, no_name: bool = false):
 	for key in attribs:
+		if no_name and key == "name":
+			continue
 		var attr_val: Variant
 		if key == "infinite":
 			attr_val = attribs[key] == "1"
