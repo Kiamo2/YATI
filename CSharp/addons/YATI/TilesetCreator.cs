@@ -112,7 +112,7 @@ public class TilesetCreator
                 var sourceFile = (string)srcVal;
 
                 // Catch the AutoMap Rules tileset (is Tiled internal)
-                if (sourceFile.StartsWith(":/automap"))
+                if (sourceFile.StartsWith(":/automap", StringComparison.Ordinal))
                     continue; // This is no error just skip it
 
                 var tiledFileContent = DataLoader.GetTiledFileContent(sourceFile, _basePathMap);
@@ -343,7 +343,7 @@ public class TilesetCreator
                 RegisterAtlasSource(addedSourceId, 1, tileId, _tileOffset);
 
                 var texturePath = (string)imagePath;
-                if (texturePath.GetExtension().ToLower() is "tmx" or "tmj")
+                if (texturePath.GetExtension().ToLower(Inv) is "tmx" or "tmj")
                 {
                     var placeholderTexture = new PlaceholderTexture2D();
                     var width = (int)tile["imagewidth"];
@@ -695,7 +695,7 @@ public class TilesetCreator
                 var type = (string)property.GetValueOrDefault("type", "string");
                 var val = property.GetValueOrDefault("value", "");
                 if (name == "") continue;
-                switch (name.ToLower())
+                switch (name.ToLower(Inv))
                 {
                     case "one_way" when type == "bool":
                         currentTile.SetCollisionPolygonOneWay(phys, polygonIndex, bool.Parse((string)val));
@@ -730,7 +730,7 @@ public class TilesetCreator
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = property.GetValueOrDefault("value", "");
             if (name == "") continue;
-            if (name.Equals(propertyName, StringComparison.CurrentCultureIgnoreCase) && type == "int")
+            if (name.Equals(propertyName, StringComparison.OrdinalIgnoreCase) && type == "int")
                 return CommonUtils.SafeIntParse((string)val);
         }
 
@@ -759,34 +759,34 @@ public class TilesetCreator
                 val = (string)property.GetValueOrDefault("value", "");
             if (name == "") continue;
 
-            if (name.ToLower() == "texture_origin_x" && type == "int")
+            if (name.Equals("texture_origin_x", StringComparison.OrdinalIgnoreCase) && type == "int")
             {
                 var origin = currentTile.TextureOrigin;
                 origin.X = CommonUtils.SafeIntParse(val);
                 currentTile.TextureOrigin = origin;
             }
-            else if (name.ToLower() == "texture_origin_y" && type == "int")
+            else if (name.Equals("texture_origin_y", StringComparison.OrdinalIgnoreCase) && type == "int")
             {
                 var origin = currentTile.TextureOrigin;
                 origin.Y = CommonUtils.SafeIntParse(val);
                 currentTile.TextureOrigin = origin;
             }
-            else if (name.ToLower() == "modulate" && type == "string")
+            else if (name.Equals("modulate", StringComparison.OrdinalIgnoreCase) && type == "string")
                 currentTile.Modulate = new Color(val);
-            else if (name.ToLower() == "material" && type == "file")
+            else if (name.Equals("material", StringComparison.OrdinalIgnoreCase) && type == "file")
                 currentTile.Material = (Material)DataLoader.LoadResourceFromFile(val, _basePathTileset);
-            else if (name.ToLower() == "z_index" && type == "int")
+            else if (name.Equals("z_index", StringComparison.OrdinalIgnoreCase) && type == "int")
                 currentTile.ZIndex = CommonUtils.SafeIntParse(val);
-            else if (name.ToLower() == "y_sort_origin" && type == "int")
+            else if (name.Equals("y_sort_origin", StringComparison.OrdinalIgnoreCase) && type == "int")
                 currentTile.YSortOrigin = CommonUtils.SafeIntParse(val);
-            else if (name.ToLower() == "linear_velocity_x" && type is "int" or "float")
+            else if (name.Equals("linear_velocity_x", StringComparison.OrdinalIgnoreCase) && type is "int" or "float")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
                 var linVelo = currentTile.GetConstantLinearVelocity(0);
                 linVelo.X = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(0, linVelo);
             }
-            else if (name.ToLower().StartsWith("linear_velocity_x_") && type is "int" or "float")
+            else if (name.StartsWith("linear_velocity_x_", StringComparison.OrdinalIgnoreCase) && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
@@ -794,14 +794,14 @@ public class TilesetCreator
                 linVelo.X = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
             }
-            else if (name.ToLower() == "linear_velocity_y" && type is "int" or "float")
+            else if (name.Equals("linear_velocity_y", StringComparison.OrdinalIgnoreCase) && type is "int" or "float")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
                 var linVelo = currentTile.GetConstantLinearVelocity(0);
                 linVelo.Y = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(0, linVelo);
             }
-            else if (name.ToLower().StartsWith("linear_velocity_y_") && type is "int" or "float")
+            else if (name.StartsWith("linear_velocity_y_", StringComparison.OrdinalIgnoreCase) && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(18), out var layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
@@ -809,22 +809,22 @@ public class TilesetCreator
                 linVelo.Y = float.Parse(val, Inv);
                 currentTile.SetConstantLinearVelocity(layerIndex, linVelo);
             }
-            else if (name.ToLower() == "angular_velocity" && type is "int" or "float")
+            else if (name.Equals("angular_velocity", StringComparison.OrdinalIgnoreCase) && type is "int" or "float")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
                 currentTile.SetConstantAngularVelocity(0, float.Parse(val, Inv));
             }
-            else if (name.ToLower().StartsWith("angular_velocity_") && type is "int" or "float")
+            else if (name.StartsWith("angular_velocity_", StringComparison.OrdinalIgnoreCase) && type is "int" or "float")
             {
                 if (!int.TryParse(name.AsSpan(17), out var layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 currentTile.SetConstantAngularVelocity(layerIndex, float.Parse(val, Inv));
             }
-            else if (name.ToLower() != GodotAtlasIdProperty)
+            else if (!name.Equals(GodotAtlasIdProperty, StringComparison.OrdinalIgnoreCase))
             {
-                if (_customDataPrefix == "" || name.ToLower().StartsWith(_customDataPrefix))
+                if (_customDataPrefix == "" || name.StartsWith(_customDataPrefix, StringComparison.OrdinalIgnoreCase))
                 {
-                    if (name.ToLower().StartsWith(_customDataPrefix))
+                    if (name.StartsWith(_customDataPrefix, StringComparison.OrdinalIgnoreCase))
                         name = name[_customDataPrefix.Length..];
 
                     var customLayer = _tileset.GetCustomDataLayerByName(name);
@@ -848,7 +848,7 @@ public class TilesetCreator
                     currentTile.SetCustomData(name, CommonUtils.GetRightTypedValue(type, val));
                 }
 
-                if (_customDataPrefix == "" || !name.ToLower().StartsWith(_customDataPrefix))
+                if (_customDataPrefix == "" || !name.StartsWith(_customDataPrefix, StringComparison.OrdinalIgnoreCase))
                     currentTile.SetMeta(name, type == "list" ? listVal : CommonUtils.GetRightTypedValue(type, val));
             }
         }
@@ -876,62 +876,62 @@ public class TilesetCreator
                 val = (string)property.GetValueOrDefault("value", "");
             if (name == "") continue;
             int layerIndex;
-            if (name.ToLower() == "collision_layer" && type == "string")
+            if (name.Equals("collision_layer", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
                 _tileset.SetPhysicsLayerCollisionLayer(0, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower().StartsWith("collision_layer_") && type == "string")
+            else if (name.StartsWith("collision_layer_", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(16), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 _tileset.SetPhysicsLayerCollisionLayer(layerIndex, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower() == "collision_mask" && type == "string")
+            else if (name.Equals("collision_mask", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 EnsureLayerExisting(LayerType.Physics, 0);
                 _tileset.SetPhysicsLayerCollisionMask(0, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower().StartsWith("collision_mask_") && type == "string")
+            else if (name.StartsWith("collision_mask_", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(15), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Physics, layerIndex);
                 _tileset.SetPhysicsLayerCollisionMask(layerIndex, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower() == "layers" && type == "string")
+            else if (name.Equals("layers", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 EnsureLayerExisting(LayerType.Navigation, 0);
                 _tileset.SetNavigationLayerLayers(0, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower().StartsWith("layers_") && type == "string")
+            else if (name.StartsWith("layers_", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(7), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Navigation, layerIndex);
                 _tileset.SetNavigationLayerLayers(layerIndex, CommonUtils.GetBitmaskIntegerFromString(val, 32));
             }
-            else if (name.ToLower() == "light_mask" && type == "string")
+            else if (name.Equals("light_mask", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 EnsureLayerExisting(LayerType.Occlusion, 0);
                 _tileset.SetOcclusionLayerLightMask(0, (int)CommonUtils.GetBitmaskIntegerFromString(val, 20));
             }
-            else if (name.ToLower().StartsWith("light_mask_") && type == "string")
+            else if (name.StartsWith("light_mask_", StringComparison.OrdinalIgnoreCase) && type == "string")
             {
                 if (!int.TryParse(name.AsSpan(11), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerLightMask(layerIndex, (int)CommonUtils.GetBitmaskIntegerFromString(val, 20));
             }
-            else if (name.ToLower() == "sdf_collision" && type == "bool")
+            else if (name.Equals("sdf_collision", StringComparison.OrdinalIgnoreCase) && type == "bool")
             {
                 EnsureLayerExisting(LayerType.Occlusion, 0);
                 _tileset.SetOcclusionLayerSdfCollision(0, bool.Parse(val));
             }
-            else if (name.ToLower().StartsWith("sdf_collision_") && type == "bool")
+            else if (name.StartsWith("sdf_collision_", StringComparison.OrdinalIgnoreCase) && type == "bool")
             {
                 if (!int.TryParse(name.AsSpan(14), out layerIndex)) continue;
                 EnsureLayerExisting(LayerType.Occlusion, layerIndex);
                 _tileset.SetOcclusionLayerSdfCollision(layerIndex, bool.Parse(val));
             }
-            else switch (name.ToLower())
+            else switch (name.ToLower(Inv))
             {
                 case "uv_clipping" when type == "bool":
                     _tileset.SetUVClipping(bool.Parse(val));
@@ -944,7 +944,7 @@ public class TilesetCreator
                     break;
                 default:
                 {
-                    if (name.ToLower() != GodotAtlasIdProperty)
+                    if (!name.Equals(GodotAtlasIdProperty, StringComparison.OrdinalIgnoreCase))
                         _tileset.SetMeta(name, type == "list" ? listVal : CommonUtils.GetRightTypedValue(type, val));
                     break;
                 }

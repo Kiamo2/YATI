@@ -107,9 +107,9 @@ public class DictionaryFromXml
             case "image":
                 _currentDictionary.Add("image", attributes["source"]);
                 if (attributes.TryGetValue("width", out var value))
-                    _currentDictionary.Add("imagewidth", int.Parse(value));
+                    _currentDictionary.Add("imagewidth", int.Parse(value, CultureInfo.InvariantCulture));
                 if (attributes.TryGetValue("height", out value))
-                    _currentDictionary.Add("imageheight", int.Parse(value));
+                    _currentDictionary.Add("imageheight", int.Parse(value, CultureInfo.InvariantCulture));
                 if (attributes.TryGetValue("trans", out value))
                     _currentDictionary.Add("transparentcolor", value);
                 return Error.Ok;
@@ -230,10 +230,10 @@ public class DictionaryFromXml
 
                 if (dictKey == "wangtiles")
                 {
-                    _currentDictionary.Add("tileid", int.Parse(attributes["tileid"]));
+                    _currentDictionary.Add("tileid", int.Parse(attributes["tileid"], CultureInfo.InvariantCulture));
                     var arr = new Array();
                     foreach (var s in attributes["wangid"].Split(','))
-                        arr.Add(int.Parse(s));
+                        arr.Add(int.Parse(s, CultureInfo.InvariantCulture));
                     _currentDictionary.Add("wangid", arr);
                 }
                 else if (attributes.Count > 0)
@@ -329,7 +329,7 @@ public class DictionaryFromXml
                             {
                                 var arr = new Array();
                                 foreach (var s in ((string)data).Split(',',StringSplitOptions.TrimEntries))
-                                    arr.Add(uint.Parse(s));
+                                    arr.Add(uint.Parse(s, CultureInfo.InvariantCulture));
                                 data = arr;
                             }
                             ((Dictionary)_currentArray[^1]).Add("data", data);

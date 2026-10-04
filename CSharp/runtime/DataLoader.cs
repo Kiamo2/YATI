@@ -20,6 +20,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using System.Globalization;
 using Godot;
 
 namespace YATI;
@@ -105,7 +106,7 @@ public static class DataLoader
             
             var imageBytes = reader.ReadFile(fileInZip);
             var image = new Image();
-            var extension = fileName.GetExtension().ToLower();
+            var extension = fileName.GetExtension().ToLower(CultureInfo.InvariantCulture);
             switch (extension)
             {
                 case "png":

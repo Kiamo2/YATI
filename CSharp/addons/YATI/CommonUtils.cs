@@ -76,13 +76,13 @@ public static class CommonUtils
             }
             default:
                 // JSON parsing since Godot 4.4 adds ".0" to integers so remove that
-                return val.EndsWith(".0") ? val.Replace(".0", "") : val;
+                return val.EndsWith(".0", StringComparison.Ordinal) ? val.Replace(".0", "") : val;
         }
     }
 
-    public static int SafeIntParse(string val, IFormatProvider provider = null)
+    public static int SafeIntParse(string val)
     {
-        return int.Parse(val.EndsWith(".0") ? val.Replace(".0", "") : val, provider);
+        return int.Parse(val.EndsWith(".0", StringComparison.Ordinal) ? val.Replace(".0", "") : val, Inv);
     }
     
     public static string CleanupPath(string path)

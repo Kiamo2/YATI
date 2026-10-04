@@ -21,6 +21,8 @@
 // SOFTWARE.
 
 #if TOOLS
+using System;
+using System.Globalization;
 using System.Linq;
 using Godot;
 using Godot.Collections;
@@ -40,7 +42,7 @@ public static class DictionaryBuilder
     public static Dictionary GetDictionary(byte[] tiledFileContent, string sourceFile)
     {
         var type = FileType.Unknown;
-        var extension = sourceFile.GetFile().GetExtension().ToLower();
+        var extension = sourceFile.GetFile().GetExtension().ToLower(CultureInfo.InvariantCulture);
         if (new[] { "tmx", "tsx", "xml", "tx" }.Contains(extension))
             type = FileType.Xml;
         else if (new[] { "tmj", "tsj", "json", "tj", "tiled-project" }.Contains(extension))
@@ -48,9 +50,9 @@ public static class DictionaryBuilder
         else
         {
             var chunk = System.Text.Encoding.UTF8.GetString(tiledFileContent, 0, 12);
-            if (chunk.StartsWith("<?xml "))
+            if (chunk.StartsWith("<?xml ", StringComparison.Ordinal))
                 type = FileType.Xml;
-            else if (chunk.StartsWith("{ \""))
+            else if (chunk.StartsWith("{ \"", StringComparison.Ordinal))
                 type = FileType.Json;
         }
 

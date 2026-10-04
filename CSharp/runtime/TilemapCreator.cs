@@ -828,7 +828,7 @@ public class TilemapCreator
 
     private static GodotType GetGodotType(string godotTypeString)
     {
-        var gts = godotTypeString.ToLower();
+        var gts = godotTypeString.ToLower(Inv);
         return gts switch
         {
             "" => GodotType.Empty,
@@ -858,7 +858,7 @@ public class TilemapCreator
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = (string)property.GetValueOrDefault("value", "");
-            if (name.ToLower() != GodotNodeTypeProperty || type != "string") continue;
+            if (!name.Equals(GodotNodeTypeProperty, StringComparison.OrdinalIgnoreCase) || type != "string") continue;
             propertyFound = true;
             ret = val;
             break;
@@ -937,7 +937,7 @@ public class TilemapCreator
         var metaList = td.GetMetaList();
         foreach (var metaName in metaList)
         {
-            switch (((string)metaName)?.ToLower())
+            switch (((string)metaName)?.ToLower(Inv))
             {
                 case GodotNodeTypeProperty:
                 case ClassInternal when !_addClassAsMetadata:
@@ -958,7 +958,7 @@ public class TilemapCreator
                 _ => "string"
             };
             // Type "file" assumed and thus forced for these properties 
-            if (((string)metaName)?.ToLower() is "godot_script" or "material" or "physics_material_override")
+            if (((string)metaName)?.ToLower(Inv) is "godot_script" or "material" or "physics_material_override")
                 propType = "file";
                 
             propDict.Add("type", propType);
@@ -970,7 +970,7 @@ public class TilemapCreator
                 var found = false;
                 foreach (var prop in (Array<Dictionary>)props)
                 {
-                    if (string.Equals((string)prop["name"], metaName, StringComparison.CurrentCultureIgnoreCase))
+                    if (string.Equals((string)prop["name"], metaName, StringComparison.OrdinalIgnoreCase))
                         found = true;
                 }
                 if (!found)
@@ -1242,7 +1242,7 @@ public class TilemapCreator
             if (td.HasMeta(GodotNodeTypeProperty))
                 tileClass = (string)td.GetMeta(GodotNodeTypeProperty);
 
-            if (tileClass.ToLower() == "instance" || objIsInstance)
+            if (tileClass.Equals("instance", StringComparison.OrdinalIgnoreCase) || objIsInstance)
             {
                 var resPath = GetProperty(obj, "res_path", "file");
                 if (td.HasMeta("res_path"))
@@ -1263,7 +1263,7 @@ public class TilemapCreator
                     // Error check
                     if (scene == null) return;
 
-                    var resPathExtension = resPath.GetFile().GetExtension().ToLower();
+                    var resPathExtension = resPath.GetFile().GetExtension().ToLower(Inv);
                     var resAlignment = GetProperty(obj, "res_alignment", "string");
 
                     var instance = scene.Instantiate();
@@ -2018,7 +2018,7 @@ public class TilemapCreator
             var name = (string)property.GetValueOrDefault("name", "");
             var type = (string)property.GetValueOrDefault("type", "string");
             var val = (string)property.GetValueOrDefault("value", "");
-            if (name.ToLower() == propertyName && type == propertyType)
+            if (name.Equals(propertyName, StringComparison.OrdinalIgnoreCase) && type == propertyType)
                 return val;
         }
 
@@ -2301,8 +2301,8 @@ public class TilemapCreator
             }
             else
                 val = (string)property.GetValueOrDefault("value", "");
-            if (name == "" || name.ToLower() == GodotNodeTypeProperty || name.ToLower() == "res_path") continue;
-            if (name.StartsWith("__") && hasChildren)
+            if (name == "" || name.Equals(GodotNodeTypeProperty, StringComparison.OrdinalIgnoreCase) || name.Equals("res_path", StringComparison.OrdinalIgnoreCase)) continue;
+            if (name.StartsWith("__", StringComparison.Ordinal) && hasChildren)
             {
                 var childPropDict = new Dictionary();
                 childPropDict.Add("name", name[2..]);
@@ -2313,7 +2313,7 @@ public class TilemapCreator
                     HandleProperties(child, childProps);
             }
 
-            switch (name.ToLower())
+            switch (name.ToLower(Inv))
             {
                 // Node properties
                 // v1.5.4: godot_group property
@@ -2531,7 +2531,7 @@ public class TilemapCreator
                     ((Area2D)targetNode).Monitorable = bool.Parse(val);
                     break;
                 case "priority" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
-                    ((Area2D)targetNode).Priority = CommonUtils.SafeIntParse(val, Inv);
+                    ((Area2D)targetNode).Priority = CommonUtils.SafeIntParse(val);
                     break;
                 case "gravity_space_override" when type == "int" && targetNodeClass.IsAssignableTo(typeof(Area2D)):
                     if (CommonUtils.SafeIntParse(val) < 5)
