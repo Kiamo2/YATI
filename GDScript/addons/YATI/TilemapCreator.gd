@@ -606,6 +606,7 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 		if source_id < 0: continue
 
 		var tile_offset = get_tile_offset(gid)
+		var tile_shader_material = get_tileset_shader_material(gid)
 
 		var atlas_source
 		if _tileset.has_source(source_id):
@@ -634,6 +635,9 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 				if diff_y % 2 != 0:
 					diff_y += 1
 				current_tile.texture_origin = Vector2i(-diff_x/2, diff_y/2) - tile_offset
+
+			if tile_shader_material != null:
+				current_tile.material = tile_shader_material
 
 		var alt_id = 0
 		if flipped_h or flipped_v or flipped_d:
@@ -664,6 +668,9 @@ func create_map_from_data(layer_data: Array, offset_x: int, offset_y: int, map_w
 							diff_y += 1
 						tile_data.texture_origin = Vector2i(-diff_x/2, diff_y/2)
 					tile_data.texture_origin -= tile_offset
+					
+					if tile_shader_material != null:
+						tile_data.material = tile_shader_material
 					
 					var src_data = atlas_source.get_tile_data(atlas_coords, 0)
 					create_polygons_on_alternative_tiles(src_data, tile_data, alt_id)
@@ -1717,6 +1724,13 @@ func get_tileset_alignment(gid: int):
 	if idx < 0:
 		return DEFAULT_ALIGNMENT
 	return _atlas_sources[idx]["objectAlignment"]	
+
+
+func get_tileset_shader_material(gid: int):
+	var idx = get_atlas_source_index(gid)
+	if idx < 0:
+		return null
+	return _atlas_sources[idx]["shaderMaterial"]	
 
 
 func is_partitioned_tileset(source_id: int) -> bool:

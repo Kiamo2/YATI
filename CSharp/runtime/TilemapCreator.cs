@@ -740,6 +740,7 @@ public class TilemapCreator
             // Should not be the case, but who knows...
             if (sourceId < 0) continue;
             var tileOffset = GetTileOffset(gid);
+            var tileShaderMaterial = GetTilesetShaderMaterial(gid);
 
             TileSetAtlasSource atlasSource;
             if (_tileset.HasSource(sourceId))
@@ -768,6 +769,9 @@ public class TilemapCreator
                         diffY += 1;
                     currentTile.TextureOrigin = new Vector2I(-diffX/2, diffY/2) - tileOffset;
                 }
+                
+                if (tileShaderMaterial != null)
+                    currentTile.Material = tileShaderMaterial;
             }
 
             var altId = 0;
@@ -807,6 +811,9 @@ public class TilemapCreator
                         }
                         tileData.TextureOrigin -= tileOffset;
 
+                        if (tileShaderMaterial != null)
+                            tileData.Material = tileShaderMaterial;
+                        
                         var srcData = atlasSource.GetTileData(atlasCoords, 0);
                         CreatePolygonsOnAlternativeTiles(srcData, tileData, altId);
                         // Copy meta data to alternative tile
@@ -2142,6 +2149,14 @@ public class TilemapCreator
         if (idx < 0)
             return DefaultAlignment;
         return (string)_atlasSources[idx]["objectAlignment"];
+    }
+
+    private ShaderMaterial GetTilesetShaderMaterial(int gid)
+    {
+        var idx = GetAtlasSourceIndex(gid);
+        if (idx < 0)
+            return null;
+        return (ShaderMaterial)_atlasSources[idx]["shaderMaterial"];
     }
 
     private bool IsPartitionedTileset(int sourceId)

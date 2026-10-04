@@ -64,6 +64,8 @@ public class TilesetCreator
     private string _customDataPrefix;
     private CustomTypes _ct;
     private int _currentFirstGid = -1;
+    private bool _hasTransparentColor;
+    private ShaderMaterial _currentShaderMaterial;
 
     private enum LayerType
     {
@@ -198,6 +200,33 @@ public class TilesetCreator
         if (_append)
             _terrainCounter = 0;
 
+        if (tileSet.TryGetValue("transparentcolor", out var colorStr))
+        {
+            _hasTransparentColor = true;
+            var transparentColor = new Color((string)colorStr);
+            var rStr = transparentColor.R.ToString("F3", new CultureInfo("en-US"))[..4];
+            var gStr = transparentColor.G.ToString("F3", new CultureInfo("en-US"))[..4];
+            var bStr = transparentColor.B.ToString("F3", new CultureInfo("en-US"))[..4];
+            _currentShaderMaterial = new ShaderMaterial();
+            var shad = new Shader();
+            shad.Code = "shader_type canvas_item;\n" +
+                        "const vec3 transparent = vec3(" + rStr + ", " + gStr + ", " + bStr + ");\n\n" +
+                        "void fragment() {\n" +
+                        "\tvec4 col = texture(TEXTURE, UV);\n" +
+                        "\tif (col.r >= transparent.r && col.r <= (transparent.r + 0.01) &&\n" +
+                        "\t    col.g >= transparent.g && col.g <= (transparent.g + 0.01) &&\n" +
+                        "\t\tcol.b >= transparent.b && col.b <= (transparent.b + 0.01))\n" +
+                        "\t\tcol.a=0.0;\n" +
+                        "\tCOLOR=col;\n" +
+                        "}";
+            _currentShaderMaterial.SetShader(shad);
+        }
+        else
+        {
+            _hasTransparentColor = false;
+            _currentShaderMaterial = null;
+        }
+
         if (tileSet.TryGetValue("image", out var imagePath))
         {
             _currentAtlasSource = new TileSetAtlasSource();
@@ -250,6 +279,7 @@ public class TilesetCreator
         atlasSourceItem.Add("tilesetOrientation", _tilesetOrientation);
         atlasSourceItem.Add("objectAlignment", _objectAlignment);
         atlasSourceItem.Add("firstGid", _currentFirstGid);
+        atlasSourceItem.Add("shaderMaterial", _currentShaderMaterial);
         _atlasSources.Add(atlasSourceItem);
     }
 
@@ -378,6 +408,9 @@ public class TilesetCreator
             if (_tileOffset != Vector2I.Zero && currentTile.TextureOrigin == Vector2I.Zero)
                 currentTile.TextureOrigin -= _tileOffset;
 				
+            if (_hasTransparentColor)
+                currentTile.Material = _currentShaderMaterial;
+            
             if (tile.TryGetValue("probability", out var probVal))
                 currentTile.Probability = (float)probVal;
             if (tile.TryGetValue("animation", out var animVal))

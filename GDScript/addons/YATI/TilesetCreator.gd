@@ -55,6 +55,8 @@ var _map_wangset_to_terrain: bool = false
 var _custom_data_prefix: String
 var _ct: CustomTypes = null
 var _current_first_gid = -1
+var _has_transparent_color: bool = false
+var _current_shader_material: ShaderMaterial = null
 
 
 enum layer_type {
@@ -168,6 +170,29 @@ func create_or_append(tile_set: Dictionary):
 	if _append:
 		_terrain_counter = 0
 
+	if tile_set.has("transparentcolor"):
+		_has_transparent_color = true
+		var transparent_color = Color(tile_set["transparentcolor"])
+		var r_str = ("%f" % [transparent_color.r]).substr(0, 4)
+		var g_str = ("%f" % [transparent_color.g]).substr(0, 4)
+		var b_str = ("%f" % [transparent_color.b]).substr(0, 4)
+		_current_shader_material = ShaderMaterial.new()
+		var shad: Shader = Shader.new()
+		shad.set_code("shader_type canvas_item;\n" +
+		              "const vec3 transparent = vec3(" + r_str + ", " + g_str + ", " + b_str + ");\n\n" +
+                      "void fragment() {\n" +
+        	            "\tvec4 col = texture(TEXTURE, UV);\n" +
+        	            "\tif (col.r >= transparent.r && col.r <= (transparent.r + 0.01) &&\n" +
+        	            "\t    col.g >= transparent.g && col.g <= (transparent.g + 0.01) &&\n" +
+        	            "\t\tcol.b >= transparent.b && col.b <= (transparent.b + 0.01))\n" +
+        	                "\t\tcol.a=0.0;\n" +
+        	            "\tCOLOR=col;\n" +
+        	          "}")
+		_current_shader_material.set_shader(shad)
+	else:
+		_has_transparent_color = false
+		_current_shader_material = null
+
 	if "image" in tile_set:
 		_current_atlas_source = TileSetAtlasSource.new()
 		var added_source_id: int = _tileset.add_source(_current_atlas_source, get_special_property(tile_set, GODOT_ATLAS_ID_PROPERTY))
@@ -217,6 +242,7 @@ func register_atlas_source(source_id: int, num_tiles: int, assigned_tile_id: int
 	atlas_source_item["tilesetOrientation"] = _tileset_orientation
 	atlas_source_item["objectAlignment"] = _object_alignment
 	atlas_source_item["firstGid"] = _current_first_gid
+	atlas_source_item["shaderMaterial"] = _current_shader_material
 	_atlas_sources.push_back(atlas_source_item)
 	
 
@@ -316,6 +342,9 @@ func handle_tiles(tiles: Array):
 
 		if _tile_offset != Vector2i.ZERO and current_tile.texture_origin == Vector2i.ZERO:
 			current_tile.texture_origin -= _tile_offset
+
+		if _has_transparent_color:
+			current_tile.material = _current_shader_material
 
 		if tile.has("probability"):
 			current_tile.probability = tile["probability"]
