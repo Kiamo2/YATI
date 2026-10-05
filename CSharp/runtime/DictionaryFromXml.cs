@@ -37,7 +37,6 @@ public class DictionaryFromXml: IDisposable
     private readonly Dictionary _result = new ();
     private Dictionary _currentDictionary;
     private Array _currentArray;
-    private readonly CultureInfo _ci = (CultureInfo)CultureInfo.CurrentCulture.Clone();
     private bool _csvEncoded = true;
     private bool _isMap;
     private bool _inTileset;
@@ -49,8 +48,6 @@ public class DictionaryFromXml: IDisposable
     
     public Dictionary Create(byte[] tiledFileContent, string sourceFileName)
     {
-        _ci.NumberFormat.NumberDecimalSeparator = ".";
-
         _xml = new XmlParserCtrl();
 
         var err = _xml.Open(tiledFileContent, sourceFileName);
@@ -148,8 +145,8 @@ public class DictionaryFromXml: IDisposable
                 foreach (var pt in attributes["points"].Split(' '))
                 {
                     var dict = new Dictionary();
-                    var x = float.Parse(pt.Split(',')[0], NumberStyles.Any, _ci);
-                    var y = float.Parse(pt.Split(',')[1], NumberStyles.Any, _ci);
+                    var x = float.Parse(pt.Split(',')[0], NumberStyles.Any, CultureInfo.InvariantCulture);
+                    var y = float.Parse(pt.Split(',')[1], NumberStyles.Any, CultureInfo.InvariantCulture);
                     dict.Add("x", x);
                     dict.Add("y", y);
                     arr.Add(dict);
@@ -359,7 +356,7 @@ public class DictionaryFromXml: IDisposable
         return err;
     }
 
-    private void InsertAttributes(Dictionary targetDictionary, Dictionary<string, string> attributes, bool noName = false)
+    private static void InsertAttributes(Dictionary targetDictionary, Dictionary<string, string> attributes, bool noName = false)
     {
         foreach (var (key, value) in attributes)
         {
@@ -377,7 +374,7 @@ public class DictionaryFromXml: IDisposable
                     val = iTmp;
                 else if (uint.TryParse((string)val, out var uiTmp))
                     val = uiTmp;
-                else if (float.TryParse((string)val, NumberStyles.Float, _ci, out var fTmp))
+                else if (float.TryParse((string)val, NumberStyles.Float, CultureInfo.InvariantCulture, out var fTmp))
                     val = fTmp;
             }
             targetDictionary.Add(key, val);
