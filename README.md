@@ -8,7 +8,7 @@ created by the [Tiled Map Editor](http://www.mapeditor.org).
 Tested on Windows 11 with Godot 4.7.2 and Tiled 1.12.2 (Tiled maps from older Tiled versions may work too)
 
 Latest version: GDScript 2.2.9 / C# 2.2.10 (needs Godot 4.3.0 or higher)  
-Downloads: [GDScript version](../../releases/download/v2.2.9/v2.2.9-gdscript.zip) / [CSharp version](../../releases/download/v2.2.9/v2.2.9-csharp.zip)
+Downloads: [GDScript version](../../releases/download/v2.2.9/v2.2.9-gdscript.zip) / [CSharp version](../../releases/download/v2.2.10/v2.2.10-csharp.zip)
 
 Latest version for Godot 4.2.x: 1.7.1  
 Version 1.7.1 downloads: [GDScript version](../../releases/download/v1.7.1/v1.7.1-gdscript.zip) / [CSharp version](../../releases/download/v1.7.1/v1.7.1-csharp.zip)
