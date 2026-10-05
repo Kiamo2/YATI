@@ -23,7 +23,6 @@
 #if TOOLS
 using System;
 using System.Globalization;
-using System.Linq;
 using Godot;
 using Godot.Collections;
 using Array = Godot.Collections.Array;
@@ -31,19 +30,24 @@ using Array = Godot.Collections.Array;
 namespace YATI;
 
 [Tool]
-public class DictionaryFromXml
+public class DictionaryFromXml: IDisposable
 {
     private XmlParserCtrl _xml;
     private string _currentElement;
     private int _currentGroupLevel;
     private int _currentPropertiesLevel;
-    private readonly Dictionary _result = new Dictionary();
+    private readonly Dictionary _result = new ();
     private Dictionary _currentDictionary;
     private Array _currentArray;
     private readonly CultureInfo _ci = (CultureInfo)CultureInfo.CurrentCulture.Clone();
     private bool _csvEncoded = true;
     private bool _isMap;
     private bool _inTileset;
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
     
     public Dictionary Create(byte[] tiledFileContent, string sourceFileName)
     {
@@ -64,8 +68,8 @@ public class DictionaryFromXml
 
         var baseElement = _currentElement;
         var baseGroupLevel = _currentGroupLevel;
-        while ((err == Error.Ok) && ((!_xml.IsEnd() || (_currentElement != baseElement) ||
-                                      (baseElement == "group" && _currentElement == "group" && _currentGroupLevel == baseGroupLevel))))
+        while (err == Error.Ok && !_xml.IsEnd() || _currentElement != baseElement ||
+                                      (baseElement == "group" && _currentElement == "group" && _currentGroupLevel == baseGroupLevel))
         {
             _currentElement = _xml.NextElement();
             if (_currentElement == null) { err = Error.ParseError; break; }
@@ -208,7 +212,7 @@ public class DictionaryFromXml
                     dictKey = "layer";
                 }
 
-                if ((dictKey != "animation") && (dictKey != "properties"))
+                if (dictKey != "animation" && dictKey != "properties")
                     dictKey += "s";
 
                 if (dictKey != "items")
@@ -224,7 +228,7 @@ public class DictionaryFromXml
                     }
                 }
 
-                if ((dictKey != "animation") && (dictKey != "properties"))
+                if (dictKey != "animation" && dictKey != "properties")
                 {
                     _currentDictionary = new Dictionary();
                     _currentArray.Add(_currentDictionary);
@@ -287,8 +291,8 @@ public class DictionaryFromXml
         var err = SimpleElement(elementName, attributes);
         var baseElement = _currentElement;
         var baseGroupLevel = _currentGroupLevel;
-        while ((err == Error.Ok) && ((!_xml.IsEnd() || (_currentElement != baseElement) ||
-                                      (baseElement == "group" && _currentElement == "group" && _currentGroupLevel == baseGroupLevel))))
+        while (err == Error.Ok && !_xml.IsEnd() || _currentElement != baseElement ||
+                                      (baseElement == "group" && _currentElement == "group" && _currentGroupLevel == baseGroupLevel))
         {
             _currentElement = _xml.NextElement();
             if (_currentElement == null) return Error.ParseError;

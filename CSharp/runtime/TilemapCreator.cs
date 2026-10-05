@@ -32,7 +32,7 @@ using Array = Godot.Collections.Array;
 
 namespace YATI;
 
-public class TilemapCreator
+public class TilemapCreator: IDisposable
 {
     private const uint FlippedHorizontallyFlag = 0x80000000;
     private const uint FlippedVerticallyFlag   = 0x40000000;
@@ -106,6 +106,11 @@ public class TilemapCreator
         Instance,
         Parallax,
         Unknown
+    }
+
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
     }
 
     public void SetUseDefaultFilter(bool value)
@@ -325,7 +330,7 @@ public class TilemapCreator
                     _tilemapLayer.Name = layerName;
                 _tilemapLayer.Visible = layerVisible;
                 _tilemapLayer.Position = new Vector2(layerOffsetX, layerOffsetY);
-                if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                if (layerOpacity < 1.0f || tintColor != "#ffffff")
                     _tilemapLayer.Modulate = new Color(tintColor, layerOpacity);
                 _tilemapLayer.TileSet = _tileset;
                 HandleParallaxes(parent, _tilemapLayer, layer);
@@ -396,7 +401,7 @@ public class TilemapCreator
 
                 if (layer.TryGetValue("name", out var name))
                     layerNode.Name = (string)name;
-                if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                if (layerOpacity < 1.0f || tintColor != "#ffffff")
                     layerNode.Modulate = new Color(tintColor, layerOpacity);
                 layerNode.Visible = (bool)layer.GetValueOrDefault("visible", true);
                 var layerPosX = (float)layer.GetValueOrDefault("x", 0.0f);
@@ -441,7 +446,7 @@ public class TilemapCreator
                 }
 
                 groupNode.Name = (string)layer.GetValueOrDefault("name", "group");
-                if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                if (layerOpacity < 1.0f || tintColor != "#ffffff")
                     groupNode.Modulate = new Color(tintColor, layerOpacity);
                 groupNode.Visible = (bool)layer.GetValueOrDefault("visible", true);
                 var layerPosX = (float)layer.GetValueOrDefault("x", 0.0f);
@@ -499,7 +504,7 @@ public class TilemapCreator
                     var imagewidth = (int)layer.GetValueOrDefault("imagewidth", 0);
                     var imageheight = (int)layer.GetValueOrDefault("imageheight", 0);
                     textureRect.Size = new Vector2(imagewidth, imageheight);
-                    if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                    if (layerOpacity < 1.0f || tintColor != "#ffffff")
                         textureRect.Modulate = new Color(tintColor, layerOpacity);
                     textureRect.Visible = layerVisible;
                     textureRect.Texture = DataLoader.LoadImage((string)layer["image"], _basePath);
@@ -520,7 +525,7 @@ public class TilemapCreator
                     var imagewidth = (int)layer.GetValueOrDefault("imagewidth", 0);
                     var imageheight = (int)layer.GetValueOrDefault("imageheight", 0);
                     textureRect.Size = new Vector2(imagewidth, imageheight);
-                    if ((layerOpacity < 1.0f) || (tintColor != "#ffffff"))
+                    if (layerOpacity < 1.0f || tintColor != "#ffffff")
                         textureRect.Modulate = new Color(tintColor, layerOpacity);
                     textureRect.Visible = layerVisible;
                     textureRect.Texture = DataLoader.LoadImage((string)layer["image"], _basePath);
@@ -555,7 +560,7 @@ public class TilemapCreator
             _parallaxBackground.AddChild(parallaxNode);
             parallaxNode.Owner = _baseNode;
             var pxName = (string)layerDict.GetValueOrDefault("name", "");
-            parallaxNode.Name = (pxName != "") ? pxName + " (PL)" : "ParallaxLayer";
+            parallaxNode.Name = pxName != "" ? pxName + " (PL)" : "ParallaxLayer";
             parallaxNode.MotionScale = new Vector2(parX, parY);
             var mirrorX = 0.0f;
             var mirrorY = 0.0f;
@@ -910,7 +915,7 @@ public class TilemapCreator
             "topright" => new Vector2(-width /2.0f, height / 2.0f),
             _ => Vector2.Zero
         };
-        return centeredAlignment + (rAlignment switch
+        return centeredAlignment + rAlignment switch
         {
             "bottomleft" => new Vector2(-width / 2.0f, height / 2.0f),
             "bottom" => new Vector2(0.0f, height / 2.0f),
@@ -922,7 +927,7 @@ public class TilemapCreator
             "top" => new Vector2(0.0f, -height / 2.0f),
             "topright" => new Vector2(width /2.0f, -height / 2.0f),
             _ => Vector2.Zero
-        });
+        };
     }
 
     private static Vector2 GetPositionOffset(float width, float height, float rotation)
@@ -1122,7 +1127,7 @@ public class TilemapCreator
                 var instance = scene.Instantiate();
                 layerNode.AddChild(instance);
                 instance.Owner = _baseNode;
-                instance.Name = (objName != "") ? objName : resPath.GetFile().GetBaseName();
+                instance.Name = objName != "" ? objName : resPath.GetFile().GetBaseName();
                 ((Node2D)instance).Position = TransposeCoords(objX, objY);
                 ((Node2D)instance).RotationDegrees = objRot;
                 ((Node2D)instance).Visible = objVisible;
@@ -1168,8 +1173,8 @@ public class TilemapCreator
             layerNode.AddChild(objSprite);
             objSprite.Owner = _baseNode;
             objSprite.Name = objName != "" ?
-                objName : (gidSource.ResourceName != "" ?
-                    gidSource.ResourceName : gidSource.Texture.ResourcePath.GetFile().GetBaseName() + "_tile");
+                objName : gidSource.ResourceName != "" ?
+                    gidSource.ResourceName : gidSource.Texture.ResourcePath.GetFile().GetBaseName() + "_tile";
             objSprite.Position = TransposeCoords(objX, objY) + tileOffset;
             objSprite.Texture = gidSource.Texture;
             objSprite.RotationDegrees = objRot;
@@ -1221,7 +1226,7 @@ public class TilemapCreator
                     objSprite.RegionEnabled = true;
                     objSprite.RegionRect = new Rect2(gidSource.Margins, gidSource.TextureRegionSize);
                 }
-                if ((gidWidth != (int)objWidth) || (gidHeight != (int)objHeight))
+                if (gidWidth != (int)objWidth || gidHeight != (int)objHeight)
                 {
                     var scaleX = objWidth / gidWidth;
                     var scaleY = objHeight / gidHeight;
@@ -1272,7 +1277,7 @@ public class TilemapCreator
                     objSprite.QueueFree();
                     layerNode.AddChild(instance);
                     instance.Owner = _baseNode;
-                    instance.Name = (objName != "") ? objName : resPath.GetFile().GetBaseName();
+                    instance.Name = objName != "" ? objName : resPath.GetFile().GetBaseName();
                     ((Node2D)instance).Position = TransposeCoords(objX, objY);
                     if (resAlignment != "")
                         ((Node2D)instance).Position += GetInstanceOffset(objWidth, objHeight, resAlignment, _currentObjectAlignment);
@@ -1345,7 +1350,7 @@ public class TilemapCreator
             var objText = new Label();
             layerNode.AddChild(objText);
             objText.Owner = _baseNode;
-            objText.Name = (objName != "") ? objName : "Text";
+            objText.Name = objName != "" ? objName : "Text";
             objText.Position = TransposeCoords(objX, objY);
             objText.Size = new Vector2(objWidth, objHeight);
             objText.ClipText = true;
@@ -1396,7 +1401,7 @@ public class TilemapCreator
                 var marker = new Marker2D();
                 layerNode.AddChild(marker);
                 marker.Owner = _baseNode;
-                marker.Name = (objName != "") ? objName : "point";
+                marker.Name = objName != "" ? objName : "point";
                 marker.Position = objectBaseCoords;
                 marker.RotationDegrees = objRot;
                 marker.Visible = objVisible;
@@ -1418,19 +1423,19 @@ public class TilemapCreator
                         {
                             co = new Area2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (Area)" : "Area";
+                            co.Name= objName != "" ? objName + " (Area)" : "Area";
                         }
                         else if (godotType == GodotType.ABody)
                         {
                             co = new AnimatableBody2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (AB)" : "AnimatableBody";
+                            co.Name= objName != "" ? objName + " (AB)" : "AnimatableBody";
                         }
                         else
                         {
                             co = new StaticBody2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (SB)" : "StaticBody";
+                            co.Name= objName != "" ? objName + " (SB)" : "StaticBody";
                         }
                         co.Owner = _baseNode;
                         co.Position = objectBaseCoords;
@@ -1440,7 +1445,7 @@ public class TilemapCreator
                         polygonShape.Polygon = PolygonFromArray((Array<Dictionary>)obj["polygon"]);
                         co.AddChild(polygonShape);
                         polygonShape.Owner = _baseNode;
-                        polygonShape.Name = (objName != "") ? objName : "Polygon Shape";
+                        polygonShape.Name = objName != "" ? objName : "Polygon Shape";
                         polygonShape.Position = Vector2.Zero;
                         polygonShape.RotationDegrees = objRot;
                         if (_addClassAsMetadata && classString != "")
@@ -1456,7 +1461,7 @@ public class TilemapCreator
                         var navRegion = new NavigationRegion2D();
                         layerNode.AddChild(navRegion);
                         navRegion.Owner = _baseNode;
-                        navRegion.Name = (objName != "") ? objName + " (NR)" : "Navigation";
+                        navRegion.Name = objName != "" ? objName + " (NR)" : "Navigation";
                         navRegion.Position = objectBaseCoords;
                         navRegion.RotationDegrees = objRot;
                         navRegion.Visible = objVisible;
@@ -1486,7 +1491,7 @@ public class TilemapCreator
                         var lightOcc = new LightOccluder2D();
                         layerNode.AddChild(lightOcc);
                         lightOcc.Owner = _baseNode;
-                        lightOcc.Name = (objName != "") ? objName + " (LO)" : "Occluder";
+                        lightOcc.Name = objName != "" ? objName + " (LO)" : "Occluder";
                         lightOcc.Position = objectBaseCoords;
                         lightOcc.RotationDegrees = objRot;
                         lightOcc.Visible = objVisible;
@@ -1507,7 +1512,7 @@ public class TilemapCreator
                         var polygon = new Polygon2D();
                         layerNode.AddChild(polygon);
                         polygon.Owner = _baseNode;
-                        polygon.Name = (objName != "") ? objName : "Polygon";
+                        polygon.Name = objName != "" ? objName : "Polygon";
                         polygon.Position = objectBaseCoords;
                         polygon.RotationDegrees = objRot;
                         polygon.Visible = objVisible;
@@ -1531,7 +1536,7 @@ public class TilemapCreator
                         var line = new Line2D();
                         layerNode.AddChild(line);
                         line.Owner = _baseNode;
-                        line.Name = (objName != "") ? objName : "Line";
+                        line.Name = objName != "" ? objName : "Line";
                         line.Position = objectBaseCoords;
                         line.Visible = objVisible;
                         line.RotationDegrees = objRot;
@@ -1552,7 +1557,7 @@ public class TilemapCreator
                         var path = new Path2D();
                         layerNode.AddChild(path);
                         path.Owner = _baseNode;
-                        path.Name = (objName != "") ? objName : "Path";
+                        path.Name = objName != "" ? objName : "Path";
                         path.Position = objectBaseCoords;
                         path.Visible = objVisible;
                         path.RotationDegrees = objRot;
@@ -1577,19 +1582,19 @@ public class TilemapCreator
                         {
                             co = new Area2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (Area)" : "Area";
+                            co.Name= objName != "" ? objName + " (Area)" : "Area";
                         }
                         else if (godotType == GodotType.ABody)
                         {
                             co = new AnimatableBody2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (AB)" : "AnimatableBody";
+                            co.Name= objName != "" ? objName + " (AB)" : "AnimatableBody";
                         }
                         else
                         {
                             co = new StaticBody2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (SB)" : "StaticBody";
+                            co.Name= objName != "" ? objName + " (SB)" : "StaticBody";
                         }
                         co.Owner = _baseNode;
                         co.Position = objectBaseCoords;
@@ -1633,19 +1638,19 @@ public class TilemapCreator
                         {
                             co = new Area2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (Area)" : "Area";
+                            co.Name= objName != "" ? objName + " (Area)" : "Area";
                         }
                         else if (godotType == GodotType.ABody)
                         {
                             co = new AnimatableBody2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (AB)" : "AnimatableBody";
+                            co.Name= objName != "" ? objName + " (AB)" : "AnimatableBody";
                         }
                         else
                         {
                             co = new StaticBody2D();
                             layerNode.AddChild(co);
-                            co.Name= (objName != "") ? objName + " (SB)" : "StaticBody";
+                            co.Name= objName != "" ? objName + " (SB)" : "StaticBody";
                         }
                         co.Owner = _baseNode;
                         co.Position = objectBaseCoords;
@@ -1670,14 +1675,14 @@ public class TilemapCreator
                                 objRot += 90;
                             }
                             collisionShape.Shape = capsuleShape;
-                            collisionShape.Name = (objName != "") ? objName : "Capsule Shape";
+                            collisionShape.Name = objName != "" ? objName : "Capsule Shape";
                         }
                         else // Rectangle
                         {
                             var rectangleShape = new RectangleShape2D();
                             rectangleShape.Size = new Vector2(objWidth, objHeight);
                             collisionShape.Shape = rectangleShape;
-                            collisionShape.Name = (objName != "") ? objName : "Rectangle Shape";
+                            collisionShape.Name = objName != "" ? objName : "Rectangle Shape";
                         }
 
                         if (_mapOrientation == "isometric")
@@ -1693,7 +1698,7 @@ public class TilemapCreator
                                 _isoScale = new Vector2(scale, scale);
                             }
 
-                            if ((objHeight >= objWidth) || (collisionShape.Shape.GetType() == typeof(RectangleShape2D)))
+                            if (objHeight >= objWidth || collisionShape.Shape.GetType() == typeof(RectangleShape2D))
                             {
                                 collisionShape.Skew = _isoSkew;
                                 objRot += _isoRot;
@@ -1730,7 +1735,7 @@ public class TilemapCreator
                         var navRegion = new NavigationRegion2D();
                         layerNode.AddChild(navRegion);
                         navRegion.Owner = _baseNode;
-                        navRegion.Name = (objName != "") ? objName + " (NR)" : "Navigation";
+                        navRegion.Name = objName != "" ? objName + " (NR)" : "Navigation";
                         navRegion.Position = objectBaseCoords;
                         navRegion.RotationDegrees = objRot;
                         navRegion.Visible = objVisible;
@@ -1767,7 +1772,7 @@ public class TilemapCreator
                         var lightOcc = new LightOccluder2D();
                         layerNode.AddChild(lightOcc);
                         lightOcc.Owner = _baseNode;
-                        lightOcc.Name = (objName != "") ? objName + " (LO)" : "Occluder";
+                        lightOcc.Name = objName != "" ? objName + " (LO)" : "Occluder";
                         lightOcc.Position = objectBaseCoords;
                         lightOcc.RotationDegrees = objRot;
                         lightOcc.Visible = objVisible;
@@ -1796,7 +1801,7 @@ public class TilemapCreator
                         var polygon = new Polygon2D();
                         layerNode.AddChild(polygon);
                         polygon.Owner = _baseNode;
-                        polygon.Name = (objName != "") ? objName : "Polygon";
+                        polygon.Name = objName != "" ? objName : "Polygon";
                         polygon.Position = objectBaseCoords;
                         polygon.RotationDegrees = objRot;
                         polygon.Visible = objVisible;
@@ -1882,7 +1887,7 @@ public class TilemapCreator
                 }
                 collisionPolygon.RotationDegrees = rot;
                 collisionPolygon.Position = new Vector2(posX, posY);
-                collisionPolygon.Name = (objName != "") ? objName : "Collision Polygon";
+                collisionPolygon.Name = objName != "" ? objName : "Collision Polygon";
                 if (GetProperty(obj, "one_way", "bool") == "true")
                     collisionPolygon.OneWayCollision = true;
                 var collMargin = GetProperty(obj, "one_way_margin", "int");
@@ -1940,8 +1945,8 @@ public class TilemapCreator
                     shape = new CapsuleShape2D();
                     if (h >= w)
                     {
-                    ((CapsuleShape2D)shape).Height = h / scale.Y;
-                    ((CapsuleShape2D)shape).Radius = w / 2.0f / scale.X;
+                        ((CapsuleShape2D)shape).Height = h / scale.Y;
+                        ((CapsuleShape2D)shape).Radius = w / 2.0f / scale.X;
                     }
                     else
                     {
@@ -1949,13 +1954,13 @@ public class TilemapCreator
                         ((CapsuleShape2D)shape).Radius = h / 2.0f / scale.X;
                         rot += 90;
                     }
-                    collisionShape.Name = (objName != "") ? objName : "Capsule Shape";
+                    collisionShape.Name = objName != "" ? objName : "Capsule Shape";
                 }
                 else
                 {
                     shape = new RectangleShape2D();
                     ((RectangleShape2D)shape).Size = new Vector2(w,h) / scale;
-                    collisionShape.Name = (objName != "") ? objName : "Rectangle Shape";
+                    collisionShape.Name = objName != "" ? objName : "Rectangle Shape";
                 }
 
                 if (_currentTilesetOrientation == "isometric")
@@ -1973,7 +1978,7 @@ public class TilemapCreator
 
                     var effectiveRot = _isoRot;
                     var effectiveSkew = _isoSkew;
-                    if ((w > h) && (shape.GetType() == typeof(CapsuleShape2D)))
+                    if (w > h && shape.GetType() == typeof(CapsuleShape2D))
                     {
                         effectiveRot = - _isoRot;
                         effectiveSkew = - _isoSkew;
@@ -2113,7 +2118,7 @@ public class TilemapCreator
                 if (effectiveGid <= limit && firstGid == _firstGids[GetFirstGidIndex(gid)])
                     return idx;
             }
-            else if (effectiveGid == (assignedId + 1)) 
+            else if (effectiveGid == assignedId + 1) 
                 return idx;
         }
         return -1;
@@ -2317,7 +2322,7 @@ public class TilemapCreator
             {
                 // Node properties
                 // v1.5.4: godot_group property
-                case GodotGroupProperty when (type == "string"):
+                case GodotGroupProperty when type == "string":
                     foreach (var group in val.Split(','))
                         targetNode.AddToGroup(group.Trim(), true);
                     break;
@@ -2331,49 +2336,49 @@ public class TilemapCreator
                     break;
                 
                 // CanvasItem properties
-                case "modulate" when (type == "string"):
+                case "modulate" when type == "string":
                     ((CanvasItem)targetNode).Modulate = new Color(val);
                     break;
-                case "self_modulate" when (type == "string"):
+                case "self_modulate" when type == "string":
                     ((CanvasItem)targetNode).SelfModulate = new Color(val);
                     break;
-                case "show_behind_parent" when (type == "bool"):
+                case "show_behind_parent" when type == "bool":
                     ((CanvasItem)targetNode).ShowBehindParent = bool.Parse(val);
                     break;
-                case "top_level" when (type == "bool"):
+                case "top_level" when type == "bool":
                     ((CanvasItem)targetNode).TopLevel = bool.Parse(val);
                     break;
-                case "clip_children" when (type == "int"):
+                case "clip_children" when type == "int":
                     if (CommonUtils.SafeIntParse(val) < (int)CanvasItem.ClipChildrenMode.Max)
                         ((CanvasItem)targetNode).ClipChildren = (CanvasItem.ClipChildrenMode)CommonUtils.SafeIntParse(val);
                     break;
-                case "light_mask" when (type == "string"):
+                case "light_mask" when type == "string":
                     ((CanvasItem)targetNode).LightMask = (int)CommonUtils.GetBitmaskIntegerFromString(val, 20);
                     break;
-                case "visibility_layer" when (type == "string"):
+                case "visibility_layer" when type == "string":
                     ((CanvasItem)targetNode).VisibilityLayer = CommonUtils.GetBitmaskIntegerFromString(val, 20);
                     break;
-                case "z_index" when (type == "int"):
+                case "z_index" when type == "int":
                     ((CanvasItem)targetNode).ZIndex = CommonUtils.SafeIntParse(val);
                     break;
-                case "z_as_relative" when (type == "bool"):
+                case "z_as_relative" when type == "bool":
                     ((CanvasItem)targetNode).ZAsRelative = bool.Parse(val);
                     break;
-                case "y_sort_enabled" when (type == "bool"):
+                case "y_sort_enabled" when type == "bool":
                     ((CanvasItem)targetNode).YSortEnabled = bool.Parse(val);
                     break;
-                case "texture_filter" when (type == "int"):
+                case "texture_filter" when type == "int":
                     if (CommonUtils.SafeIntParse(val) < (int)CanvasItem.TextureFilterEnum.Max)
                         ((CanvasItem)targetNode).TextureFilter = (CanvasItem.TextureFilterEnum)CommonUtils.SafeIntParse(val);
                     break;
-                case "texture_repeat" when (type == "int"):
+                case "texture_repeat" when type == "int":
                     if (CommonUtils.SafeIntParse(val) < (int)CanvasItem.TextureRepeatEnum.Max)
                         ((CanvasItem)targetNode).TextureRepeat = (CanvasItem.TextureRepeatEnum)CommonUtils.SafeIntParse(val);
                     break;
-                case "material" when (type == "file"):
+                case "material" when type == "file":
 					((CanvasItem)targetNode).Material = (Material)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
-                case "use_parent_material" when (type == "bool"):
+                case "use_parent_material" when type == "bool":
                     ((CanvasItem)targetNode).UseParentMaterial = bool.Parse(val);
                     break;
 
@@ -2574,7 +2579,7 @@ public class TilemapCreator
                     break;
                 
                 // StaticBody2D properties
-                case "physics_material_override" when (type == "file"):
+                case "physics_material_override" when type == "file":
 					((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "constant_linear_velocity_x" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(StaticBody2D)):
@@ -2658,7 +2663,7 @@ public class TilemapCreator
                     if (CommonUtils.SafeIntParse(val) < 2)
                         ((RigidBody2D)targetNode).CenterOfMassMode = (RigidBody2D.CenterOfMassModeEnum)CommonUtils.SafeIntParse(val);
                     break;
-                case "physics_material_override" when (type == "file"):
+                case "physics_material_override" when type == "file":
 					((StaticBody2D)targetNode).PhysicsMaterialOverride = (PhysicsMaterial)DataLoader.LoadResourceFromFile(val, _basePath);
                     break;
                 case "gravity_scale" when type is "float" or "int" && targetNodeClass.IsAssignableTo(typeof(RigidBody2D)):

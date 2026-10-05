@@ -31,7 +31,7 @@ using Array = Godot.Collections.Array;
 namespace YATI;
 
 [Tool]
-public class TilesetCreator
+public class TilesetCreator: IDisposable
 {
     private const string WarningColor = "Yellow";
     private const string CustomDataInternal = "__internal__";
@@ -74,6 +74,11 @@ public class TilesetCreator
         Physics,
         Navigation,
         Occlusion
+    }
+    
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
     }
 
     public void SetBasePath(string sourceFile)
@@ -417,8 +422,8 @@ public class TilesetCreator
                 currentTile.Probability = (float)probVal;
             if (tile.TryGetValue("animation", out var animVal))
                 HandleAnimation((Array<Dictionary>)animVal, tileId);
-            if (tile.TryGetValue("objectgroup", out var objgrp))
-                HandleObjectgroup((Dictionary)objgrp, currentTile, tileId);
+            if (tile.TryGetValue("objectgroup", out var objGrp))
+                HandleObjectgroup((Dictionary)objGrp, currentTile, tileId);
 
             if (tileClass != "")
                 currentTile.SetMeta(ClassInternal, tileClass);
@@ -475,7 +480,7 @@ public class TilesetCreator
                 var nextFrameTileId = (int)frames[frameCount]["tileid"];
                 var compareDiffX = (nextFrameTileId - frameTileId) % _columns;
                 var compareDiffY = (nextFrameTileId - frameTileId) / _columns;
-                if ((compareDiffX != diffX) || (compareDiffY != diffY))
+                if (compareDiffX != diffX || compareDiffY != diffY)
                 {
                     GD.PrintRich($"[color={WarningColor}] -- Animated tile {tileId}: Succession of tiles not supported in Godot 4. -> Skipped[/color]");
                     CommonUtils.WarningCount++;

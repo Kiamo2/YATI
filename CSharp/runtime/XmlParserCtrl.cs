@@ -20,15 +20,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+using System;
 using Godot;
 using Godot.Collections;
 
 namespace YATI;
 
-public class XmlParserCtrl
+public class XmlParserCtrl: IDisposable
 {
     private readonly XmlParser _parser = new();
     private string _parsedFileName;
+    
+    public void Dispose()
+    {
+        GC.SuppressFinalize(this);
+    }
 
     public Error Open(byte[] tiledFileContent, string sourceFile)
     {
@@ -48,8 +54,8 @@ public class XmlParserCtrl
                 return "<data>";
         }
 
-        while ((_parser.GetNodeType() != XmlParser.NodeType.Element) &&
-               (_parser.GetNodeType() != XmlParser.NodeType.ElementEnd))
+        while (_parser.GetNodeType() != XmlParser.NodeType.Element &&
+               _parser.GetNodeType() != XmlParser.NodeType.ElementEnd)
         {
             err = ParseOn();
             if (err != Error.Ok)
@@ -61,7 +67,7 @@ public class XmlParserCtrl
 
     public bool IsEnd()
     {
-        return (_parser.GetNodeType() == XmlParser.NodeType.ElementEnd);
+        return _parser.GetNodeType() == XmlParser.NodeType.ElementEnd;
     }
 
     public bool IsEmpty()

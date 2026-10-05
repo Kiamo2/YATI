@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.10] - 2026-10-05
+
+### Refactoring notes (no change in functionalitiy and only C# version is affected)
+- Merged pull request #108 to fix CA1305 and CA1310 warnings
+- More C# code cleaning done (redundant parentheses etc.)
+- Some statements now require .NET 10.0 (if you struggle with that better stay at v2.2.9 for the time being)
+
 ## [2.2.9] - 2026-10-04
 
 ### Added

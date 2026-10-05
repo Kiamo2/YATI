@@ -47,7 +47,7 @@ public partial class Importer: EditorImportPlugin
 
     public override Array<Dictionary> _GetImportOptions(string path, int presetIndex)
     {
-        return new Array<Dictionary>()
+        return new Array<Dictionary>
         {
             new() { { "name", "use_default_filter" }, { "default_value", false } },
             new() { { "name", "add_class_as_metadata" }, { "default_value", false } },

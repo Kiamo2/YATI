@@ -22,7 +22,6 @@
 
 using System;
 using System.Globalization;
-using System.Linq;
 using Godot;
 using Godot.Collections;
 
@@ -39,7 +38,6 @@ public static class DictionaryBuilder
 
     public static Dictionary GetDictionary(byte[] tiledFileContent, string sourceFile)
     {
-
         var type = FileType.Unknown;
         var extension = sourceFile.GetFile().GetExtension().ToLower(CultureInfo.InvariantCulture);
         if (new[] { "tmx", "tsx", "xml", "tx" }.Contains(extension))
