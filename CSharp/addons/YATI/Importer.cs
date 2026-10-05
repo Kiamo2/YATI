@@ -112,6 +112,9 @@ public partial class Importer: EditorImportPlugin
             tilemapCreator.SetSaveTilesetTo((string)options["save_tileset_to"]);
         }
 
+        if ((bool)ProjectSettings.GetSetting("YATI/safeness/no_instantiation", false))
+            tilemapCreator.SetSafenessNoInstantiation(true);
+
         var node2D = tilemapCreator.Create(sourceFile);
         if (node2D == null)
             return Error.Failed;

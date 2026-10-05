@@ -23,6 +23,8 @@
 @tool
 extends EditorPlugin
 
+const SAFENESS_NO_INSTANTIATION_SETTING = "YATI/safeness/no_instantiation"
+
 var _xmlImport = null
 
 func _get_plugin_name() -> String:
@@ -31,6 +33,14 @@ func _get_plugin_name() -> String:
 func _enter_tree():
 	_xmlImport = preload("Importer.gd").new()
 	add_import_plugin(_xmlImport)
+
+	if not ProjectSettings.has_setting(SAFENESS_NO_INSTANTIATION_SETTING):
+		ProjectSettings.set_setting(SAFENESS_NO_INSTANTIATION_SETTING, false)
+	ProjectSettings.set_initial_value(SAFENESS_NO_INSTANTIATION_SETTING, false)
+	ProjectSettings.add_property_info({
+		"name": SAFENESS_NO_INSTANTIATION_SETTING,
+		"type": TYPE_BOOL,
+	})
 
 func _exit_tree():
 	remove_import_plugin(_xmlImport)

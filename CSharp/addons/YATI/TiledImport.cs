@@ -22,12 +22,15 @@
 
 #if TOOLS
 using Godot;
+using Godot.Collections;
 
 namespace YATI;
 
 [Tool]
 public partial class TiledImport : EditorPlugin
 {
+    private const string SafenessNoInstantiationSetting = "YATI/safeness/no_instantiation";
+
     private EditorImportPlugin _xmlImport;
 
     public override string _GetPluginName() => "Yet another Tiled importer";
@@ -36,6 +39,15 @@ public partial class TiledImport : EditorPlugin
     {
         _xmlImport = new Importer();
         AddImportPlugin(_xmlImport);
+
+        if (!ProjectSettings.HasSetting(SafenessNoInstantiationSetting))
+            ProjectSettings.SetSetting(SafenessNoInstantiationSetting, false);
+        ProjectSettings.SetInitialValue(SafenessNoInstantiationSetting, false);
+        ProjectSettings.AddPropertyInfo(new Dictionary
+        {
+            { "name", SafenessNoInstantiationSetting },
+            { "type", (int)Variant.Type.Bool },
+        });
     }
 
     public override void _ExitTree()

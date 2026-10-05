@@ -37,6 +37,7 @@ func import(source_file: String, project_file: String = ""):
 	#tilemapCreator.set_map_wangset_to_terrain(true);
 	tilemapCreator.set_custom_data_prefix("data_");
 	#tilemapCreator.set_save_tileset_to("");
+	#tilemapCreator.set_safeness_no_instantiation(true);
 
 	if project_file != "":
 		var ct = CustomTypes.new()

@@ -39,6 +39,7 @@ public static class Importer
 		//tilemapCreator.SetMapWangsetToTerrain(true);
 		tilemapCreator.SetCustomDataPrefix("data_");
 		//tilemapCreator.SetSaveTilesetTo("");
+		//tilemapCreator.SetSafenessNoInstantiation(true);
 
 		if (projectFile != "" && FileAccess.FileExists(projectFile))
 		{

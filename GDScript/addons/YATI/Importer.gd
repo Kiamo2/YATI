@@ -96,6 +96,9 @@ func _import(source_file: String, save_path: String, options: Dictionary, platfo
 	if options.has("save_tileset_to") and options["save_tileset_to"] != "":
 		tilemapCreator.set_save_tileset_to(options["save_tileset_to"])
 
+	if bool(ProjectSettings.get_setting("YATI/safeness/no_instantiation", false)):
+		tilemapCreator.set_safeness_no_instantiation(true)
+
 	var node2D = tilemapCreator.create(source_file)
 	if node2D == null:
 		return FAILED

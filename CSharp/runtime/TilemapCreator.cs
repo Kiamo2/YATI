@@ -80,6 +80,7 @@ public class TilemapCreator: IDisposable
     private bool _dontUseAlternativeTiles;
     private string _customDataPrefix = "";
     private string _tilesetSavePath = "";
+    private bool _safenessNoInstantiation;
     private Dictionary _objectGroups;
     private CustomTypes _ct;
     private Dictionary _baseDictionary;
@@ -151,6 +152,11 @@ public class TilemapCreator: IDisposable
     public void SetSaveTilesetTo(string path)
     {
         _tilesetSavePath = path;
+    }
+
+    public void SetSafenessNoInstantiation(bool value)
+    {
+        _safenessNoInstantiation = value;
     }
 
     public TileSet GetTileset()
@@ -1110,6 +1116,12 @@ public class TilemapCreator: IDisposable
         // v1.2: New class 'instance'
         if (godotType == GodotType.Instance && !obj.ContainsKey("template") && !obj.ContainsKey("text") && !obj.ContainsKey("gid"))
         {
+            if (_safenessNoInstantiation)
+            {
+                GD.PrintErr("Object of class 'instance': Skipped because 'safeness_no_instantiation' is enabled. -> Skipped");
+                CommonUtils.WarningCount++;
+                return;
+            }
             var resPath = GetProperty(obj, "res_path", "file");
             if (resPath == "")
             {
@@ -1249,6 +1261,12 @@ public class TilemapCreator: IDisposable
 
             if (tileClass.Equals("instance", StringComparison.OrdinalIgnoreCase) || objIsInstance)
             {
+                if (_safenessNoInstantiation)
+                {
+                    GD.PrintErr("Object of class 'instance': Skipped because 'safeness_no_instantiation' is enabled. -> Skipped");
+                    CommonUtils.WarningCount++;
+                    return;
+                }
                 var resPath = GetProperty(obj, "res_path", "file");
                 if (td.HasMeta("res_path"))
                 {

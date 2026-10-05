@@ -73,6 +73,7 @@ var _add_id_as_metadata = false
 var _dont_use_alternative_tiles = false
 var _custom_data_prefix: String = ""
 var _tileset_save_path: String = ""
+var _safeness_no_instantiation = false
 var _object_groups
 var _ct: CustomTypes = null
 var _base_dictionary: Dictionary
@@ -135,6 +136,10 @@ func set_custom_types(ct: CustomTypes):
 
 func set_save_tileset_to(path: String):
 	_tileset_save_path = path
+
+
+func set_safeness_no_instantiation(value: bool):
+	_safeness_no_instantiation = value
 
 
 func get_tileset():
@@ -911,6 +916,10 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 
 	# v1.2: New class 'instance'
 	if godot_type == _godot_type.INSTANCE and not obj.has("template") and not obj.has("text") and not obj.has("gid"):
+		if _safeness_no_instantiation:
+			printerr("Object of class 'instance': Skipped because 'safeness_no_instantiation' is enabled. -> Skipped")
+			CommonUtils.warning_count += 1
+			return
 		var res_path = get_property(obj, "res_path", "file")
 		if res_path == "":
 			printerr("Object of class 'instance': Mandatory file property 'res_path' not found or invalid. -> Skipped")
@@ -1025,6 +1034,10 @@ func handle_object(obj: Dictionary, layer_node: Node, tileset: TileSet, offset: 
 			tile_class = td.get_meta(GODOT_NODE_TYPE_PROPERTY)
 
 		if tile_class.to_lower() == "instance" or obj_is_instance:
+			if _safeness_no_instantiation:
+				printerr("Object of class 'instance': Skipped because 'safeness_no_instantiation' is enabled. -> Skipped")
+				CommonUtils.warning_count += 1
+				return
 			var res_path = get_property(obj, "res_path", "file")
 			if td.has_meta("res_path"):
 				if res_path == "":
