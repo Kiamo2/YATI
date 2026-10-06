@@ -51,6 +51,7 @@ var _object_alignment
 var _object_groups = null
 var _object_groups_counter: int = 0
 var _tileset_orientation
+var _current_tileset_transparent_color: String = ""
 var _map_wangset_to_terrain: bool = false
 var _custom_data_prefix: String
 var _ct: CustomTypes = null
@@ -154,6 +155,7 @@ func create_or_append(tile_set: Dictionary):
 		_tile_offset = Vector2i.ZERO
 
 	_current_first_gid = tile_set.get("firstgid", -1)
+	_current_tileset_transparent_color = str(tile_set.get("transparentcolor", "")).strip_edges()
 
 	if tile_set.has("grid"):
 		var grid = tile_set["grid"]
@@ -202,7 +204,11 @@ func create_or_append(tile_set: Dictionary):
 		if tile_set.has("spacing"):
 			_current_atlas_source.separation = Vector2i(tile_set["spacing"], tile_set["spacing"])
 
-		var texture = DataLoader.load_image(tile_set["image"], _base_path_tileset)
+		var texture = DataLoader.load_image(
+			tile_set["image"],
+			_base_path_tileset,
+			_current_tileset_transparent_color
+		)
 		if not texture:
 			# Can't continue without texture
 			return;
@@ -301,7 +307,11 @@ func handle_tiles(tiles: Array):
 				placeholder_texture.size = Vector2(width, height)
 				_current_atlas_source.texture = placeholder_texture
 			else:
-				_current_atlas_source.texture = DataLoader.load_image(texture_path, _base_path_tileset)
+				_current_atlas_source.texture = DataLoader.load_image(
+					texture_path,
+					_base_path_tileset,
+					_current_tileset_transparent_color
+				)
 
 			_current_atlas_source.resource_name = texture_path.get_file().get_basename()
 			var texture_width = _current_atlas_source.texture.get_width()
